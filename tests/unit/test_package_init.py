@@ -60,3 +60,9 @@ def test_ga_exports_accessible_from_top_level():
     assert GAEngine is not None
     assert RunResult is not None
     assert MultiRunResult is not None
+
+
+def test_cmaes_export_accessible_from_top_level():
+    from evocore import CMAESEngine
+
+    assert CMAESEngine is not None
