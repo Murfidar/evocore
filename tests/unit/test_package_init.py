@@ -52,3 +52,11 @@ def test_part5_exports_accessible_from_top_level():
 
     assert GeneSpace.uniform(-1.0, 1.0, 2).length == 2
     assert Individual([1.0]).genes == [1.0]
+
+
+def test_ga_exports_accessible_from_top_level():
+    from evocore import GAEngine, MultiRunResult, RunResult
+
+    assert GAEngine is not None
+    assert RunResult is not None
+    assert MultiRunResult is not None

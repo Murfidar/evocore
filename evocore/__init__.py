@@ -32,6 +32,7 @@ from evocore.exceptions import (
     ParallelError,
 )
 from evocore.gene_space import GeneDef, GeneSpace
+from evocore.ga import GAEngine, MultiRunResult, RunResult
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ProcessParallel, ThreadParallel
@@ -45,6 +46,7 @@ __all__ = [
     "FloatIndividual",
     "GeneDef",
     "GeneSpace",
+    "GAEngine",
     "GenerationInfo",
     "IntegerIndividual",
     "Individual",
@@ -63,7 +65,9 @@ __all__ = [
     "Population",
     "ProcessParallel",
     "ProgressBar",
+    "RunResult",
     "ThreadParallel",
+    "MultiRunResult",
     "EvocoreError",
     "ConfigurationError",
     "FitnessError",
