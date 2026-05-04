@@ -30,3 +30,25 @@ def test_core_extension_accessible():
     assert hasattr(_core, "IntegerIndividual")
     assert hasattr(_core, "BinaryIndividual")
     assert hasattr(_core, "py_derive_seed")
+
+
+def test_part5_exports_accessible_from_top_level():
+    from evocore import (
+        Callback,
+        CheckpointCallback,
+        EarlyStopping,
+        GeneDef,
+        GeneSpace,
+        GenerationInfo,
+        Individual,
+        LogEntry,
+        Logbook,
+        MetricsLogger,
+        OperatorSet,
+        Population,
+        ProcessParallel,
+        ThreadParallel,
+    )
+
+    assert GeneSpace.uniform(-1.0, 1.0, 2).length == 2
+    assert Individual([1.0]).genes == [1.0]
