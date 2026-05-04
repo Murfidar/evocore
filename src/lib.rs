@@ -9,6 +9,7 @@ pub mod reproduce;
 pub mod selection;
 pub mod utils;
 
+use cmaes::PyCMAESState;
 use gene_spec::GeneKind;
 use individual::{BinaryIndividual, FloatIndividual, IntegerIndividual};
 use operators::{binary_ops, float_ops, int_ops};
@@ -322,6 +323,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<FloatIndividual>()?;
     m.add_class::<IntegerIndividual>()?;
     m.add_class::<BinaryIndividual>()?;
+    m.add_class::<PyCMAESState>()?;
 
     m.add_function(wrap_pyfunction!(py_derive_seed, m)?)?;
     m.add("OP_INIT", OP_INIT)?;
