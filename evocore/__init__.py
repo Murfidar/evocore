@@ -21,6 +21,7 @@ from evocore.callbacks import (
     MetricsLogger,
     ProgressBar,
 )
+from evocore.cmaes import CMAESEngine
 from evocore.exceptions import (
     CheckpointError,
     ConfigurationError,
@@ -41,6 +42,7 @@ from evocore.stats import LogEntry, Logbook
 __all__ = [
     "BinaryIndividual",
     "Callback",
+    "CMAESEngine",
     "CheckpointCallback",
     "EarlyStopping",
     "FloatIndividual",
