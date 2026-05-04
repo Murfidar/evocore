@@ -13,6 +13,14 @@ from evocore._core import (
     OP_SELECTION,
     py_derive_seed,
 )
+from evocore.callbacks import (
+    Callback,
+    CheckpointCallback,
+    EarlyStopping,
+    GenerationInfo,
+    MetricsLogger,
+    ProgressBar,
+)
 from evocore.exceptions import (
     CheckpointError,
     ConfigurationError,
@@ -23,12 +31,28 @@ from evocore.exceptions import (
     FitnessWarning,
     ParallelError,
 )
+from evocore.gene_space import GeneDef, GeneSpace
+from evocore.individual import Individual, Population
+from evocore.operators import OperatorSet
+from evocore.parallel import ProcessParallel, ThreadParallel
+from evocore.stats import LogEntry, Logbook
 
 __all__ = [
     "BinaryIndividual",
+    "Callback",
+    "CheckpointCallback",
+    "EarlyStopping",
     "FloatIndividual",
+    "GeneDef",
+    "GeneSpace",
+    "GenerationInfo",
     "IntegerIndividual",
+    "Individual",
+    "LogEntry",
+    "Logbook",
+    "MetricsLogger",
     "py_derive_seed",
+    "OperatorSet",
     "OP_INIT",
     "OP_CROSSOVER",
     "OP_MUTATION",
@@ -36,6 +60,10 @@ __all__ = [
     "OP_CMAES_ASK",
     "OP_MULTI_RUN",
     "OP_CROSSOVER_PROB",
+    "Population",
+    "ProcessParallel",
+    "ProgressBar",
+    "ThreadParallel",
     "EvocoreError",
     "ConfigurationError",
     "FitnessError",
