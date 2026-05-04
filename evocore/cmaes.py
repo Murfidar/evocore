@@ -1,13 +1,19 @@
 from __future__ import annotations
 
-from collections.abc import Sequence
+import math
+import time
+import warnings
+from collections.abc import Callable, Sequence
 
 from evocore import _core
-from evocore.callbacks import Callback
-from evocore.exceptions import ConfigurationError
+from evocore.callbacks import Callback, GenerationInfo
+from evocore.exceptions import ConfigurationError, FitnessError, FitnessWarning
+from evocore.ga import RunResult
 from evocore.gene_space import GeneSpace
-from evocore.individual import Individual
+from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
+from evocore.parallel import ThreadParallel
+from evocore.stats import LogEntry, Logbook
 
 
 class CMAESEngine:
@@ -96,3 +102,171 @@ class CMAESEngine:
             fitness=fitness,
             fitness_valid=fitness is not None,
         )
+
+    def _normalise_fitness_result(
+        self,
+        result,
+        ind: Individual,
+        gen: int,
+        idx: int,
+    ) -> tuple[float, int]:
+        metrics = {}
+        if isinstance(result, tuple):
+            if len(result) != 2 or not isinstance(result[1], dict):
+                raise FitnessError("fitness_fn tuple return must be (float, dict).")
+            result, metrics = result
+
+        try:
+            fitness = float(result)
+        except (TypeError, ValueError) as exc:
+            raise FitnessError(
+                f"fitness_fn must return a float, got {type(result)!r} at generation {gen}, index {idx}."
+            ) from exc
+
+        ind.metadata["metrics"] = dict(metrics)
+        if not math.isfinite(fitness):
+            ind.metadata["raw_fitness"] = fitness
+            ind.fitness = float("-inf")
+            ind.fitness_valid = True
+            return float("-inf"), 1
+
+        ind.fitness = fitness
+        ind.fitness_valid = True
+        return fitness, 0
+
+    def _evaluate_all(
+        self,
+        individuals: Sequence[Individual],
+        fitness_fn: Callable[[Individual], float | tuple[float, dict]],
+        gen: int,
+    ) -> tuple[list[float], int]:
+        if self.parallel == "thread":
+            try:
+                raw_results = ThreadParallel(self.n_workers).evaluate(individuals, fitness_fn)
+            except Exception as exc:
+                raise FitnessError(
+                    f"fitness_fn raised {type(exc).__name__} during thread evaluation at generation {gen}. "
+                    f"Original error: {exc}"
+                ) from exc
+        else:
+            raw_results = []
+            for idx, ind in enumerate(individuals):
+                try:
+                    raw_results.append(fitness_fn(ind))
+                except Exception as exc:
+                    raise FitnessError(
+                        f"fitness_fn raised {type(exc).__name__} for individual at generation {gen}, index {idx}. "
+                        f"Original error: {exc}"
+                    ) from exc
+
+        fitnesses: list[float] = []
+        nan_count = 0
+        for idx, (ind, raw) in enumerate(zip(individuals, raw_results, strict=False)):
+            fitness, bad_count = self._normalise_fitness_result(raw, ind, gen, idx)
+            fitnesses.append(fitness)
+            nan_count += bad_count
+
+        if nan_count and not self._fitness_warning_emitted:
+            warnings.warn(
+                f"{nan_count} individuals in generation {gen} returned NaN or Inf fitness. "
+                "They have been assigned fitness=-inf for selection.",
+                FitnessWarning,
+                stacklevel=2,
+            )
+            self._fitness_warning_emitted = True
+
+        return fitnesses, nan_count
+
+    def _bind_callbacks(self) -> None:
+        for callback in self.callbacks:
+            callback.should_stop = False
+            callback.bind_context(seed=self.seed, generations=self.generations)
+
+    def _callbacks_should_stop(self) -> bool:
+        return any(getattr(callback, "should_stop", False) for callback in self.callbacks)
+
+    def run(self, fitness_fn: Callable[[Individual], float | tuple[float, dict]]) -> RunResult:
+        self._fitness_warning_emitted = False
+        self._bind_callbacks()
+
+        start = time.perf_counter()
+        state = _core.PyCMAESState(
+            self._initial_mean_encoded(),
+            self._sigma_abs(),
+            self.population_size,
+            self._bounds_list,
+        )
+        logbook = Logbook()
+        elite_history: list[Individual] = []
+        diversity_history: list[list[float]] = []
+        final_population = Population([])
+        n_evaluations = 0
+        stopped_early = False
+
+        for gen in range(self.generations):
+            for callback in self.callbacks:
+                callback.on_generation_start(gen, final_population)
+            if self._callbacks_should_stop():
+                stopped_early = True
+                break
+
+            gen_start = time.perf_counter()
+            samples_continuous = state.ask(self.seed, gen)
+            samples_discrete = [
+                self._apply_bounds_and_round(sample) for sample in samples_continuous
+            ]
+            individuals = [self._decode_individual(sample) for sample in samples_discrete]
+            fitnesses, nan_count = self._evaluate_all(individuals, fitness_fn, gen)
+            n_evaluations += len(individuals)
+            state.tell(samples_continuous, fitnesses)
+
+            final_population = Population(individuals)
+            info = GenerationInfo(gen, nan_count, 0)
+            best = final_population.best(1)[0]
+            diversity = final_population.diversity() if self.track_diversity else []
+            if self.track_diversity:
+                diversity_history.append(diversity)
+            elite_history.append(best.clone())
+            logbook.append(
+                LogEntry(
+                    gen=gen,
+                    best_fitness=float(best.fitness),
+                    mean_fitness=final_population.mean_fitness(),
+                    std_fitness=final_population.std_fitness(),
+                    wall_time_ms=(time.perf_counter() - gen_start) * 1000.0,
+                    n_evaluations=len(individuals),
+                    nan_fitness_count=nan_count,
+                    cached_count=0,
+                    diversity=diversity,
+                    custom=dict(best.metadata.get("metrics", {})),
+                )
+            )
+            for callback in self.callbacks:
+                callback.on_generation_end(gen, final_population, info)
+            if self._callbacks_should_stop():
+                stopped_early = True
+                break
+
+        if len(final_population):
+            best = final_population.best(1)[0]
+            best_individual = best.clone()
+            best_fitness = float(best.fitness)
+        else:
+            best_individual = Individual([], fitness=float("-inf"), fitness_valid=True)
+            best_fitness = float("-inf")
+
+        result = RunResult(
+            best_individual=best_individual,
+            best_fitness=best_fitness,
+            final_population=final_population,
+            logbook=logbook,
+            wall_time_seconds=time.perf_counter() - start,
+            n_evaluations=n_evaluations,
+            elite_history=elite_history,
+            diversity_history=diversity_history,
+            seed=self.seed,
+            stopped_early=stopped_early,
+        )
+        for callback in self.callbacks:
+            callback.on_run_end(result)
+        return result
