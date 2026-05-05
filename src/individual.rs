@@ -1,6 +1,6 @@
 use pyo3::prelude::*;
 
-#[pyclass]
+#[pyclass(skip_from_py_object)]
 #[derive(Clone, Debug)]
 pub struct FloatIndividual {
     #[pyo3(get, set)]
@@ -29,7 +29,7 @@ impl FloatIndividual {
     }
 }
 
-#[pyclass]
+#[pyclass(skip_from_py_object)]
 #[derive(Clone, Debug)]
 pub struct IntegerIndividual {
     #[pyo3(get, set)]
@@ -58,7 +58,7 @@ impl IntegerIndividual {
     }
 }
 
-#[pyclass]
+#[pyclass(skip_from_py_object)]
 #[derive(Clone, Debug)]
 pub struct BinaryIndividual {
     #[pyo3(get, set)]

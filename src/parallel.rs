@@ -38,11 +38,11 @@ pub fn evaluate_parallel_rayon(
     n_threads: usize,
 ) -> PyResult<Vec<f64>> {
     let _ = n_threads;
-    py.allow_threads(|| {
+    py.detach(|| {
         genes_list
             .par_iter()
             .map(|genes| {
-                Python::with_gil(|py| {
+                Python::attach(|py| {
                     let result = fitness_fn.call1(py, (genes.clone(),))?;
                     result.extract::<f64>(py)
                 })
