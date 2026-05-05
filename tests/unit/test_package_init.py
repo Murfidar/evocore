@@ -38,9 +38,24 @@ def test_part5_exports_accessible_from_top_level():
         CheckpointCallback,
         EarlyStopping,
         GeneDef,
-        GeneSpace,
         GenerationInfo,
+        GeneSpace,
         Individual,
+        Logbook,
+        LogEntry,
+        MetricsLogger,
+        OperatorSet,
+        Population,
+        ProcessParallel,
+        ThreadParallel,
+    )
+
+    exports = (
+        Callback,
+        CheckpointCallback,
+        EarlyStopping,
+        GeneDef,
+        GenerationInfo,
         LogEntry,
         Logbook,
         MetricsLogger,
@@ -49,7 +64,7 @@ def test_part5_exports_accessible_from_top_level():
         ProcessParallel,
         ThreadParallel,
     )
-
+    assert all(export is not None for export in exports)
     assert GeneSpace.uniform(-1.0, 1.0, 2).length == 2
     assert Individual([1.0]).genes == [1.0]
 

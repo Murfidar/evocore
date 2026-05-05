@@ -14,8 +14,12 @@ pub fn int_simulated_binary_crossover(
 ) -> (Vec<f64>, Vec<f64>) {
     assert_eq!(a.len(), b.len(), "int_sbx: parent lengths must match");
 
-    let mut rng =
-        StdRng::seed_from_u64(derive_seed(master_seed, generation, individual_idx, OP_CROSSOVER));
+    let mut rng = StdRng::seed_from_u64(derive_seed(
+        master_seed,
+        generation,
+        individual_idx,
+        OP_CROSSOVER,
+    ));
     let mut c1 = Vec::with_capacity(a.len());
     let mut c2 = Vec::with_capacity(a.len());
 
@@ -42,8 +46,12 @@ pub fn int_gaussian_mutation(
     generation: u64,
     individual_idx: u64,
 ) -> Vec<f64> {
-    let mut rng =
-        StdRng::seed_from_u64(derive_seed(master_seed, generation, individual_idx, OP_MUTATION));
+    let mut rng = StdRng::seed_from_u64(derive_seed(
+        master_seed,
+        generation,
+        individual_idx,
+        OP_MUTATION,
+    ));
     let normal = Normal::new(0.0_f64, sigma).expect("sigma must be > 0");
 
     genes
@@ -67,8 +75,12 @@ pub fn int_uniform_mutation(
     generation: u64,
     individual_idx: u64,
 ) -> Vec<f64> {
-    let mut rng =
-        StdRng::seed_from_u64(derive_seed(master_seed, generation, individual_idx, OP_MUTATION));
+    let mut rng = StdRng::seed_from_u64(derive_seed(
+        master_seed,
+        generation,
+        individual_idx,
+        OP_MUTATION,
+    ));
     let lo = low.round() as i64;
     let hi = high.round() as i64;
 

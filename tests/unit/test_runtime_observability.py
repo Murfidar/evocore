@@ -8,7 +8,7 @@ def sphere(ind):
     return -sum(x * x for x in ind.genes)
 
 
-def non_finite_once(ind):
+def non_finite_once(_ind):
     return float("nan")
 
 

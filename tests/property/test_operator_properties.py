@@ -1,4 +1,5 @@
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
 
 from evocore._core import (
     bit_flip_mutation,
@@ -10,7 +11,6 @@ from evocore._core import (
     uniform_crossover,
     uniform_mutation,
 )
-
 
 bounded_float = st.floats(
     min_value=-100.0,

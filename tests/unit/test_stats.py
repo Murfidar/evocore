@@ -1,6 +1,6 @@
 import pytest
 
-from evocore.stats import LogEntry, Logbook
+from evocore.stats import Logbook, LogEntry
 
 
 def test_logbook_append_len_iter_getitem():

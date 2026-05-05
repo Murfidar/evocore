@@ -29,9 +29,7 @@ def test_cmaes_process_parallel_raises_at_construction():
 
 
 def test_apply_bounds_and_round_for_int_genes():
-    space = GeneSpace(
-        [GeneDef("period", "int", 5, 20), GeneDef("x", "float", -1.0, 1.0)]
-    )
+    space = GeneSpace([GeneDef("period", "int", 5, 20), GeneDef("x", "float", -1.0, 1.0)])
     engine = CMAESEngine(space, population_size=6, generations=1, seed=42)
 
     assert engine._apply_bounds_and_round([20.8, 1.5]) == [20.0, 1.0]
@@ -39,7 +37,9 @@ def test_apply_bounds_and_round_for_int_genes():
 
 
 def test_cmaes_run_returns_result():
-    engine = CMAESEngine(GeneSpace.uniform(-2.0, 2.0, 3), population_size=10, generations=5, seed=42)
+    engine = CMAESEngine(
+        GeneSpace.uniform(-2.0, 2.0, 3), population_size=10, generations=5, seed=42
+    )
 
     result = engine.run(sphere)
 
@@ -62,9 +62,7 @@ def test_cmaes_thread_parallel_allowed():
 
 def test_cmaes_integer_fitness_receives_ints():
     seen_types = []
-    space = GeneSpace(
-        [GeneDef("period", "int", 5, 20), GeneDef("x", "float", -1.0, 1.0)]
-    )
+    space = GeneSpace([GeneDef("period", "int", 5, 20), GeneDef("x", "float", -1.0, 1.0)])
 
     def fitness(ind):
         seen_types.append(type(ind.genes[0]))

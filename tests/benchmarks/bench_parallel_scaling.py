@@ -8,7 +8,9 @@ def sphere(ind):
 
 
 def test_run_multiple_parallel_scaling_smoke():
-    engine = GAEngine(GeneSpace.uniform(-5.0, 5.0, 10), population_size=60, generations=20, seed=42)
+    engine = GAEngine(
+        GeneSpace.uniform(-5.0, 5.0, 10), population_size=60, generations=20, seed=42
+    )
 
     started = time.perf_counter()
     sequential = engine.run_multiple(sphere, n_runs=2, run_parallel=False)

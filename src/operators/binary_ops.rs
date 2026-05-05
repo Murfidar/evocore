@@ -10,11 +10,19 @@ pub fn one_point_crossover(
     generation: u64,
     individual_idx: u64,
 ) -> (Vec<f64>, Vec<f64>) {
-    assert_eq!(a.len(), b.len(), "one_point_crossover: parent lengths must match");
+    assert_eq!(
+        a.len(),
+        b.len(),
+        "one_point_crossover: parent lengths must match"
+    );
 
     let n = a.len();
-    let mut rng =
-        StdRng::seed_from_u64(derive_seed(master_seed, generation, individual_idx, OP_CROSSOVER));
+    let mut rng = StdRng::seed_from_u64(derive_seed(
+        master_seed,
+        generation,
+        individual_idx,
+        OP_CROSSOVER,
+    ));
     let point = if n > 1 { rng.gen_range(1..n) } else { 0 };
 
     let c1 = a[..point]
@@ -38,11 +46,19 @@ pub fn two_point_crossover(
     generation: u64,
     individual_idx: u64,
 ) -> (Vec<f64>, Vec<f64>) {
-    assert_eq!(a.len(), b.len(), "two_point_crossover: parent lengths must match");
+    assert_eq!(
+        a.len(),
+        b.len(),
+        "two_point_crossover: parent lengths must match"
+    );
 
     let n = a.len();
-    let mut rng =
-        StdRng::seed_from_u64(derive_seed(master_seed, generation, individual_idx, OP_CROSSOVER));
+    let mut rng = StdRng::seed_from_u64(derive_seed(
+        master_seed,
+        generation,
+        individual_idx,
+        OP_CROSSOVER,
+    ));
     let (p1, p2) = if n > 1 {
         let x = rng.gen_range(0..n);
         let y = rng.gen_range(0..n);
@@ -73,10 +89,18 @@ pub fn uniform_crossover(
     generation: u64,
     individual_idx: u64,
 ) -> (Vec<f64>, Vec<f64>) {
-    assert_eq!(a.len(), b.len(), "uniform_crossover: parent lengths must match");
+    assert_eq!(
+        a.len(),
+        b.len(),
+        "uniform_crossover: parent lengths must match"
+    );
 
-    let mut rng =
-        StdRng::seed_from_u64(derive_seed(master_seed, generation, individual_idx, OP_CROSSOVER));
+    let mut rng = StdRng::seed_from_u64(derive_seed(
+        master_seed,
+        generation,
+        individual_idx,
+        OP_CROSSOVER,
+    ));
     let mut c1 = Vec::with_capacity(a.len());
     let mut c2 = Vec::with_capacity(a.len());
 
@@ -100,8 +124,12 @@ pub fn bit_flip_mutation(
     generation: u64,
     individual_idx: u64,
 ) -> Vec<f64> {
-    let mut rng =
-        StdRng::seed_from_u64(derive_seed(master_seed, generation, individual_idx, OP_MUTATION));
+    let mut rng = StdRng::seed_from_u64(derive_seed(
+        master_seed,
+        generation,
+        individual_idx,
+        OP_MUTATION,
+    ));
 
     genes
         .iter()

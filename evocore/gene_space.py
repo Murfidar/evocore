@@ -96,7 +96,10 @@ class GeneSpace:
         if low >= high:
             raise ConfigurationError("GeneSpace.uniform requires low < high.")
         return cls(
-            [GeneDef(f"gene_{index}", "float", float(low), float(high)) for index in range(length)],
+            [
+                GeneDef(f"gene_{index}", "float", float(low), float(high))
+                for index in range(length)
+            ],
             has_names=False,
         )
 
@@ -141,7 +144,9 @@ class GeneSpace:
         """Return whether the gene space exposes named parameters."""
         return self._has_names
 
-    def params_for(self, genes: Sequence[float | int | bool]) -> dict[str, float | int | bool] | None:
+    def params_for(
+        self, genes: Sequence[float | int | bool]
+    ) -> dict[str, float | int | bool] | None:
         """Map genes to parameter names when the space has names.
 
         Args:

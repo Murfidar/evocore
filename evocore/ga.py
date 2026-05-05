@@ -386,9 +386,7 @@ class GAEngine:
         logbook = Logbook()
         working_population = [ind.clone() for ind in population]
         initial_pending = sum(1 for ind in working_population if not ind.fitness_valid)
-        fitnesses, _ = self._evaluate_all(
-            working_population, fitness_fn, gen=start_generation - 1
-        )
+        fitnesses, _ = self._evaluate_all(working_population, fitness_fn, gen=start_generation - 1)
         n_evaluations = initial_pending
         elite_history: list[Individual] = []
         diversity_history: list[list[float]] = []
@@ -445,7 +443,9 @@ class GAEngine:
                 diversity_history.append(diversity)
             elite_history.append(pop_obj.best(1)[0].clone())
             logbook.append(
-                self._log_entry(gen, pop_obj, gen_start, n_evaluations - eval_before, info, diversity)
+                self._log_entry(
+                    gen, pop_obj, gen_start, n_evaluations - eval_before, info, diversity
+                )
             )
             logger.info(
                 "GA generation=%s best_fitness=%s mean_fitness=%s nan_fitness_count=%s cached_count=%s",
@@ -546,7 +546,9 @@ class GAEngine:
                 mp_context=ctx,
             )
             try:
-                futures = [pool.submit(_run_child_engine, self, seed, fitness_fn) for seed in child_seeds]
+                futures = [
+                    pool.submit(_run_child_engine, self, seed, fitness_fn) for seed in child_seeds
+                ]
                 results = [future.result() for future in concurrent.futures.as_completed(futures)]
             finally:
                 pool.shutdown(cancel_futures=True, wait=False)

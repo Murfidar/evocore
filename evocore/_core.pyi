@@ -8,14 +8,12 @@ OP_CMAES_ASK: int
 OP_MULTI_RUN: int
 OP_CROSSOVER_PROB: int
 
-
 class FloatIndividual:
     genes: list[float]
     fitness: float | None
 
     def __init__(self, genes: Sequence[float], fitness: float | None = None) -> None: ...
     def __len__(self) -> int: ...
-
 
 class IntegerIndividual:
     genes: list[int]
@@ -24,14 +22,12 @@ class IntegerIndividual:
     def __init__(self, genes: Sequence[int], fitness: float | None = None) -> None: ...
     def __len__(self) -> int: ...
 
-
 class BinaryIndividual:
     genes: list[bool]
     fitness: float | None
 
     def __init__(self, genes: Sequence[bool], fitness: float | None = None) -> None: ...
     def __len__(self) -> int: ...
-
 
 class PyCMAESState:
     generation: int
@@ -48,7 +44,6 @@ class PyCMAESState:
     ) -> None: ...
     def ask(self, master_seed: int, generation: int) -> list[list[float]]: ...
     def tell(self, samples: Sequence[Sequence[float]], fitnesses: Sequence[float]) -> None: ...
-
 
 def py_derive_seed(master_seed: int, generation: int, individual_idx: int, op: int) -> int: ...
 def blend_crossover(

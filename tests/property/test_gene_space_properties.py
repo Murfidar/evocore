@@ -1,9 +1,9 @@
-from hypothesis import given, strategies as st
+from hypothesis import given
+from hypothesis import strategies as st
 
 from evocore.gene_space import GeneDef, GeneSpace
 from evocore.individual import Individual
 from evocore.operators import OperatorSet
-
 
 GENE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 

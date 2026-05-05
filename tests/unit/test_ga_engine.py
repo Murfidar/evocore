@@ -10,8 +10,8 @@ from evocore import (
     FitnessError,
     FitnessWarning,
     GAEngine,
-    GenerationInfo,
     GeneDef,
+    GenerationInfo,
     GeneSpace,
 )
 from evocore.ga import MultiRunResult, RunResult
@@ -75,7 +75,9 @@ def test_large_int_without_sigma_warns_once():
             mutation_sigma=0.2,
         )
 
-    warnings_of_type = [warning for warning in caught if issubclass(warning.category, ConfigurationWarning)]
+    warnings_of_type = [
+        warning for warning in caught if issubclass(warning.category, ConfigurationWarning)
+    ]
     assert len(warnings_of_type) == 1
     assert "ema_slow" in str(warnings_of_type[0].message)
 
@@ -84,7 +86,11 @@ def test_tuple_fitness_stores_metrics():
     engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, generations=1)
     ind = Individual([0.5, 0.25])
 
-    fitnesses, nan_count = engine._evaluate_all([ind], lambda x: (1.5, {"sharpe": 2.0}), gen=0)
+    fitnesses, nan_count = engine._evaluate_all(
+        [ind],
+        lambda _ind: (1.5, {"sharpe": 2.0}),
+        gen=0,
+    )
 
     assert fitnesses == [1.5]
     assert nan_count == 0
@@ -97,14 +103,14 @@ def test_nan_fitness_warns_once_and_sanitizes():
     ind = Individual([0.0, 0.0])
 
     with pytest.warns(FitnessWarning):
-        fitnesses, nan_count = engine._evaluate_all([ind], lambda x: float("nan"), gen=0)
+        fitnesses, nan_count = engine._evaluate_all([ind], lambda _ind: float("nan"), gen=0)
 
     assert fitnesses == [float("-inf")]
     assert nan_count == 1
 
     with warnings.catch_warnings(record=True) as second:
         warnings.simplefilter("always")
-        engine._evaluate_all([Individual([0.0, 0.0])], lambda x: float("nan"), gen=1)
+        engine._evaluate_all([Individual([0.0, 0.0])], lambda _ind: float("nan"), gen=1)
 
     assert len(second) == 0
 
@@ -113,7 +119,7 @@ def test_fitness_exception_wrapped():
     engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, generations=1)
 
     with pytest.raises(FitnessError, match="ZeroDivisionError"):
-        engine._evaluate_all([Individual([0.0, 0.0])], lambda x: 1 / 0, gen=0)
+        engine._evaluate_all([Individual([0.0, 0.0])], lambda _ind: 1 / 0, gen=0)
 
 
 def sphere(ind):
@@ -171,7 +177,9 @@ def test_track_diversity_false_and_true():
 
 
 def test_elitism_caches_best_individual():
-    engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=12, generations=3, elitism=2, seed=7)
+    engine = GAEngine(
+        GeneSpace.uniform(-1.0, 1.0, 2), population_size=12, generations=3, elitism=2, seed=7
+    )
 
     result = engine.run(sphere)
 
@@ -197,7 +205,7 @@ def test_run_multiple_parallel_rejects_lambda():
     engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=10, generations=2, seed=42)
 
     with pytest.raises(ConfigurationError, match="cannot be pickled"):
-        engine.run_multiple(lambda ind: 1.0, n_runs=2, run_parallel=True)
+        engine.run_multiple(lambda _ind: 1.0, n_runs=2, run_parallel=True)
 
 
 def test_resume_missing_checkpoint_lists_available(tmp_path):
@@ -205,4 +213,4 @@ def test_resume_missing_checkpoint_lists_available(tmp_path):
     engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, generations=2)
 
     with pytest.raises(CheckpointError, match="Available checkpoints"):
-        engine.resume(lambda ind: 1.0, str(tmp_path / "checkpoint_gen_9.pkl"))
+        engine.resume(lambda _ind: 1.0, str(tmp_path / "checkpoint_gen_9.pkl"))
