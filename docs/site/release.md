@@ -7,7 +7,7 @@
    - `python -m maturin develop --release`
    - `python -m pytest tests/unit/ tests/integration/ -v`
    - `ruff format --check`
-   - `ruff check --select ALL`
+   - `python -m ruff check`
    - `cargo fmt --check`
    - `cargo clippy --all-targets -- -D warnings`
 4. Commit the release preparation changes.

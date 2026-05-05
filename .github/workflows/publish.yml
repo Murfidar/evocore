@@ -1,0 +1,38 @@
+name: Publish To PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Git tag to publish, for example v0.6.0
+        required: true
+        type: string
+      confirm:
+        description: Type publish to confirm PyPI publication
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    if: inputs.confirm == 'publish'
+    environment:
+      name: pypi
+      url: https://pypi.org/project/evocore/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download release artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p dist
+          gh release download "${{ inputs.tag }}" --dir dist
+          ls -la dist
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist

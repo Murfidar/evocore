@@ -3,12 +3,12 @@ repos:
     hooks:
       - id: ruff-format
         name: ruff format
-        entry: ruff format
+        entry: python -m ruff format
         language: system
         types_or: [python, pyi]
       - id: ruff-check
         name: ruff check
-        entry: ruff check --select ALL
+        entry: python -m ruff check
         language: system
         types_or: [python, pyi]
       - id: cargo-fmt
