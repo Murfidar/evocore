@@ -7,12 +7,86 @@ name = "evocore"
 version = "0.5.0"
 requires-python = ">=3.11"
 description = "Rust-native Genetic Algorithms and CMA-ES for Python"
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Murfidar" }]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.optional-dependencies]
+dev = [
+    "hypothesis>=6.100",
+    "maturin>=1.5,<2.0",
+    "numpy>=1.26",
+    "pre-commit>=4.0",
+    "pytest>=8.0",
+    "ruff>=0.8",
+]
+docs = [
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
+    "mkdocstrings[python]>=0.27",
+]
+
+[project.urls]
+Homepage = "https://github.com/Murfidar/evocore"
+Repository = "https://github.com/Murfidar/evocore"
+Issues = "https://github.com/Murfidar/evocore/issues"
 
 [tool.maturin]
 python-source = "."
 module-name = "evocore._core"
 features = ["pyo3/extension-module"]
+include = ["evocore/py.typed", "evocore/_core.pyi"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py", "bench_*.py"]
+
+[tool.ruff]
+line-length = 99
+target-version = "py311"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "ANN002",
+    "ANN003",
+    "ANN204",
+    "COM812",
+    "D100",
+    "D104",
+    "D105",
+    "D107",
+    "ISC001",
+    "PLR0913",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"examples/**/*.py" = ["ANN", "D", "INP001", "T201"]
+"tests/**/*.py" = ["ANN", "D", "PLR2004", "S101"]
+"tests/benchmarks/**/*.py" = ["T201"]
+
+[tool.cibuildwheel]
+build = "cp311-* cp312-* cp313-* cp314-*"
+skip = "pp* *-musllinux_*"
+test-command = "python -c \"import evocore; from evocore import GAEngine, GeneSpace; assert isinstance(evocore.__version__, str); GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, generations=1, seed=1).run(lambda ind: -sum(x*x for x in ind.genes))\""
