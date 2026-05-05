@@ -1,3 +1,5 @@
+"""CMA-ES engine backed by Rust covariance state."""
+
 from __future__ import annotations
 
 import logging
@@ -14,12 +16,30 @@ from evocore.gene_space import GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ThreadParallel
-from evocore.stats import LogEntry, Logbook
+from evocore.stats import Logbook, LogEntry
 
 logger = logging.getLogger(__name__)
 
 
 class CMAESEngine:
+    """Run covariance matrix adaptation evolution strategy optimization.
+
+    Args:
+        gene_space: Float or integer gene definitions.
+        population_size: Number of sampled candidates per generation.
+        initial_mean: Optional encoded initial mean.
+        initial_sigma: Initial sigma fraction relative to gene bounds.
+        generations: Maximum number of generations to run.
+        parallel: Evaluation mode: `"none"` or `"thread"`.
+        n_workers: Worker count for thread mode.
+        callbacks: Optional callbacks invoked during the run.
+        seed: Master seed for deterministic sampling.
+        track_diversity: Whether to record per-gene diversity.
+
+    Raises:
+        ConfigurationError: If configuration is invalid or process parallelism is requested.
+    """
+
     def __init__(
         self,
         gene_space: GeneSpace,
@@ -200,6 +220,21 @@ class CMAESEngine:
         return any(getattr(callback, "should_stop", False) for callback in self.callbacks)
 
     def run(self, fitness_fn: Callable[[Individual], float | tuple[float, dict]]) -> RunResult:
+        """Run one CMA-ES optimization.
+
+        Args:
+            fitness_fn: Callable receiving an `Individual` and returning either a fitness
+                float or `(fitness, metrics_dict)`.
+
+        Returns:
+            Run result containing the best individual, final population, logbook, and timing.
+
+        Raises:
+            FitnessError: If the fitness function raises or returns an invalid value.
+
+        Warns:
+            FitnessWarning: When NaN or Inf fitness values are assigned `-inf`.
+        """
         self._fitness_warning_emitted = False
         self._bind_callbacks()
 

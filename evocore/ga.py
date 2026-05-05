@@ -1,3 +1,5 @@
+"""Genetic algorithm engine and run result containers."""
+
 from __future__ import annotations
 
 import copy
@@ -7,9 +9,9 @@ import os
 import pickle
 import time
 import warnings
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from statistics import mean, stdev
-from typing import Callable, Sequence
 
 from evocore import _core
 from evocore.callbacks import Callback, GenerationInfo
@@ -24,13 +26,15 @@ from evocore.gene_space import GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ProcessParallel, ThreadParallel, ensure_picklable
-from evocore.stats import LogEntry, Logbook
+from evocore.stats import Logbook, LogEntry
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class RunResult:
+    """Store the outcome of one optimization run."""
+
     best_individual: Individual
     best_fitness: float
     final_population: Population
@@ -45,15 +49,19 @@ class RunResult:
 
 @dataclass
 class MultiRunResult:
+    """Store the aggregated outcome of multiple GA runs."""
+
     best: RunResult
     all_runs: list[RunResult]
     n_runs: int
     wall_time_seconds: float
 
     def best_n(self, n: int) -> list[RunResult]:
+        """Return the top `n` runs sorted by best fitness."""
         return self.all_runs[:n]
 
     def fitness_summary(self) -> dict[str, float]:
+        """Return summary statistics across best fitness values."""
         values = [run.best_fitness for run in self.all_runs]
         return {
             "mean": mean(values) if values else float("nan"),
@@ -63,11 +71,41 @@ class MultiRunResult:
         }
 
 
-def _run_child_engine(engine: "GAEngine", seed: int, fitness_fn: Callable) -> RunResult:
+def _run_child_engine(engine: GAEngine, seed: int, fitness_fn: Callable) -> RunResult:
     return engine._copy_with_seed(seed).run(fitness_fn)
 
 
 class GAEngine:
+    """Run deterministic genetic algorithm optimization over a gene space.
+
+    Args:
+        gene_space: Gene definitions for individuals.
+        population_size: Number of individuals per generation.
+        generations: Maximum number of generations to run.
+        crossover: Crossover operator name.
+        crossover_prob: Probability of applying crossover.
+        crossover_eta: Eta parameter for simulated binary crossover.
+        crossover_alpha: Alpha parameter for blend crossover.
+        mutation: Mutation operator name.
+        mutation_prob: Per-gene mutation probability.
+        mutation_sigma: Global mutation sigma fraction.
+        mutation_sigma_schedule: Sigma schedule name.
+        mutation_sigma_end: Final sigma fraction for decay schedules.
+        selection: Selection operator name.
+        tournament_size: Number of candidates per tournament.
+        elitism: Number of best individuals copied into each generation.
+        parallel: Evaluation mode: `"none"`, `"thread"`, or `"process"`.
+        n_workers: Worker count for parallel modes.
+        process_initializer: Optional initializer for process workers.
+        process_initargs: Arguments passed to the process initializer.
+        seed: Master seed for deterministic reproducibility.
+        track_diversity: Whether to record per-gene diversity.
+        callbacks: Optional callbacks invoked during the run.
+
+    Raises:
+        ConfigurationError: If engine configuration is invalid.
+    """
+
     def __init__(
         self,
         gene_space: GeneSpace,
@@ -87,8 +125,8 @@ class GAEngine:
         elitism: int = 1,
         parallel: str = "none",
         n_workers: int | None = None,
-        process_initializer=None,
-        process_initargs=(),
+        process_initializer: Callable[..., object] | None = None,
+        process_initargs: tuple[object, ...] = (),
         seed: int = 0,
         track_diversity: bool = False,
         callbacks: Sequence[Callback] | None = None,
@@ -305,7 +343,7 @@ class GAEngine:
             custom=dict(best.metadata.get("metrics", {})),
         )
 
-    def _copy_with_seed(self, seed: int) -> "GAEngine":
+    def _copy_with_seed(self, seed: int) -> GAEngine:
         return GAEngine(
             gene_space=self.gene_space,
             population_size=self.population_size,
@@ -443,6 +481,19 @@ class GAEngine:
         return result
 
     def run(self, fitness_fn: Callable[[Individual], float | tuple[float, dict]]) -> RunResult:
+        """Run one GA optimization.
+
+        Args:
+            fitness_fn: Callable receiving an `Individual` and returning either a fitness
+                float or `(fitness, metrics_dict)`.
+
+        Returns:
+            Run result containing the best individual, final population, logbook, and timing.
+
+        Raises:
+            FitnessError: If the fitness function raises or returns an invalid value.
+            ConfigurationError: If process mode receives a non-picklable fitness function.
+        """
         return self._run_from_population(
             self._initial_population(),
             fitness_fn,
@@ -456,6 +507,20 @@ class GAEngine:
         aggregate: str = "best",
         run_parallel: bool = False,
     ) -> MultiRunResult:
+        """Run multiple deterministic child runs from derived seeds.
+
+        Args:
+            fitness_fn: Fitness callable passed to each child run.
+            n_runs: Number of child runs.
+            aggregate: Aggregation mode. `"best"` and `"all"` are accepted.
+            run_parallel: Whether to execute child runs in spawned processes.
+
+        Returns:
+            Multi-run result sorted by descending best fitness.
+
+        Raises:
+            ConfigurationError: If `n_runs`, `aggregate`, or pickle constraints are invalid.
+        """
         if n_runs <= 0:
             raise ConfigurationError("n_runs must be positive.")
         if aggregate not in ("best", "all"):
@@ -497,6 +562,19 @@ class GAEngine:
         )
 
     def resume(self, fitness_fn: Callable, checkpoint: str) -> RunResult:
+        """Resume a GA run from a checkpoint file.
+
+        Args:
+            fitness_fn: Fitness callable used for remaining generations.
+            checkpoint: Path to a checkpoint written by `CheckpointCallback`.
+
+        Returns:
+            Run result for the resumed optimization.
+
+        Raises:
+            CheckpointError: If the file is missing, corrupt, incompatible, or has a
+                seed that differs from the engine seed.
+        """
         if not os.path.exists(checkpoint):
             directory = os.path.dirname(checkpoint) or "."
             available = []

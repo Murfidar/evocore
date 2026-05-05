@@ -1,3 +1,5 @@
+"""Python parallel evaluation helpers and pickle validation."""
+
 from __future__ import annotations
 
 import concurrent.futures
@@ -11,6 +13,7 @@ from evocore.individual import Individual
 
 
 def ensure_picklable(obj, *, context: str) -> None:
+    """Raise a configuration error if an object is not picklable."""
     try:
         pickle.dumps(obj)
     except (pickle.PicklingError, AttributeError, TypeError) as exc:
@@ -22,12 +25,15 @@ def ensure_picklable(obj, *, context: str) -> None:
 
 
 class ThreadParallel:
+    """Evaluate individuals in a thread pool."""
+
     def __init__(self, n_workers: int | None = None) -> None:
         self.n_workers = n_workers or os.cpu_count() or 1
 
     def evaluate(
         self, population: Sequence[Individual], fitness_fn: Callable[[Individual], object]
     ) -> list[object]:
+        """Evaluate a population with a thread pool."""
         if not population:
             return []
 
@@ -36,12 +42,7 @@ class ThreadParallel:
 
 
 class ProcessParallel:
-    """
-    ProcessPoolExecutor wrapper using spawn everywhere.
-
-    KeyboardInterrupt behavior: queued futures are cancelled and the pool is
-    asked to shut down without waiting for already-running evaluations.
-    """
+    """Evaluate individuals in a spawn-based process pool."""
 
     def __init__(self, n_workers: int | None = None, initializer=None, initargs=()) -> None:
         self.n_workers = n_workers or os.cpu_count() or 1
@@ -52,6 +53,7 @@ class ProcessParallel:
     def evaluate(
         self, population: Sequence[Individual], fitness_fn: Callable[[Individual], object]
     ) -> list[object]:
+        """Evaluate a population with a process pool."""
         if not population:
             return []
 

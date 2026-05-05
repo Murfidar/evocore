@@ -1,11 +1,15 @@
+"""Run logbook data structures and reporting helpers."""
+
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
-from typing import Iterator
 
 
 @dataclass
 class LogEntry:
+    """Capture per-generation statistics from an optimization engine."""
+
     gen: int
     best_fitness: float
     mean_fitness: float
@@ -19,10 +23,13 @@ class LogEntry:
 
 
 class Logbook:
+    """Store ordered `LogEntry` records with export helpers."""
+
     def __init__(self) -> None:
         self._entries: list[LogEntry] = []
 
     def append(self, entry: LogEntry) -> None:
+        """Append a generation record to the logbook."""
         self._entries.append(entry)
 
     def __len__(self) -> int:
@@ -35,12 +42,15 @@ class Logbook:
         return self._entries[index]
 
     def best_fitnesses(self) -> list[float]:
+        """Return the best fitness value from each generation."""
         return [entry.best_fitness for entry in self._entries]
 
     def nan_counts(self) -> list[int]:
+        """Return the number of non-finite fitness values per generation."""
         return [entry.nan_fitness_count for entry in self._entries]
 
     def to_rows(self) -> list[dict]:
+        """Convert log entries into JSON-serializable row dictionaries."""
         rows: list[dict] = []
         for entry in self._entries:
             row = {
@@ -58,10 +68,12 @@ class Logbook:
         return rows
 
     def print(self) -> None:
+        """Print row dictionaries for quick inspection."""
         for row in self.to_rows():
             print(row)
 
     def to_dataframe(self):
+        """Convert the logbook into a pandas DataFrame."""
         try:
             import pandas as pd
         except ImportError as exc:
@@ -72,6 +84,7 @@ class Logbook:
         return pd.DataFrame(self.to_rows())
 
     def plot(self, metrics: list[str] | None = None):
+        """Plot selected logbook metrics with matplotlib."""
         try:
             import matplotlib.pyplot as plt
         except ImportError as exc:

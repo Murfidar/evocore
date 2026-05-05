@@ -1,3 +1,5 @@
+"""Callbacks for observing, stopping, checkpointing, and recording runs."""
+
 from __future__ import annotations
 
 import json
@@ -13,28 +15,34 @@ if TYPE_CHECKING:
 
 @dataclass
 class GenerationInfo:
+    """Expose per-generation metadata to callbacks."""
+
     generation: int
     nan_fitness_count: int
     cached_count: int
 
 
 class Callback:
+    """Define lifecycle hooks for optimization runs."""
+
     should_stop: bool = False
 
     def bind_context(self, **kwargs) -> None:
-        pass
+        """Receive run context before optimization starts."""
 
-    def on_generation_start(self, gen: int, pop: "Population") -> None:
-        pass
+    def on_generation_start(self, gen: int, pop: Population) -> None:
+        """Run before one generation starts."""
 
-    def on_generation_end(self, gen: int, pop: "Population", info: GenerationInfo) -> None:
-        pass
+    def on_generation_end(self, gen: int, pop: Population, info: GenerationInfo) -> None:
+        """Run after one generation completes."""
 
-    def on_run_end(self, result: "RunResult") -> None:
-        pass
+    def on_run_end(self, result: RunResult) -> None:
+        """Run after the optimization finishes."""
 
 
 class EarlyStopping(Callback):
+    """Stop a run after fitness stagnates for a patience window."""
+
     def __init__(self, patience: int = 10, min_delta: float = 1e-6) -> None:
         self.patience = patience
         self.min_delta = min_delta
@@ -42,7 +50,8 @@ class EarlyStopping(Callback):
         self._best = float("-inf")
         self._no_improve_count = 0
 
-    def on_generation_end(self, gen: int, pop: "Population", info: GenerationInfo) -> None:
+    def on_generation_end(self, gen: int, pop: Population, info: GenerationInfo) -> None:
+        """Track best fitness and request a stop when progress stalls."""
         best = pop.best(1)
         if not best or best[0].fitness is None:
             return
@@ -58,14 +67,18 @@ class EarlyStopping(Callback):
 
 
 class ProgressBar(Callback):
+    """Display a tqdm progress bar when tqdm is available."""
+
     def __init__(self) -> None:
         self._bar = None
         self._total = None
 
     def bind_context(self, **kwargs) -> None:
+        """Store the total generation count for the progress bar."""
         self._total = kwargs.get("generations")
 
-    def on_generation_start(self, gen: int, pop: "Population") -> None:
+    def on_generation_start(self, gen: int, pop: Population) -> None:
+        """Create the bar lazily on the first generation."""
         if self._bar is None:
             try:
                 from tqdm import tqdm
@@ -74,7 +87,8 @@ class ProgressBar(Callback):
                 return
             self._bar = tqdm(total=self._total)
 
-    def on_generation_end(self, gen: int, pop: "Population", info: GenerationInfo) -> None:
+    def on_generation_end(self, gen: int, pop: Population, info: GenerationInfo) -> None:
+        """Advance the bar and show the latest best fitness."""
         if not self._bar:
             return
 
@@ -85,21 +99,26 @@ class ProgressBar(Callback):
         self._bar.set_postfix(**postfix)
         self._bar.update(1)
 
-    def on_run_end(self, result: "RunResult") -> None:
+    def on_run_end(self, result: RunResult) -> None:
+        """Close the progress bar when the run ends."""
         if self._bar:
             self._bar.close()
 
 
 class CheckpointCallback(Callback):
+    """Write pickle checkpoints at a fixed generation interval."""
+
     def __init__(self, path: str = "./checkpoints", every: int = 10) -> None:
         self.path = path
         self.every = every
         self._seed: int | None = None
 
     def bind_context(self, **kwargs) -> None:
+        """Capture the engine seed for checkpoint validation."""
         self._seed = kwargs.get("seed")
 
-    def on_generation_end(self, gen: int, pop: "Population", info: GenerationInfo) -> None:
+    def on_generation_end(self, gen: int, pop: Population, info: GenerationInfo) -> None:
+        """Persist a checkpoint when the current generation matches the cadence."""
         if self.every <= 0 or gen % self.every != 0:
             return
 
@@ -110,10 +129,13 @@ class CheckpointCallback(Callback):
 
 
 class MetricsLogger(Callback):
+    """Append per-generation metrics to a JSON Lines file."""
+
     def __init__(self, path: str = "./metrics.jsonl") -> None:
         self.path = path
 
-    def on_generation_end(self, gen: int, pop: "Population", info: GenerationInfo) -> None:
+    def on_generation_end(self, gen: int, pop: Population, info: GenerationInfo) -> None:
+        """Write one JSON line containing generation metrics."""
         best = pop.best(1)
         record = {
             "generation": gen,
