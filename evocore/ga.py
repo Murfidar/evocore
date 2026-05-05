@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import copy
+import logging
 import math
 import os
 import pickle
@@ -24,6 +25,8 @@ from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ProcessParallel, ThreadParallel, ensure_picklable
 from evocore.stats import LogEntry, Logbook
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -177,6 +180,12 @@ class GAEngine:
     ) -> tuple[list[float], int]:
         pending = [ind for ind in individuals if not ind.fitness_valid]
         if self.parallel == "process":
+            logger.debug(
+                "GA process evaluation generation=%s n_workers=%s pending=%s",
+                gen,
+                self.n_workers,
+                len(pending),
+            )
             ensure_picklable(fitness_fn, context="parallel='process'")
             try:
                 raw_results = ProcessParallel(
@@ -190,6 +199,12 @@ class GAEngine:
                     f"Original error: {exc}"
                 ) from exc
         elif self.parallel == "thread":
+            logger.debug(
+                "GA thread evaluation generation=%s n_workers=%s pending=%s",
+                gen,
+                self.n_workers,
+                len(pending),
+            )
             try:
                 raw_results = ThreadParallel(self.n_workers).evaluate(pending, fitness_fn)
             except Exception as exc:
@@ -214,6 +229,11 @@ class GAEngine:
             nan_count += n_bad
 
         if nan_count and not self._fitness_warning_emitted:
+            logger.warning(
+                "GA generation=%s saw %s non-finite fitness values; assigned fitness=-inf",
+                gen,
+                nan_count,
+            )
             warnings.warn(
                 f"{nan_count} individuals in generation {gen} returned NaN or Inf fitness. "
                 "They have been assigned fitness=-inf for selection.",
@@ -389,6 +409,14 @@ class GAEngine:
             logbook.append(
                 self._log_entry(gen, pop_obj, gen_start, n_evaluations - eval_before, info, diversity)
             )
+            logger.info(
+                "GA generation=%s best_fitness=%s mean_fitness=%s nan_fitness_count=%s cached_count=%s",
+                gen,
+                float(pop_obj.best(1)[0].fitness),
+                pop_obj.mean_fitness(),
+                nan_count,
+                len(elites),
+            )
 
             for callback in self.callbacks:
                 callback.on_generation_end(gen, pop_obj, info)
@@ -437,6 +465,7 @@ class GAEngine:
             int(_core.py_derive_seed(self.seed, 0, run_idx, _core.OP_MULTI_RUN))
             for run_idx in range(n_runs)
         ]
+        logger.debug("GA run_multiple n_runs=%s child_seeds=%s", n_runs, child_seeds)
 
         started = time.perf_counter()
         if run_parallel:

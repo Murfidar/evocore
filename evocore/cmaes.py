@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import math
 import time
 import warnings
@@ -14,6 +15,8 @@ from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ThreadParallel
 from evocore.stats import LogEntry, Logbook
+
+logger = logging.getLogger(__name__)
 
 
 class CMAESEngine:
@@ -141,6 +144,12 @@ class CMAESEngine:
         gen: int,
     ) -> tuple[list[float], int]:
         if self.parallel == "thread":
+            logger.debug(
+                "CMA-ES thread evaluation generation=%s n_workers=%s population=%s",
+                gen,
+                self.n_workers,
+                len(individuals),
+            )
             try:
                 raw_results = ThreadParallel(self.n_workers).evaluate(individuals, fitness_fn)
             except Exception as exc:
@@ -167,6 +176,11 @@ class CMAESEngine:
             nan_count += bad_count
 
         if nan_count and not self._fitness_warning_emitted:
+            logger.warning(
+                "CMA-ES generation=%s saw %s non-finite fitness values; assigned fitness=-inf",
+                gen,
+                nan_count,
+            )
             warnings.warn(
                 f"{nan_count} individuals in generation {gen} returned NaN or Inf fitness. "
                 "They have been assigned fitness=-inf for selection.",
@@ -240,6 +254,13 @@ class CMAESEngine:
                     diversity=diversity,
                     custom=dict(best.metadata.get("metrics", {})),
                 )
+            )
+            logger.info(
+                "CMA-ES generation=%s best_fitness=%s mean_fitness=%s nan_fitness_count=%s",
+                gen,
+                float(best.fitness),
+                final_population.mean_fitness(),
+                nan_count,
             )
             for callback in self.callbacks:
                 callback.on_generation_end(gen, final_population, info)

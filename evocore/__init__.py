@@ -1,5 +1,12 @@
 """Top-level evocore package exports for Part 1."""
 
+from importlib import metadata as _metadata
+
+try:
+    __version__ = _metadata.version("evocore")
+except _metadata.PackageNotFoundError:
+    __version__ = "0.5.0"
+
 from evocore._core import (
     BinaryIndividual,
     FloatIndividual,
@@ -40,6 +47,7 @@ from evocore.parallel import ProcessParallel, ThreadParallel
 from evocore.stats import LogEntry, Logbook
 
 __all__ = [
+    "__version__",
     "BinaryIndividual",
     "Callback",
     "CMAESEngine",
