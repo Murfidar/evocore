@@ -69,7 +69,15 @@ fn uniform_mutation(
     generation: u64,
     individual_idx: u64,
 ) -> Vec<f64> {
-    float_ops::uniform_mutation(&genes, low, high, prob, master_seed, generation, individual_idx)
+    float_ops::uniform_mutation(
+        &genes,
+        low,
+        high,
+        prob,
+        master_seed,
+        generation,
+        individual_idx,
+    )
 }
 
 #[pyfunction]
@@ -106,7 +114,15 @@ fn int_uniform_mutation(
     generation: u64,
     individual_idx: u64,
 ) -> Vec<f64> {
-    int_ops::int_uniform_mutation(&genes, low, high, prob, master_seed, generation, individual_idx)
+    int_ops::int_uniform_mutation(
+        &genes,
+        low,
+        high,
+        prob,
+        master_seed,
+        generation,
+        individual_idx,
+    )
 }
 
 #[pyfunction]
@@ -166,7 +182,12 @@ fn tournament_selection(
 }
 
 #[pyfunction]
-fn roulette_selection(fitnesses: Vec<f64>, k: usize, master_seed: u64, generation: u64) -> Vec<usize> {
+fn roulette_selection(
+    fitnesses: Vec<f64>,
+    k: usize,
+    master_seed: u64,
+    generation: u64,
+) -> Vec<usize> {
     selection::roulette_selection(&fitnesses, k, master_seed, generation)
 }
 
@@ -201,6 +222,7 @@ fn init_population(
     population_size,
     master_seed, generation,
 ))]
+#[allow(clippy::too_many_arguments)]
 fn reproduce_population(
     population: Vec<Vec<f64>>,
     fitnesses: Vec<f64>,

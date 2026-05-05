@@ -113,10 +113,10 @@ mod tests {
     fn test_float_individual_clone_preserves_fitness() {
         let ind = FloatIndividual {
             genes: vec![1.0, 2.0],
-            fitness: Some(3.14),
+            fitness: Some(2.5),
         };
         let cloned = ind.clone();
-        assert_eq!(cloned.fitness, Some(3.14));
+        assert_eq!(cloned.fitness, Some(2.5));
         assert_eq!(cloned.genes, vec![1.0, 2.0]);
     }
 

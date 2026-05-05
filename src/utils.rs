@@ -68,8 +68,7 @@ mod tests {
         let a = derive_seed(99, 1, 2, OP_SELECTION);
         let b = derive_seed(99, 2, 1, OP_SELECTION);
         assert_ne!(
-            a,
-            b,
+            a, b,
             "derive_seed must not be commutative across generation and individual_idx"
         );
     }

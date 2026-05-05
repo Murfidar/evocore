@@ -47,8 +47,16 @@ pub struct ReproduceConfig {
 }
 
 pub fn clamp_and_round(genes: &[f64], bounds: &[(f64, f64)], kinds: &[GeneKind]) -> Vec<f64> {
-    assert_eq!(genes.len(), bounds.len(), "clamp_and_round: genes/bounds mismatch");
-    assert_eq!(genes.len(), kinds.len(), "clamp_and_round: genes/kinds mismatch");
+    assert_eq!(
+        genes.len(),
+        bounds.len(),
+        "clamp_and_round: genes/bounds mismatch"
+    );
+    assert_eq!(
+        genes.len(),
+        kinds.len(),
+        "clamp_and_round: genes/kinds mismatch"
+    );
 
     genes
         .iter()
@@ -114,59 +122,65 @@ fn apply_mutation(
     generation: u64,
     individual_idx: u64,
 ) -> Vec<f64> {
-    let mut rng =
-        StdRng::seed_from_u64(derive_seed(master_seed, generation, individual_idx, OP_MUTATION));
+    let mut rng = StdRng::seed_from_u64(derive_seed(
+        master_seed,
+        generation,
+        individual_idx,
+        OP_MUTATION,
+    ));
 
     genes
         .iter()
         .enumerate()
-        .map(|(idx, &gene)| match (&config.mutation_type, &config.gene_kinds[idx]) {
-            (MutationType::Gaussian, GeneKind::Float) => {
-                if rng.gen::<f64>() < config.mutation_prob {
-                    let sigma = config.mutation_sigmas[idx].max(1e-20);
-                    gene + Normal::new(0.0, sigma).unwrap().sample(&mut rng)
-                } else {
-                    gene
-                }
-            }
-            (MutationType::Gaussian, GeneKind::Int) => {
-                if rng.gen::<f64>() < config.mutation_prob {
-                    let sigma = config.mutation_sigmas[idx].max(1e-20);
-                    (gene + Normal::new(0.0, sigma).unwrap().sample(&mut rng)).round()
-                } else {
-                    gene
-                }
-            }
-            (MutationType::Uniform, GeneKind::Float) => {
-                if rng.gen::<f64>() < config.mutation_prob {
-                    let (low, high) = config.gene_bounds[idx];
-                    rng.gen_range(low..high)
-                } else {
-                    gene
-                }
-            }
-            (MutationType::Uniform, GeneKind::Int) => {
-                if rng.gen::<f64>() < config.mutation_prob {
-                    let low = config.gene_bounds[idx].0.round() as i64;
-                    let high = config.gene_bounds[idx].1.round() as i64;
-                    rng.gen_range(low..=high) as f64
-                } else {
-                    gene
-                }
-            }
-            (MutationType::BitFlip, GeneKind::Bool) | (_, GeneKind::Bool) => {
-                if rng.gen::<f64>() < config.mutation_prob {
-                    if gene >= 0.5 {
-                        0.0
+        .map(
+            |(idx, &gene)| match (&config.mutation_type, &config.gene_kinds[idx]) {
+                (MutationType::Gaussian, GeneKind::Float) => {
+                    if rng.gen::<f64>() < config.mutation_prob {
+                        let sigma = config.mutation_sigmas[idx].max(1e-20);
+                        gene + Normal::new(0.0, sigma).unwrap().sample(&mut rng)
                     } else {
-                        1.0
+                        gene
                     }
-                } else {
-                    gene
                 }
-            }
-            (MutationType::BitFlip, _) => gene,
-        })
+                (MutationType::Gaussian, GeneKind::Int) => {
+                    if rng.gen::<f64>() < config.mutation_prob {
+                        let sigma = config.mutation_sigmas[idx].max(1e-20);
+                        (gene + Normal::new(0.0, sigma).unwrap().sample(&mut rng)).round()
+                    } else {
+                        gene
+                    }
+                }
+                (MutationType::Uniform, GeneKind::Float) => {
+                    if rng.gen::<f64>() < config.mutation_prob {
+                        let (low, high) = config.gene_bounds[idx];
+                        rng.gen_range(low..high)
+                    } else {
+                        gene
+                    }
+                }
+                (MutationType::Uniform, GeneKind::Int) => {
+                    if rng.gen::<f64>() < config.mutation_prob {
+                        let low = config.gene_bounds[idx].0.round() as i64;
+                        let high = config.gene_bounds[idx].1.round() as i64;
+                        rng.gen_range(low..=high) as f64
+                    } else {
+                        gene
+                    }
+                }
+                (MutationType::BitFlip, GeneKind::Bool) | (_, GeneKind::Bool) => {
+                    if rng.gen::<f64>() < config.mutation_prob {
+                        if gene >= 0.5 {
+                            0.0
+                        } else {
+                            1.0
+                        }
+                    } else {
+                        gene
+                    }
+                }
+                (MutationType::BitFlip, _) => gene,
+            },
+        )
         .collect()
 }
 
@@ -240,7 +254,7 @@ pub fn reproduce(
         return Vec::new();
     }
 
-    let pairs_needed = (pop_size + 1) / 2;
+    let pairs_needed = pop_size.div_ceil(2);
     let parent_count = pairs_needed * 2;
     let parent_indices = match config.selection_type {
         SelectionType::Tournament => selection::tournament_selection(
@@ -476,7 +490,11 @@ mod tests {
         let new_pop = reproduce(&pop, &fitnesses, &config, 42, 0);
         for ind in &new_pop {
             for &g in ind {
-                assert!(g >= -5.0 && g <= 5.0, "float gene {} outside [-5.0, 5.0]", g);
+                assert!(
+                    (-5.0..=5.0).contains(&g),
+                    "float gene {} outside [-5.0, 5.0]",
+                    g
+                );
             }
         }
     }
@@ -556,6 +574,9 @@ mod tests {
         let config = make_float_config(10, 4);
         let r1 = reproduce(&pop, &fitnesses, &config, 42, 0);
         let r2 = reproduce(&pop, &fitnesses, &config, 42, 1);
-        assert_ne!(r1, r2, "different generations must produce different offspring");
+        assert_ne!(
+            r1, r2,
+            "different generations must produce different offspring"
+        );
     }
 }

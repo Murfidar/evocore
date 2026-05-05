@@ -1,9 +1,13 @@
 """Top-level evocore package exports for Part 1."""
 
+from importlib import metadata as _metadata
+
+try:
+    __version__ = _metadata.version("evocore")
+except _metadata.PackageNotFoundError:
+    __version__ = "0.5.0"
+
 from evocore._core import (
-    BinaryIndividual,
-    FloatIndividual,
-    IntegerIndividual,
     OP_CMAES_ASK,
     OP_CROSSOVER,
     OP_CROSSOVER_PROB,
@@ -11,6 +15,9 @@ from evocore._core import (
     OP_MULTI_RUN,
     OP_MUTATION,
     OP_SELECTION,
+    BinaryIndividual,
+    FloatIndividual,
+    IntegerIndividual,
     py_derive_seed,
 )
 from evocore.callbacks import (
@@ -32,50 +39,51 @@ from evocore.exceptions import (
     FitnessWarning,
     ParallelError,
 )
-from evocore.gene_space import GeneDef, GeneSpace
 from evocore.ga import GAEngine, MultiRunResult, RunResult
+from evocore.gene_space import GeneDef, GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ProcessParallel, ThreadParallel
-from evocore.stats import LogEntry, Logbook
+from evocore.stats import Logbook, LogEntry
 
 __all__ = [
+    "OP_CMAES_ASK",
+    "OP_CROSSOVER",
+    "OP_CROSSOVER_PROB",
+    "OP_INIT",
+    "OP_MULTI_RUN",
+    "OP_MUTATION",
+    "OP_SELECTION",
     "BinaryIndividual",
-    "Callback",
     "CMAESEngine",
+    "Callback",
     "CheckpointCallback",
+    "CheckpointError",
+    "ConfigurationError",
+    "ConfigurationWarning",
+    "ConvergenceError",
     "EarlyStopping",
+    "EvocoreError",
+    "FitnessError",
+    "FitnessWarning",
     "FloatIndividual",
+    "GAEngine",
     "GeneDef",
     "GeneSpace",
-    "GAEngine",
     "GenerationInfo",
-    "IntegerIndividual",
     "Individual",
+    "IntegerIndividual",
     "LogEntry",
     "Logbook",
     "MetricsLogger",
-    "py_derive_seed",
+    "MultiRunResult",
     "OperatorSet",
-    "OP_INIT",
-    "OP_CROSSOVER",
-    "OP_MUTATION",
-    "OP_SELECTION",
-    "OP_CMAES_ASK",
-    "OP_MULTI_RUN",
-    "OP_CROSSOVER_PROB",
+    "ParallelError",
     "Population",
     "ProcessParallel",
     "ProgressBar",
     "RunResult",
     "ThreadParallel",
-    "MultiRunResult",
-    "EvocoreError",
-    "ConfigurationError",
-    "FitnessError",
-    "ConvergenceError",
-    "ParallelError",
-    "CheckpointError",
-    "FitnessWarning",
-    "ConfigurationWarning",
+    "__version__",
+    "py_derive_seed",
 ]

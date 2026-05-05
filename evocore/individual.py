@@ -1,15 +1,20 @@
+"""Python-side individual and population containers."""
+
 from __future__ import annotations
 
 import math
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 from statistics import mean, pstdev
-from typing import Any, Iterator, Sequence
+from typing import Any
 
 GeneValue = float | int | bool
 
 
 @dataclass
 class Individual:
+    """Represent a decoded optimization candidate and its metadata."""
+
     genes: list[GeneValue]
     fitness: float | None = None
     fitness_valid: bool = False
@@ -17,9 +22,11 @@ class Individual:
 
     @property
     def params(self) -> dict[str, GeneValue] | None:
+        """Return named parameters attached to this individual, if available."""
         return self.metadata.get("params")
 
-    def clone(self) -> "Individual":
+    def clone(self) -> Individual:
+        """Return a shallow clone of the individual state."""
         return Individual(
             genes=list(self.genes),
             fitness=self.fitness,
@@ -29,6 +36,8 @@ class Individual:
 
 
 class Population(Sequence[Individual]):
+    """Wrap a sequence of individuals with summary helpers."""
+
     def __init__(self, individuals: Sequence[Individual]) -> None:
         self._individuals = list(individuals)
 
@@ -42,6 +51,7 @@ class Population(Sequence[Individual]):
         return self._individuals[index]
 
     def as_list(self) -> list[Individual]:
+        """Return the underlying individuals as a list copy."""
         return list(self._individuals)
 
     @staticmethod
@@ -54,6 +64,7 @@ class Population(Sequence[Individual]):
         return value
 
     def best(self, n: int = 1) -> list[Individual]:
+        """Return the best `n` individuals by fitness."""
         if n <= 0:
             return []
         return sorted(self._individuals, key=self._fitness_key, reverse=True)[:n]
@@ -66,14 +77,17 @@ class Population(Sequence[Individual]):
         return values
 
     def mean_fitness(self) -> float:
+        """Return the mean finite fitness across the population."""
         values = self._finite_fitnesses()
         return mean(values) if values else float("nan")
 
     def std_fitness(self) -> float:
+        """Return the population standard deviation of finite fitness values."""
         values = self._finite_fitnesses()
         return pstdev(values) if len(values) > 1 else 0.0
 
     def diversity(self) -> list[float]:
+        """Return per-gene population diversity as population standard deviation."""
         if not self._individuals:
             return []
 
@@ -85,6 +99,7 @@ class Population(Sequence[Individual]):
         return diversity_values
 
     def to_dataframe(self):
+        """Convert the population into a pandas DataFrame."""
         try:
             import pandas as pd
         except ImportError as exc:

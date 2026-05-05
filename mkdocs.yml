@@ -1,0 +1,29 @@
+site_name: evocore
+site_description: Rust-native Genetic Algorithms and CMA-ES for Python
+repo_url: https://github.com/Murfidar/evocore
+docs_dir: docs/site
+site_dir: site
+theme:
+  name: material
+nav:
+  - Home: index.md
+  - Install: install.md
+  - Quickstart: quickstart.md
+  - Genetic Algorithms: ga.md
+  - CMA-ES: cmaes.md
+  - Parallelism: parallelism.md
+  - Callbacks And Checkpointing: callbacks-checkpointing.md
+  - API Reference: api.md
+  - Release Process: release.md
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+markdown_extensions:
+  - admonition
+  - pymdownx.superfences

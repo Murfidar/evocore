@@ -1,6 +1,8 @@
+"""Operator encoding and validation helpers."""
+
 from __future__ import annotations
 
-from typing import Sequence
+from collections.abc import Sequence
 
 from evocore.exceptions import ConfigurationError
 from evocore.gene_space import GeneSpace
@@ -13,6 +15,8 @@ BINARY_MUTATIONS = {"bit_flip"}
 
 
 class OperatorSet:
+    """Validate operators and translate genes across the PyO3 boundary."""
+
     def __init__(self, gene_space: GeneSpace, crossover: str, mutation: str) -> None:
         self.gene_space = gene_space
         self.crossover = crossover
@@ -44,13 +48,16 @@ class OperatorSet:
 
     @property
     def gene_kinds(self) -> list[str]:
+        """Return the Rust-facing gene kind strings."""
         return self.gene_space.kinds
 
     @property
     def gene_bounds(self) -> list[tuple[float, float]]:
+        """Return the Rust-facing floating-point bounds."""
         return self.gene_space.rust_bounds
 
     def encode_genes(self, genes: Sequence[float | int | bool]) -> list[float]:
+        """Encode Python gene values into the float vector used by Rust."""
         if len(genes) != self.gene_space.length:
             raise ConfigurationError(f"Expected {self.gene_space.length} genes, got {len(genes)}.")
 
@@ -65,6 +72,7 @@ class OperatorSet:
         return encoded
 
     def decode_genes(self, genes_f64: Sequence[float]) -> list[float | int | bool]:
+        """Decode Rust float vectors back into Python gene values."""
         if len(genes_f64) != self.gene_space.length:
             raise ConfigurationError(
                 f"Expected {self.gene_space.length} encoded genes, got {len(genes_f64)}."
@@ -81,6 +89,7 @@ class OperatorSet:
         return decoded
 
     def encode_population(self, population: Sequence[Individual]) -> list[list[float]]:
+        """Encode a population of individuals for Rust calls."""
         return [self.encode_genes(individual.genes) for individual in population]
 
     def decode_individual(
@@ -91,6 +100,7 @@ class OperatorSet:
         fitness_valid: bool = False,
         metadata: dict | None = None,
     ) -> Individual:
+        """Decode one Rust-side genome into an `Individual`."""
         genes = self.decode_genes(genes_f64)
         individual_metadata = dict(metadata or {})
         params = self.gene_space.params_for(genes)
@@ -104,9 +114,11 @@ class OperatorSet:
         )
 
     def decode_population(self, population_f64: Sequence[Sequence[float]]) -> list[Individual]:
+        """Decode a Rust-side population into Python individuals."""
         return [self.decode_individual(genes_f64) for genes_f64 in population_f64]
 
     def sigma_abs_list(self, global_sigma_fraction: float) -> list[float]:
+        """Return per-gene absolute mutation sigmas for Rust operators."""
         if not (0.0 <= global_sigma_fraction <= 1.0):
             raise ConfigurationError("mutation_sigma must be in [0, 1].")
 

@@ -1,5 +1,8 @@
+"""CMA-ES engine backed by Rust covariance state."""
+
 from __future__ import annotations
 
+import logging
 import math
 import time
 import warnings
@@ -13,10 +16,30 @@ from evocore.gene_space import GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ThreadParallel
-from evocore.stats import LogEntry, Logbook
+from evocore.stats import Logbook, LogEntry
+
+logger = logging.getLogger(__name__)
 
 
 class CMAESEngine:
+    """Run covariance matrix adaptation evolution strategy optimization.
+
+    Args:
+        gene_space: Float or integer gene definitions.
+        population_size: Number of sampled candidates per generation.
+        initial_mean: Optional encoded initial mean.
+        initial_sigma: Initial sigma fraction relative to gene bounds.
+        generations: Maximum number of generations to run.
+        parallel: Evaluation mode: `"none"` or `"thread"`.
+        n_workers: Worker count for thread mode.
+        callbacks: Optional callbacks invoked during the run.
+        seed: Master seed for deterministic sampling.
+        track_diversity: Whether to record per-gene diversity.
+
+    Raises:
+        ConfigurationError: If configuration is invalid or process parallelism is requested.
+    """
+
     def __init__(
         self,
         gene_space: GeneSpace,
@@ -141,6 +164,12 @@ class CMAESEngine:
         gen: int,
     ) -> tuple[list[float], int]:
         if self.parallel == "thread":
+            logger.debug(
+                "CMA-ES thread evaluation generation=%s n_workers=%s population=%s",
+                gen,
+                self.n_workers,
+                len(individuals),
+            )
             try:
                 raw_results = ThreadParallel(self.n_workers).evaluate(individuals, fitness_fn)
             except Exception as exc:
@@ -167,6 +196,11 @@ class CMAESEngine:
             nan_count += bad_count
 
         if nan_count and not self._fitness_warning_emitted:
+            logger.warning(
+                "CMA-ES generation=%s saw %s non-finite fitness values; assigned fitness=-inf",
+                gen,
+                nan_count,
+            )
             warnings.warn(
                 f"{nan_count} individuals in generation {gen} returned NaN or Inf fitness. "
                 "They have been assigned fitness=-inf for selection.",
@@ -186,6 +220,21 @@ class CMAESEngine:
         return any(getattr(callback, "should_stop", False) for callback in self.callbacks)
 
     def run(self, fitness_fn: Callable[[Individual], float | tuple[float, dict]]) -> RunResult:
+        """Run one CMA-ES optimization.
+
+        Args:
+            fitness_fn: Callable receiving an `Individual` and returning either a fitness
+                float or `(fitness, metrics_dict)`.
+
+        Returns:
+            Run result containing the best individual, final population, logbook, and timing.
+
+        Raises:
+            FitnessError: If the fitness function raises or returns an invalid value.
+
+        Warns:
+            FitnessWarning: When NaN or Inf fitness values are assigned `-inf`.
+        """
         self._fitness_warning_emitted = False
         self._bind_callbacks()
 
@@ -240,6 +289,13 @@ class CMAESEngine:
                     diversity=diversity,
                     custom=dict(best.metadata.get("metrics", {})),
                 )
+            )
+            logger.info(
+                "CMA-ES generation=%s best_fitness=%s mean_fitness=%s nan_fitness_count=%s",
+                gen,
+                float(best.fitness),
+                final_population.mean_fitness(),
+                nan_count,
             )
             for callback in self.callbacks:
                 callback.on_generation_end(gen, final_population, info)

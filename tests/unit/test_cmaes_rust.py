@@ -54,7 +54,7 @@ class TestPyCMAESStateConstruction:
             assert s.eigendecomp_interval >= 1, f"n={n}"
 
     def test_invalid_bounds_length_raises(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="bounds length must match mean length"):
             PyCMAESState([0.0] * 5, 0.5, 10, [(-1.0, 1.0)] * 3)
 
 
@@ -159,7 +159,7 @@ class TestTell:
     def test_mismatched_lengths_raise(self):
         s = make_state(n=3, lambda_=6)
         samples = s.ask(42, 0)
-        with pytest.raises(Exception):
+        with pytest.raises(ValueError, match="same length"):
             s.tell(samples, [1.0, 2.0])
 
 

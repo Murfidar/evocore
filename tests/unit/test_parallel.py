@@ -14,7 +14,7 @@ def module_level_fitness(ind):
 
 def test_ensure_picklable_rejects_lambda():
     with pytest.raises(ConfigurationError, match="cannot be pickled"):
-        ensure_picklable(lambda ind: 1.0, context="parallel='process'")
+        ensure_picklable(lambda _ind: 1.0, context="parallel='process'")
 
 
 def test_run_child_engine_is_picklable():

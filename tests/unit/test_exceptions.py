@@ -60,11 +60,19 @@ def test_fitness_warning_can_be_promoted_to_error():
     with warnings.catch_warnings():
         warnings.filterwarnings("error", category=FitnessWarning)
         with pytest.raises(FitnessWarning):
-            warnings.warn("8 individuals returned NaN fitness.", FitnessWarning)
+            warnings.warn(
+                "8 individuals returned NaN fitness.",
+                FitnessWarning,
+                stacklevel=2,
+            )
 
 
 def test_configuration_warning_can_be_promoted_to_error():
     with warnings.catch_warnings():
         warnings.filterwarnings("error", category=ConfigurationWarning)
         with pytest.raises(ConfigurationWarning):
-            warnings.warn("Large int range without sigma.", ConfigurationWarning)
+            warnings.warn(
+                "Large int range without sigma.",
+                ConfigurationWarning,
+                stacklevel=2,
+            )

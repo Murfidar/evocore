@@ -109,13 +109,16 @@ impl CMAESState {
         for weight in &mut raw_weights {
             *weight /= weight_sum;
         }
-        let mueff = 1.0 / raw_weights.iter().map(|weight| weight * weight).sum::<f64>();
+        let mueff = 1.0
+            / raw_weights
+                .iter()
+                .map(|weight| weight * weight)
+                .sum::<f64>();
         let n_f = n as f64;
         let cc = (4.0 + (mueff / n_f)) / (n_f + 4.0 + (2.0 * mueff / n_f));
         let cs = (mueff + 2.0) / (n_f + mueff + 5.0);
         let c1 = 2.0 / (((n_f + 1.3).powi(2)) + mueff);
-        let cmu_unclamped =
-            (2.0 * (mueff - 2.0 + (1.0 / mueff))) / (((n_f + 2.0).powi(2)) + mueff);
+        let cmu_unclamped = (2.0 * (mueff - 2.0 + (1.0 / mueff))) / (((n_f + 2.0).powi(2)) + mueff);
         let cmu = cmu_unclamped.max(0.0).min(1.0 - c1);
         let damps = 1.0 + 2.0 * (((mueff - 1.0) / (n_f + 1.0)).sqrt().max(0.0)) + cs;
         let chi_n = n_f.sqrt() * (1.0 - (1.0 / (4.0 * n_f)) + (1.0 / (21.0 * n_f * n_f)));
@@ -204,10 +207,8 @@ impl CMAESState {
                 let seed = derive_seed(master_seed, generation, sample_idx as u64, OP_CMAES_ASK);
                 let mut rng = StdRng::seed_from_u64(seed);
                 let normal = Normal::new(0.0, 1.0).unwrap();
-                let z = DVector::from_iterator(
-                    self.n,
-                    (0..self.n).map(|_| normal.sample(&mut rng)),
-                );
+                let z =
+                    DVector::from_iterator(self.n, (0..self.n).map(|_| normal.sample(&mut rng)));
                 let transformed = &cache.eigenvectors * cache.eigenvalues_sqrt.component_mul(&z);
 
                 (0..self.n)
@@ -270,12 +271,12 @@ impl CMAESState {
             rank_mu_acc += (&artmp * artmp.transpose()) * self.weights[rank];
         }
 
-        self.cov =
-            (old_cov * (1.0 - self.c1 - self.cmu)) + (rank_one * self.c1) + (rank_mu_acc * self.cmu);
+        self.cov = (old_cov * (1.0 - self.c1 - self.cmu))
+            + (rank_one * self.c1)
+            + (rank_mu_acc * self.cmu);
         self.cov = (&self.cov + self.cov.transpose()) * 0.5;
 
-        let sigma_scale =
-            ((self.cs / self.damps) * ((self.ps.norm() / self.chi_n) - 1.0)).exp();
+        let sigma_scale = ((self.cs / self.damps) * ((self.ps.norm() / self.chi_n) - 1.0)).exp();
         self.sigma = (self.sigma * sigma_scale).max(MIN_SIGMA);
         self.mean = new_mean;
         self.generation += 1;
@@ -389,7 +390,7 @@ mod tests {
     #[test]
     fn test_mirror_fold_far_outside_still_in_bounds() {
         let result = mirror_fold(25.0, 0.0, 1.0);
-        assert!(result >= 0.0 && result <= 1.0, "got {}", result);
+        assert!((0.0..=1.0).contains(&result), "got {}", result);
     }
 
     fn make_state(n: usize, lambda: usize) -> CMAESState {

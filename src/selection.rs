@@ -100,7 +100,9 @@ pub fn roulette_selection(
     };
 
     let mut rng = StdRng::seed_from_u64(derive_seed(master_seed, generation, 0, OP_SELECTION));
-    (0..k).map(|_| pick_weighted_index(&mut rng, &weights)).collect()
+    (0..k)
+        .map(|_| pick_weighted_index(&mut rng, &weights))
+        .collect()
 }
 
 pub fn rank_selection(
@@ -117,7 +119,10 @@ pub fn rank_selection(
     order.sort_by(|left, right| left.1.partial_cmp(&right.1).unwrap_or(Ordering::Equal));
 
     let mut weights = vec![0.0; n];
-    let finite_count = safe.iter().filter(|&&value| value != f64::NEG_INFINITY).count();
+    let finite_count = safe
+        .iter()
+        .filter(|&&value| value != f64::NEG_INFINITY)
+        .count();
     if finite_count == 0 {
         weights.fill(1.0);
     } else {
@@ -131,7 +136,9 @@ pub fn rank_selection(
     }
 
     let mut rng = StdRng::seed_from_u64(derive_seed(master_seed, generation, 0, OP_SELECTION));
-    (0..k).map(|_| pick_weighted_index(&mut rng, &weights)).collect()
+    (0..k)
+        .map(|_| pick_weighted_index(&mut rng, &weights))
+        .collect()
 }
 
 #[cfg(test)]
@@ -144,7 +151,7 @@ mod tests {
 
     #[test]
     fn test_safe_fitness_passes_through_normal_values() {
-        assert_eq!(safe_fitness(3.14), 3.14);
+        assert_eq!(safe_fitness(2.5), 2.5);
         assert_eq!(safe_fitness(-100.0), -100.0);
         assert_eq!(safe_fitness(0.0), 0.0);
     }
@@ -194,7 +201,10 @@ mod tests {
         let fitnesses = sample_fitnesses();
         let a = tournament_selection(&fitnesses, 4, 2, 42, 0);
         let b = tournament_selection(&fitnesses, 4, 2, 42, 1);
-        assert_ne!(a, b, "different generations must produce different selection");
+        assert_ne!(
+            a, b,
+            "different generations must produce different selection"
+        );
     }
 
     #[test]

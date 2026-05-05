@@ -118,7 +118,7 @@ class TestIntegerOperators:
 
 class TestBinaryOperators:
     def _is_binary(self, vals):
-        return all(v == 0.0 or v == 1.0 for v in vals)
+        return all(v in {0.0, 1.0} for v in vals)
 
     def test_one_point_crossover_lengths(self):
         a = [1.0] * 8

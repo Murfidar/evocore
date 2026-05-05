@@ -10,7 +10,9 @@ def sphere(ind):
 
 
 def test_evocore_ga_wall_time_smoke():
-    engine = GAEngine(GeneSpace.uniform(-5.0, 5.0, 20), population_size=300, generations=40, seed=42)
+    engine = GAEngine(
+        GeneSpace.uniform(-5.0, 5.0, 20), population_size=300, generations=40, seed=42
+    )
 
     started = time.perf_counter()
     result = engine.run(sphere)
