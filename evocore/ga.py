@@ -12,6 +12,7 @@ import warnings
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from statistics import mean, stdev
+from typing import Literal
 
 from evocore import _core
 from evocore.callbacks import Callback, GenerationInfo
@@ -30,6 +31,8 @@ from evocore.stats import Logbook, LogEntry
 
 logger = logging.getLogger(__name__)
 
+StopReason = Literal["generations", "max_evaluations", "callback"]
+
 
 @dataclass
 class RunResult:
@@ -45,6 +48,9 @@ class RunResult:
     diversity_history: list[list[float]]
     seed: int
     stopped_early: bool
+    max_evaluations: int | None = None
+    stop_reason: StopReason = "generations"
+    budget_reached: bool = False
 
 
 @dataclass
@@ -128,6 +134,7 @@ class GAEngine:
         process_initializer: Callable[..., object] | None = None,
         process_initargs: tuple[object, ...] = (),
         seed: int = 0,
+        max_evaluations: int | None = None,
         track_diversity: bool = False,
         callbacks: Sequence[Callback] | None = None,
     ) -> None:
@@ -139,6 +146,8 @@ class GAEngine:
             raise ConfigurationError("population_size must be at least 2.")
         if generations < 0:
             raise ConfigurationError("generations must be >= 0.")
+        if max_evaluations is not None and max_evaluations <= 0:
+            raise ConfigurationError("max_evaluations must be positive when provided.")
         if elitism < 0 or elitism >= population_size:
             raise ConfigurationError("elitism must satisfy 0 <= elitism < population_size.")
         if parallel not in ("none", "thread", "process"):
@@ -170,6 +179,7 @@ class GAEngine:
         self.process_initializer = process_initializer
         self.process_initargs = process_initargs
         self.seed = int(seed)
+        self.max_evaluations = max_evaluations
         self.track_diversity = track_diversity
         self.callbacks = list(callbacks or [])
         self.operators = OperatorSet(gene_space, crossover, mutation)
@@ -365,6 +375,7 @@ class GAEngine:
             process_initializer=self.process_initializer,
             process_initargs=self.process_initargs,
             seed=int(seed),
+            max_evaluations=self.max_evaluations,
             track_diversity=self.track_diversity,
             callbacks=copy.deepcopy(self.callbacks),
         )
@@ -391,6 +402,7 @@ class GAEngine:
         elite_history: list[Individual] = []
         diversity_history: list[list[float]] = []
         stopped_early = False
+        stop_reason: StopReason = "generations"
 
         for gen in range(start_generation, self.generations):
             gen_start = time.perf_counter()
@@ -399,6 +411,7 @@ class GAEngine:
                 callback.on_generation_start(gen, current_pop)
             if self._callbacks_should_stop():
                 stopped_early = True
+                stop_reason = "callback"
                 break
 
             elites = self._clone_elites(working_population)
@@ -460,6 +473,7 @@ class GAEngine:
                 callback.on_generation_end(gen, pop_obj, info)
             if self._callbacks_should_stop():
                 stopped_early = True
+                stop_reason = "callback"
                 break
 
         final_population = Population(working_population)
@@ -475,6 +489,11 @@ class GAEngine:
             diversity_history=diversity_history,
             seed=self.seed,
             stopped_early=stopped_early,
+            max_evaluations=self.max_evaluations,
+            stop_reason=stop_reason,
+            budget_reached=(
+                self.max_evaluations is not None and n_evaluations >= self.max_evaluations
+            ),
         )
         for callback in self.callbacks:
             callback.on_run_end(result)

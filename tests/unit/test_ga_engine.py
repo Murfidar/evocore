@@ -138,6 +138,17 @@ def test_ga_run_returns_result_with_logbook_length():
     assert result.n_evaluations > 0
 
 
+def test_ga_run_reports_default_generation_stop_diagnostics():
+    engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=6, generations=2, seed=42)
+
+    result = engine.run(module_sphere)
+
+    assert result.max_evaluations is None
+    assert result.stop_reason == "generations"
+    assert result.budget_reached is False
+    assert result.stopped_early is False
+
+
 def test_on_generation_end_receives_generation_info():
     received = []
 
