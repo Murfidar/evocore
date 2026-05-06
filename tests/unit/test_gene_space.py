@@ -63,3 +63,37 @@ def test_duplicate_names_rejected():
 def test_rust_bounds_encode_bool_as_zero_one():
     space = GeneSpace([GeneDef("flag", "bool")])
     assert space.rust_bounds == [(0.0, 1.0)]
+
+
+def test_fixed_numeric_genes_are_valid_and_report_fixed_metadata():
+    fixed_float = GeneDef("threshold", "float", 0.5, 0.5)
+    fixed_int = GeneDef("signal_mode", "int", 2, 2)
+    variable = GeneDef("period", "int", 5, 20)
+
+    space = GeneSpace([fixed_float, variable, fixed_int])
+
+    assert fixed_float.is_fixed is True
+    assert fixed_int.is_fixed is True
+    assert variable.is_fixed is False
+    assert space.fixed_indices == [0, 2]
+    assert space.variable_indices == [1]
+    assert space.fixed_count == 2
+    assert space.variable_count == 1
+    assert space.bounds == [(0.5, 0.5), (5, 20), (2, 2)]
+    assert space.rust_bounds == [(0.5, 0.5), (5.0, 20.0), (2.0, 2.0)]
+
+
+def test_reversed_numeric_bounds_are_still_rejected():
+    with pytest.raises(ConfigurationError, match="requires low <= high"):
+        GeneDef("threshold", "float", 1.0, 0.5)
+
+
+def test_fixed_int_genes_still_require_integer_bounds():
+    with pytest.raises(ConfigurationError, match="integer bounds"):
+        GeneDef("signal_mode", "int", 2.0, 2.0)
+
+
+def test_bool_genes_are_not_fixed_in_this_iteration():
+    gene = GeneDef("flag", "bool")
+
+    assert gene.is_fixed is False
