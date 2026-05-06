@@ -10,6 +10,20 @@ def test_numeric_space_accepts_sbx_gaussian():
     assert ops.gene_kinds == ["float", "float"]
 
 
+def test_numeric_space_accepts_uniform_crossover_for_deap_parity():
+    space = GeneSpace(
+        [
+            GeneDef("signal_mode", "int", 0, 4),
+            GeneDef("threshold", "float", -1.0, 1.0),
+        ]
+    )
+
+    ops = OperatorSet(space, "uniform", "gaussian")
+
+    assert ops.crossover == "uniform"
+    assert ops.gene_kinds == ["int", "float"]
+
+
 def test_binary_space_rejects_sbx():
     space = GeneSpace([GeneDef("a", "bool"), GeneDef("b", "bool")])
     with pytest.raises(ConfigurationError, match="binary"):

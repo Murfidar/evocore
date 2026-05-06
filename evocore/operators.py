@@ -8,7 +8,7 @@ from evocore.exceptions import ConfigurationError
 from evocore.gene_space import GeneSpace
 from evocore.individual import Individual
 
-NUMERIC_CROSSOVERS = {"sbx", "blx"}
+NUMERIC_CROSSOVERS = {"sbx", "blx", "uniform"}
 BINARY_CROSSOVERS = {"one_point", "two_point", "uniform"}
 NUMERIC_MUTATIONS = {"gaussian", "uniform"}
 BINARY_MUTATIONS = {"bit_flip"}
@@ -40,7 +40,9 @@ class OperatorSet:
                 raise ConfigurationError("binary GeneSpace requires mutation='bit_flip'.")
         else:
             if self.crossover not in NUMERIC_CROSSOVERS:
-                raise ConfigurationError("float/int GeneSpace requires crossover='sbx' or 'blx'.")
+                raise ConfigurationError(
+                    "float/int GeneSpace requires crossover='sbx', 'blx', or 'uniform'."
+                )
             if self.mutation not in NUMERIC_MUTATIONS:
                 raise ConfigurationError(
                     "float/int GeneSpace requires mutation='gaussian' or 'uniform'."

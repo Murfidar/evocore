@@ -6,6 +6,31 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-05-07
+
+### Added
+
+- Numeric `GeneSpace` now accepts `crossover="uniform"` so mixed float, integer,
+  and categorical-by-integer chromosomes can use DEAP-style allele swaps.
+- `GAEngine(mutation_individual_prob=...)` adds an optional per-offspring mutation
+  gate. The default remains `1.0`, preserving existing EvoCore behavior while
+  allowing DEAP-parity pipelines to model both outer and per-gene mutation
+  probabilities.
+- Root-cause and benchmark notes for the Trading-Algo-Scalper-Gold GA migration
+  snapshot.
+
+### Changed
+
+- Tournament selection now samples aspirants with replacement, matching DEAP
+  `selTournament` semantics and reducing unintended selection pressure.
+- GA initialization caps the initial Rust population size when
+  `max_evaluations < population_size`, reducing small-budget setup overhead.
+
+### Fixed
+
+- Trading-Algo benchmark parity against DEAP for crossover, mutation gating, RNG
+  isolation, and standard snapshot CLI defaults.
+
 ## [0.6.0] - 2026-05-06
 
 ### Added

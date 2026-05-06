@@ -10,6 +10,7 @@ nav:
   - Install: install.md
   - Quickstart: quickstart.md
   - Genetic Algorithms: ga.md
+  - GA Benchmark Parity: ga-benchmark-parity.md
   - CMA-ES: cmaes.md
   - Parallelism: parallelism.md
   - Callbacks And Checkpointing: callbacks-checkpointing.md

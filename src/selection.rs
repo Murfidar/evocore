@@ -51,20 +51,18 @@ pub fn tournament_selection(
 
     (0..k)
         .map(|_| {
-            let contestants: Vec<usize> = if tournament_size >= n {
-                (0..n).collect()
-            } else {
-                (0..n).choose_multiple(&mut rng, tournament_size)
-            };
-
-            contestants
-                .into_iter()
-                .max_by(|&left, &right| {
-                    safe[left]
-                        .partial_cmp(&safe[right])
-                        .unwrap_or(Ordering::Equal)
-                })
-                .unwrap()
+            let mut winner = rng.gen_range(0..n);
+            for _ in 1..tournament_size {
+                let contender = rng.gen_range(0..n);
+                if safe[contender]
+                    .partial_cmp(&safe[winner])
+                    .unwrap_or(Ordering::Equal)
+                    == Ordering::Greater
+                {
+                    winner = contender;
+                }
+            }
+            winner
         })
         .collect()
 }
@@ -210,10 +208,21 @@ mod tests {
     #[test]
     fn test_tournament_nan_fitness_never_wins_large_tournament() {
         let fitnesses = vec![f64::NAN, f64::NAN, f64::NAN, f64::NAN, 99.0];
-        let indices = tournament_selection(&fitnesses, 100, 5, 42, 0);
+        let indices = tournament_selection(&fitnesses, 100, 200, 42, 0);
         assert!(
             indices.iter().all(|&i| i == 4),
-            "NaN individuals should never win a full-population tournament"
+            "NaN individuals should not win when the finite best is sampled"
+        );
+    }
+
+    #[test]
+    fn test_tournament_samples_aspirants_with_replacement_like_deap() {
+        let fitnesses = sample_fitnesses();
+        let indices = tournament_selection(&fitnesses, 200, 5, 42, 0);
+
+        assert!(
+            indices.iter().any(|&i| i != 1),
+            "with-replacement tournaments should sometimes omit the best individual"
         );
     }
 

@@ -25,6 +25,25 @@ result = engine.run(sphere)
 print(result.best_fitness, result.best_individual.genes)
 ```
 
+## DEAP-Parity GA Configuration
+
+For mixed numeric chromosomes that encode categorical choices as integers, use uniform
+crossover and the optional per-offspring mutation gate to mirror DEAP-style GA pipelines:
+
+```python
+engine = GAEngine(
+    space,
+    crossover="uniform",
+    crossover_prob=0.8,
+    mutation="gaussian",
+    mutation_prob=0.2,
+    mutation_individual_prob=0.2,
+    selection="tournament",
+    tournament_size=4,
+    seed=42,
+)
+```
+
 ## Named Mixed Gene Space
 
 ```python

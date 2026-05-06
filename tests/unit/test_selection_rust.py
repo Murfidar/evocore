@@ -31,8 +31,14 @@ class TestTournamentSelection:
 
     def test_nan_never_wins_full_tournament(self):
         fitnesses = [float("nan")] * 4 + [99.0]
-        idx = tournament_selection(fitnesses, 50, 5, 42, 0)
-        assert all(i == 4 for i in idx), "NaN individuals should never win"
+        idx = tournament_selection(fitnesses, 50, 200, 42, 0)
+        assert all(i == 4 for i in idx), "NaN individuals should not win when best is sampled"
+
+    def test_large_tournament_samples_with_replacement_like_deap(self):
+        fitnesses = [1.0, 2.0, 3.0, 4.0, 5.0]
+        idx = tournament_selection(fitnesses, 200, 5, 42, 0)
+
+        assert any(i != 4 for i in idx)
 
     def test_returns_list_of_ints(self):
         idx = tournament_selection([1.0, 2.0, 3.0], 3, 2, 42, 0)

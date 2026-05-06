@@ -175,6 +175,7 @@ def reproduce_population(
     population_size: int,
     master_seed: int,
     generation: int,
+    mutation_individual_prob: float = 1.0,
 ) -> list[list[float]]: ...
 def evaluate_sequential(
     genes_list: Sequence[Sequence[float]],
