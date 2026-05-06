@@ -201,6 +201,10 @@ def module_sphere(ind):
     return -sum(x * x for x in ind.genes)
 
 
+def module_counted_sphere(ind):
+    return -sum(x * x for x in ind.genes)
+
+
 def test_run_multiple_sequential_returns_sorted_runs():
     engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=10, generations=2, seed=42)
 
@@ -217,6 +221,24 @@ def test_run_multiple_parallel_rejects_lambda():
 
     with pytest.raises(ConfigurationError, match="cannot be pickled"):
         engine.run_multiple(lambda _ind: 1.0, n_runs=2, run_parallel=True)
+
+
+def test_run_multiple_applies_max_evaluations_per_child_run():
+    engine = GAEngine(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        population_size=6,
+        generations=5,
+        max_evaluations=7,
+        seed=42,
+    )
+
+    result = engine.run_multiple(module_counted_sphere, n_runs=3, run_parallel=False)
+
+    assert result.n_runs == 3
+    assert [run.n_evaluations for run in result.all_runs] == [7, 7, 7]
+    assert all(run.max_evaluations == 7 for run in result.all_runs)
+    assert all(run.stop_reason == "max_evaluations" for run in result.all_runs)
+    assert all(run.budget_reached is True for run in result.all_runs)
 
 
 def test_resume_missing_checkpoint_lists_available(tmp_path):
