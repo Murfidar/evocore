@@ -6,12 +6,13 @@
    - `cargo test`
    - `python -m maturin develop --release`
    - `python -m pytest tests/unit/ tests/integration/ -v`
+   - `python -m maturin build --release --out target/wheels`
    - `ruff format --check`
    - `python -m ruff check`
    - `cargo fmt --check`
    - `cargo clippy --all-targets -- -D warnings`
 4. Commit the release preparation changes.
-5. Create and push a version tag such as `v0.6.0`.
+5. Create and push a version tag such as `v0.6.1`.
 6. Wait for release artifacts to build.
 7. Download and inspect the artifacts.
 8. Approve or edit the draft GitHub Release.
