@@ -329,6 +329,32 @@ class TestReproducePopulation:
         assert all(ind[1] == 2.0 for ind in new_pop)
         assert all(-5.0 <= ind[2] <= 5.0 for ind in new_pop)
 
+    def test_mutation_individual_probability_zero_skips_all_gene_mutation(self):
+        pop = [[0.0, 5.0], [1.0, 10.0], [2.0, 15.0], [3.0, 20.0]]
+        new_pop = reproduce_population(
+            pop,
+            [float(i) for i in range(len(pop))],
+            "uniform",
+            0.0,
+            2.0,
+            0.5,
+            "uniform",
+            1.0,
+            [1.0, 1.0],
+            [(0.0, 100.0), (0.0, 100.0)],
+            ["float", "int"],
+            "tournament",
+            2,
+            8,
+            42,
+            0,
+            0.0,
+        )
+
+        parent_values = {tuple(ind) for ind in pop}
+        assert len(new_pop) == 8
+        assert all(tuple(ind) in parent_values for ind in new_pop)
+
     def test_blx_crossover_mode(self):
         pop = init_population([(-5.0, 5.0)] * 4, ["float"] * 4, 10, 42)
         new_pop = reproduce_population(

@@ -88,12 +88,15 @@ class GAEngine:
         gene_space: Gene definitions for individuals.
         population_size: Number of individuals per generation.
         generations: Maximum number of generations to run.
-        crossover: Crossover operator name.
+        crossover: Crossover operator name. Numeric spaces support `"sbx"`, `"blx"`,
+            and `"uniform"`; binary spaces support `"one_point"`, `"two_point"`, and
+            `"uniform"`.
         crossover_prob: Probability of applying crossover.
         crossover_eta: Eta parameter for simulated binary crossover.
         crossover_alpha: Alpha parameter for blend crossover.
         mutation: Mutation operator name.
-        mutation_prob: Per-gene mutation probability.
+        mutation_prob: Per-gene mutation probability once an offspring is selected for mutation.
+        mutation_individual_prob: Per-offspring probability of applying mutation.
         mutation_sigma: Global mutation sigma fraction.
         mutation_sigma_schedule: Sigma schedule name.
         mutation_sigma_end: Final sigma fraction for decay schedules.
@@ -107,6 +110,7 @@ class GAEngine:
         seed: Master seed for deterministic reproducibility.
         track_diversity: Whether to record per-gene diversity.
         callbacks: Optional callbacks invoked during the run.
+        max_evaluations: Optional hard cap on fitness calls.
 
     Raises:
         ConfigurationError: If engine configuration is invalid.
@@ -123,6 +127,7 @@ class GAEngine:
         crossover_alpha: float = 0.5,
         mutation: str = "gaussian",
         mutation_prob: float = 0.1,
+        mutation_individual_prob: float = 1.0,
         mutation_sigma: float = 0.2,
         mutation_sigma_schedule: str = "constant",
         mutation_sigma_end: float = 0.02,
@@ -154,6 +159,8 @@ class GAEngine:
             raise ConfigurationError("parallel must be one of 'none', 'thread', or 'process'.")
         if selection not in ("tournament", "roulette", "rank"):
             raise ConfigurationError("selection must be 'tournament', 'roulette', or 'rank'.")
+        if not (0.0 <= mutation_individual_prob <= 1.0):
+            raise ConfigurationError("mutation_individual_prob must be in [0, 1].")
         if mutation_sigma_schedule not in ("constant", "linear_decay", "cosine_decay"):
             raise ConfigurationError(
                 "mutation_sigma_schedule must be 'constant', 'linear_decay', or 'cosine_decay'."
@@ -168,6 +175,7 @@ class GAEngine:
         self.crossover_alpha = crossover_alpha
         self.mutation = mutation
         self.mutation_prob = mutation_prob
+        self.mutation_individual_prob = mutation_individual_prob
         self.mutation_sigma = mutation_sigma
         self.mutation_sigma_schedule = mutation_sigma_schedule
         self.mutation_sigma_end = mutation_sigma_end
@@ -344,10 +352,13 @@ class GAEngine:
         raise ConfigurationError("unknown mutation_sigma_schedule")
 
     def _initial_population(self) -> list[Individual]:
+        population_size = self.population_size
+        if self.max_evaluations is not None:
+            population_size = min(population_size, self.max_evaluations)
         encoded = _core.init_population(
             self.operators.gene_bounds,
             self.operators.gene_kinds,
-            self.population_size,
+            population_size,
             self.seed,
         )
         return self.operators.decode_population(encoded)
@@ -416,6 +427,7 @@ class GAEngine:
             offspring_count,
             self.seed,
             gen,
+            self.mutation_individual_prob,
         )
         return self.operators.decode_population(offspring_encoded)
 
@@ -525,6 +537,7 @@ class GAEngine:
             crossover_alpha=self.crossover_alpha,
             mutation=self.mutation,
             mutation_prob=self.mutation_prob,
+            mutation_individual_prob=self.mutation_individual_prob,
             mutation_sigma=self.mutation_sigma,
             mutation_sigma_schedule=self.mutation_sigma_schedule,
             mutation_sigma_end=self.mutation_sigma_end,

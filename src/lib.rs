@@ -221,6 +221,7 @@ fn init_population(
     selection_type, tournament_size,
     population_size,
     master_seed, generation,
+    mutation_individual_prob=1.0,
 ))]
 #[allow(clippy::too_many_arguments)]
 fn reproduce_population(
@@ -240,6 +241,7 @@ fn reproduce_population(
     population_size: usize,
     master_seed: u64,
     generation: u64,
+    mutation_individual_prob: f64,
 ) -> PyResult<Vec<Vec<f64>>> {
     if population.len() != fitnesses.len() {
         return Err(pyo3::exceptions::PyValueError::new_err(
@@ -254,6 +256,11 @@ fn reproduce_population(
     if gene_bounds.len() != mutation_sigmas.len() {
         return Err(pyo3::exceptions::PyValueError::new_err(
             "mutation_sigmas length must match gene count",
+        ));
+    }
+    if !(0.0..=1.0).contains(&mutation_individual_prob) {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "mutation_individual_prob must be in [0, 1]",
         ));
     }
 
@@ -303,6 +310,7 @@ fn reproduce_population(
         crossover_alpha,
         mutation_type: mut_type,
         mutation_prob,
+        mutation_individual_prob,
         mutation_sigmas,
         gene_bounds,
         gene_kinds: kinds,

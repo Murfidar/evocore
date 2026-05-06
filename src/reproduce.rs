@@ -38,6 +38,7 @@ pub struct ReproduceConfig {
     pub crossover_alpha: f64,
     pub mutation_type: MutationType,
     pub mutation_prob: f64,
+    pub mutation_individual_prob: f64,
     pub mutation_sigmas: Vec<f64>,
     pub gene_bounds: Vec<(f64, f64)>,
     pub gene_kinds: Vec<GeneKind>,
@@ -122,12 +123,20 @@ fn apply_mutation(
     generation: u64,
     individual_idx: u64,
 ) -> Vec<f64> {
+    if config.mutation_individual_prob <= 0.0 {
+        return genes.to_vec();
+    }
+
     let mut rng = StdRng::seed_from_u64(derive_seed(
         master_seed,
         generation,
         individual_idx,
         OP_MUTATION,
     ));
+    if config.mutation_individual_prob < 1.0 && rng.gen::<f64>() >= config.mutation_individual_prob
+    {
+        return genes.to_vec();
+    }
 
     genes
         .iter()
@@ -448,6 +457,7 @@ mod tests {
             crossover_alpha: 0.5,
             mutation_type: MutationType::Uniform,
             mutation_prob: 1.0,
+            mutation_individual_prob: 1.0,
             mutation_sigmas: vec![0.0, 0.0, 2.0],
             gene_bounds: bounds.clone(),
             gene_kinds: kinds.clone(),
@@ -461,6 +471,37 @@ mod tests {
         assert!(new_pop.iter().all(|ind| ind[0] == 1.25));
         assert!(new_pop.iter().all(|ind| ind[1] == 2.0));
         assert!(new_pop.iter().all(|ind| ind[2] >= -5.0 && ind[2] <= 5.0));
+    }
+
+    #[test]
+    fn test_reproduce_mutation_individual_probability_zero_skips_all_mutation() {
+        let pop = vec![
+            vec![0.0_f64, 5.0],
+            vec![1.0_f64, 10.0],
+            vec![2.0_f64, 15.0],
+            vec![3.0_f64, 20.0],
+        ];
+        let fitnesses = (0..pop.len()).map(|value| value as f64).collect::<Vec<_>>();
+        let config = ReproduceConfig {
+            crossover_type: CrossoverType::UniformXO,
+            crossover_prob: 0.0,
+            crossover_eta: 2.0,
+            crossover_alpha: 0.5,
+            mutation_type: MutationType::Uniform,
+            mutation_prob: 1.0,
+            mutation_individual_prob: 0.0,
+            mutation_sigmas: vec![1.0, 1.0],
+            gene_bounds: vec![(0.0, 100.0), (0.0, 100.0)],
+            gene_kinds: vec![GeneKind::Float, GeneKind::Int],
+            selection_type: SelectionType::Tournament,
+            tournament_size: 2,
+            population_size: 8,
+        };
+
+        let new_pop = reproduce(&pop, &fitnesses, &config, 42, 0);
+
+        assert_eq!(new_pop.len(), 8);
+        assert!(new_pop.iter().all(|ind| pop.contains(ind)));
     }
 
     #[test]
@@ -500,6 +541,7 @@ mod tests {
             crossover_alpha: 0.5,
             mutation_type: MutationType::Gaussian,
             mutation_prob: 0.1,
+            mutation_individual_prob: 1.0,
             mutation_sigmas: vec![0.5; gene_len],
             gene_bounds: vec![(-5.0, 5.0); gene_len],
             gene_kinds: vec![GeneKind::Float; gene_len],
@@ -558,6 +600,7 @@ mod tests {
             crossover_alpha: 0.5,
             mutation_type: MutationType::Gaussian,
             mutation_prob: 0.5,
+            mutation_individual_prob: 1.0,
             mutation_sigmas: vec![2.0; 3],
             gene_bounds: vec![(0.0, 20.0); 3],
             gene_kinds: vec![GeneKind::Int; 3],
@@ -590,6 +633,7 @@ mod tests {
             crossover_alpha: 0.5,
             mutation_type: MutationType::BitFlip,
             mutation_prob: 0.1,
+            mutation_individual_prob: 1.0,
             mutation_sigmas: vec![0.0; 8],
             gene_bounds: vec![(0.0, 1.0); 8],
             gene_kinds: vec![GeneKind::Bool; 8],

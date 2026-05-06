@@ -56,6 +56,14 @@ def test_invalid_parallel_mode_rejected():
         GAEngine(gene_space=GeneSpace.uniform(-1.0, 1.0, 2), parallel="gpu")
 
 
+def test_invalid_mutation_individual_probability_rejected():
+    with pytest.raises(ConfigurationError, match="mutation_individual_prob"):
+        GAEngine(
+            gene_space=GeneSpace.uniform(-1.0, 1.0, 2),
+            mutation_individual_prob=1.5,
+        )
+
+
 def test_binary_space_default_operators_work():
     engine = GAEngine(
         gene_space=GeneSpace([GeneDef("a", "bool"), GeneDef("b", "bool")]),
@@ -136,6 +144,40 @@ def test_ga_run_returns_result_with_logbook_length():
     assert len(result.logbook) == 5
     assert result.seed == 42
     assert result.n_evaluations > 0
+
+
+def test_ga_run_accepts_uniform_crossover_for_mixed_numeric_space():
+    space = GeneSpace(
+        [
+            GeneDef("mode", "int", 0, 4),
+            GeneDef("threshold", "float", -1.0, 1.0),
+        ]
+    )
+    engine = GAEngine(
+        space,
+        population_size=8,
+        generations=2,
+        crossover="uniform",
+        mutation_prob=0.0,
+        seed=42,
+    )
+
+    result = engine.run(lambda ind: -abs(ind.params["mode"] - 2))
+
+    assert result.n_evaluations == 8 + (7 * 2)
+    assert all(0 <= ind.params["mode"] <= 4 for ind in result.final_population)
+
+
+def test_initial_population_uses_budget_cap_when_smaller_than_population():
+    engine = GAEngine(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        population_size=10,
+        generations=5,
+        max_evaluations=4,
+        seed=42,
+    )
+
+    assert len(engine._initial_population()) == 4
 
 
 def test_ga_run_reports_default_generation_stop_diagnostics():
