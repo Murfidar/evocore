@@ -214,3 +214,32 @@ def test_resume_missing_checkpoint_lists_available(tmp_path):
 
     with pytest.raises(CheckpointError, match="Available checkpoints"):
         engine.resume(lambda _ind: 1.0, str(tmp_path / "checkpoint_gen_9.pkl"))
+
+
+def test_ga_run_preserves_fixed_numeric_genes_in_full_genome():
+    space = GeneSpace(
+        [
+            GeneDef("signal_mode", "int", 2, 2),
+            GeneDef("threshold", "float", 0.5, 0.5),
+            GeneDef("period", "int", 5, 20),
+            GeneDef("x", "float", -1.0, 1.0),
+        ]
+    )
+    engine = GAEngine(
+        space,
+        population_size=20,
+        generations=5,
+        crossover_prob=1.0,
+        mutation_prob=1.0,
+        mutation="uniform",
+        seed=42,
+    )
+
+    result = engine.run(lambda ind: -abs(ind.params["period"] - 12) - ind.genes[3] ** 2)
+
+    assert result.n_evaluations == 20 + (19 * 5)
+    for individual in result.final_population:
+        assert individual.genes[0] == 2
+        assert individual.genes[1] == 0.5
+        assert individual.params["signal_mode"] == 2
+        assert individual.params["threshold"] == 0.5
