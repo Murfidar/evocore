@@ -223,6 +223,41 @@ class GAEngine:
         ind.fitness_valid = True
         return fitness, 0
 
+    def _remaining_evaluations(self, n_evaluations: int) -> int | None:
+        if self.max_evaluations is None:
+            return None
+        return max(self.max_evaluations - n_evaluations, 0)
+
+    @staticmethod
+    def _fitnesses_for_selection(individuals: Sequence[Individual]) -> list[float]:
+        return [
+            float(ind.fitness) if ind.fitness is not None and ind.fitness_valid else float("-inf")
+            for ind in individuals
+        ]
+
+    def _evaluate_with_budget(
+        self,
+        individuals: Sequence[Individual],
+        fitness_fn: Callable,
+        gen: int,
+        n_evaluations: int,
+    ) -> tuple[list[Individual], list[float], int, int]:
+        working = list(individuals)
+        pending = [ind for ind in working if not ind.fitness_valid]
+        remaining = self._remaining_evaluations(n_evaluations)
+        if remaining == 0:
+            evaluated = [ind for ind in working if ind.fitness_valid]
+            return evaluated, self._fitnesses_for_selection(evaluated), 0, 0
+
+        to_evaluate = pending if remaining is None else pending[:remaining]
+        nan_count = 0
+        if to_evaluate:
+            _, nan_count = self._evaluate_all(to_evaluate, fitness_fn, gen=gen)
+
+        evaluated_now = len(to_evaluate)
+        evaluated = [ind for ind in working if ind.fitness_valid]
+        return evaluated, self._fitnesses_for_selection(evaluated), evaluated_now, nan_count
+
     def _evaluate_all(
         self, individuals: Sequence[Individual], fitness_fn: Callable, gen: int
     ) -> tuple[list[float], int]:
@@ -396,15 +431,24 @@ class GAEngine:
         start = time.perf_counter()
         logbook = Logbook()
         working_population = [ind.clone() for ind in population]
-        initial_pending = sum(1 for ind in working_population if not ind.fitness_valid)
-        fitnesses, _ = self._evaluate_all(working_population, fitness_fn, gen=start_generation - 1)
-        n_evaluations = initial_pending
+        working_population, fitnesses, evaluated_now, _ = self._evaluate_with_budget(
+            working_population,
+            fitness_fn,
+            gen=start_generation - 1,
+            n_evaluations=0,
+        )
+        n_evaluations = evaluated_now
         elite_history: list[Individual] = []
         diversity_history: list[list[float]] = []
         stopped_early = False
         stop_reason: StopReason = "generations"
+        if self.max_evaluations is not None and n_evaluations >= self.max_evaluations:
+            stopped_early = True
+            stop_reason = "max_evaluations"
 
         for gen in range(start_generation, self.generations):
+            if stop_reason == "max_evaluations":
+                break
             gen_start = time.perf_counter()
             current_pop = Population(working_population)
             for callback in self.callbacks:
@@ -445,9 +489,16 @@ class GAEngine:
             working_population = elites + offspring
 
             eval_before = n_evaluations
-            evaluated_now = sum(1 for ind in working_population if not ind.fitness_valid)
-            fitnesses, nan_count = self._evaluate_all(working_population, fitness_fn, gen=gen)
+            working_population, fitnesses, evaluated_now, nan_count = self._evaluate_with_budget(
+                working_population,
+                fitness_fn,
+                gen=gen,
+                n_evaluations=n_evaluations,
+            )
             n_evaluations += evaluated_now
+            if self.max_evaluations is not None and n_evaluations >= self.max_evaluations:
+                stopped_early = True
+                stop_reason = "max_evaluations"
 
             pop_obj = Population(working_population)
             info = GenerationInfo(gen, nan_count, len(elites))
@@ -476,6 +527,8 @@ class GAEngine:
                 stop_reason = "callback"
                 break
 
+        if not working_population:
+            raise FitnessError("GA run produced no evaluated individuals.")
         final_population = Population(working_population)
         best = final_population.best(1)[0]
         result = RunResult(

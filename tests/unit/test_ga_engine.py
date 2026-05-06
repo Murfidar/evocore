@@ -254,3 +254,51 @@ def test_ga_run_preserves_fixed_numeric_genes_in_full_genome():
         assert individual.genes[1] == 0.5
         assert individual.params["signal_mode"] == 2
         assert individual.params["threshold"] == 0.5
+
+
+def test_ga_max_evaluations_can_stop_during_initial_population():
+    calls = []
+    engine = GAEngine(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        population_size=10,
+        generations=5,
+        max_evaluations=4,
+        seed=42,
+    )
+
+    result = engine.run(lambda ind: calls.append(tuple(ind.genes)) or module_sphere(ind))
+
+    assert len(calls) == 4
+    assert result.n_evaluations == 4
+    assert len(result.final_population) == 4
+    assert all(ind.fitness_valid for ind in result.final_population)
+    assert result.stop_reason == "max_evaluations"
+    assert result.budget_reached is True
+    assert result.stopped_early is True
+
+
+def test_ga_max_evaluations_stops_exactly_after_partial_generation():
+    calls = []
+    engine = GAEngine(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        population_size=6,
+        generations=5,
+        elitism=2,
+        max_evaluations=11,
+        seed=42,
+    )
+
+    result = engine.run(lambda ind: calls.append(tuple(ind.genes)) or module_sphere(ind))
+
+    assert len(calls) == 11
+    assert result.n_evaluations == 11
+    assert result.stop_reason == "max_evaluations"
+    assert result.budget_reached is True
+    assert result.stopped_early is True
+    assert all(ind.fitness_valid for ind in result.final_population)
+    assert len(result.final_population) <= engine.population_size
+
+
+def test_ga_rejects_non_positive_max_evaluations():
+    with pytest.raises(ConfigurationError, match="max_evaluations"):
+        GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), max_evaluations=0)
