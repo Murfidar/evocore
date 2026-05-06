@@ -72,3 +72,14 @@ def test_cmaes_integer_fitness_receives_ints():
 
     assert seen_types
     assert all(seen_type is int for seen_type in seen_types)
+
+
+def test_cmaes_rejects_fixed_numeric_genes_until_reconstruction_is_supported():
+    space = GeneSpace([GeneDef("signal_mode", "int", 2, 2), GeneDef("x", "float", -1.0, 1.0)])
+
+    with pytest.raises(ConfigurationError) as exc:
+        CMAESEngine(space)
+
+    message = str(exc.value)
+    assert "fixed numeric genes" in message
+    assert "GAEngine" in message

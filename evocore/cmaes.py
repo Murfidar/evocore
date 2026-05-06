@@ -61,6 +61,11 @@ class CMAESEngine:
             raise ConfigurationError(
                 "CMAESEngine does not support bool genes; use float/int genes only."
             )
+        if gene_space.fixed_count:
+            raise ConfigurationError(
+                "CMAESEngine does not support fixed numeric genes yet. "
+                "Use GAEngine for full-genome fixed genes, or remove fixed genes from the CMA-ES GeneSpace."
+            )
         if parallel == "process":
             raise ConfigurationError(
                 "CMAESEngine does not support parallel='process'.\n"

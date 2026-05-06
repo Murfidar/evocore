@@ -55,3 +55,23 @@ def test_sigma_override_takes_precedence():
     )
     ops = OperatorSet(space, "sbx", "gaussian")
     assert ops.sigma_abs_list(0.2) == [10.0, 0.4]
+
+
+def test_decode_individual_preserves_fixed_numeric_params():
+    space = GeneSpace(
+        [
+            GeneDef("signal_mode", "int", 2, 2),
+            GeneDef("threshold", "float", 0.5, 0.5),
+            GeneDef("period", "int", 5, 20),
+        ]
+    )
+    ops = OperatorSet(space, "sbx", "gaussian")
+
+    individual = ops.decode_individual([2.0, 0.5, 12.0])
+
+    assert individual.genes == [2, 0.5, 12]
+    assert individual.params == {
+        "signal_mode": 2,
+        "threshold": 0.5,
+        "period": 12,
+    }

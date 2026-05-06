@@ -46,8 +46,8 @@ class GeneDef:
         else:
             if self.low is None or self.high is None:
                 raise ConfigurationError(f"bounds required for {self.kind} gene '{self.name}'.")
-            if self.low >= self.high:
-                raise ConfigurationError(f"GeneDef('{self.name}') requires low < high.")
+            if self.low > self.high:
+                raise ConfigurationError(f"GeneDef('{self.name}') requires low <= high.")
             if self.kind == "int" and (
                 not isinstance(self.low, int) or not isinstance(self.high, int)
             ):
@@ -57,6 +57,11 @@ class GeneDef:
 
         if self.sigma is not None and not (0.0 < self.sigma <= 1.0):
             raise ConfigurationError("GeneDef sigma must be in (0, 1].")
+
+    @property
+    def is_fixed(self) -> bool:
+        """Return whether this gene is a fixed numeric value."""
+        return self.kind in ("float", "int") and self.low == self.high
 
 
 class GeneSpace:
@@ -122,6 +127,26 @@ class GeneSpace:
     def kinds(self) -> list[str]:
         """Return the gene kinds in definition order."""
         return [gene.kind for gene in self._genes]
+
+    @property
+    def fixed_indices(self) -> list[int]:
+        """Return indices of fixed numeric genes."""
+        return [index for index, gene in enumerate(self._genes) if gene.is_fixed]
+
+    @property
+    def variable_indices(self) -> list[int]:
+        """Return indices of genes that participate in variation."""
+        return [index for index, gene in enumerate(self._genes) if not gene.is_fixed]
+
+    @property
+    def fixed_count(self) -> int:
+        """Return the number of fixed numeric genes."""
+        return len(self.fixed_indices)
+
+    @property
+    def variable_count(self) -> int:
+        """Return the number of variable genes."""
+        return len(self.variable_indices)
 
     @property
     def bounds(self) -> list[tuple[float | int, float | int] | None]:

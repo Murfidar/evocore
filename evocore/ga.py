@@ -12,6 +12,7 @@ import warnings
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from statistics import mean, stdev
+from typing import Literal
 
 from evocore import _core
 from evocore.callbacks import Callback, GenerationInfo
@@ -30,6 +31,8 @@ from evocore.stats import Logbook, LogEntry
 
 logger = logging.getLogger(__name__)
 
+StopReason = Literal["generations", "max_evaluations", "callback"]
+
 
 @dataclass
 class RunResult:
@@ -45,6 +48,9 @@ class RunResult:
     diversity_history: list[list[float]]
     seed: int
     stopped_early: bool
+    max_evaluations: int | None = None
+    stop_reason: StopReason = "generations"
+    budget_reached: bool = False
 
 
 @dataclass
@@ -128,6 +134,7 @@ class GAEngine:
         process_initializer: Callable[..., object] | None = None,
         process_initargs: tuple[object, ...] = (),
         seed: int = 0,
+        max_evaluations: int | None = None,
         track_diversity: bool = False,
         callbacks: Sequence[Callback] | None = None,
     ) -> None:
@@ -139,6 +146,8 @@ class GAEngine:
             raise ConfigurationError("population_size must be at least 2.")
         if generations < 0:
             raise ConfigurationError("generations must be >= 0.")
+        if max_evaluations is not None and max_evaluations <= 0:
+            raise ConfigurationError("max_evaluations must be positive when provided.")
         if elitism < 0 or elitism >= population_size:
             raise ConfigurationError("elitism must satisfy 0 <= elitism < population_size.")
         if parallel not in ("none", "thread", "process"):
@@ -170,6 +179,7 @@ class GAEngine:
         self.process_initializer = process_initializer
         self.process_initargs = process_initargs
         self.seed = int(seed)
+        self.max_evaluations = max_evaluations
         self.track_diversity = track_diversity
         self.callbacks = list(callbacks or [])
         self.operators = OperatorSet(gene_space, crossover, mutation)
@@ -212,6 +222,41 @@ class GAEngine:
         ind.fitness = fitness
         ind.fitness_valid = True
         return fitness, 0
+
+    def _remaining_evaluations(self, n_evaluations: int) -> int | None:
+        if self.max_evaluations is None:
+            return None
+        return max(self.max_evaluations - n_evaluations, 0)
+
+    @staticmethod
+    def _fitnesses_for_selection(individuals: Sequence[Individual]) -> list[float]:
+        return [
+            float(ind.fitness) if ind.fitness is not None and ind.fitness_valid else float("-inf")
+            for ind in individuals
+        ]
+
+    def _evaluate_with_budget(
+        self,
+        individuals: Sequence[Individual],
+        fitness_fn: Callable,
+        gen: int,
+        n_evaluations: int,
+    ) -> tuple[list[Individual], list[float], int, int]:
+        working = list(individuals)
+        pending = [ind for ind in working if not ind.fitness_valid]
+        remaining = self._remaining_evaluations(n_evaluations)
+        if remaining == 0:
+            evaluated = [ind for ind in working if ind.fitness_valid]
+            return evaluated, self._fitnesses_for_selection(evaluated), 0, 0
+
+        to_evaluate = pending if remaining is None else pending[:remaining]
+        nan_count = 0
+        if to_evaluate:
+            _, nan_count = self._evaluate_all(to_evaluate, fitness_fn, gen=gen)
+
+        evaluated_now = len(to_evaluate)
+        evaluated = [ind for ind in working if ind.fitness_valid]
+        return evaluated, self._fitnesses_for_selection(evaluated), evaluated_now, nan_count
 
     def _evaluate_all(
         self, individuals: Sequence[Individual], fitness_fn: Callable, gen: int
@@ -343,6 +388,132 @@ class GAEngine:
             custom=dict(best.metadata.get("metrics", {})),
         )
 
+    def _make_offspring(
+        self,
+        working_population: Sequence[Individual],
+        fitnesses: Sequence[float],
+        gen: int,
+        offspring_count: int,
+    ) -> list[Individual]:
+        if offspring_count <= 0:
+            return []
+
+        sigma_list = self.operators.sigma_abs_list(self._compute_sigma_fraction(gen))
+        offspring_encoded = _core.reproduce_population(
+            self.operators.encode_population(working_population),
+            fitnesses,
+            self.crossover,
+            self.crossover_prob,
+            self.crossover_eta,
+            self.crossover_alpha,
+            self.mutation,
+            self.mutation_prob,
+            sigma_list,
+            self.operators.gene_bounds,
+            self.operators.gene_kinds,
+            self.selection,
+            self.tournament_size,
+            offspring_count,
+            self.seed,
+            gen,
+        )
+        return self.operators.decode_population(offspring_encoded)
+
+    def _record_generation(
+        self,
+        *,
+        gen: int,
+        gen_start: float,
+        n_evaluations: int,
+        eval_before: int,
+        elites: Sequence[Individual],
+        nan_count: int,
+        population: Population,
+        elite_history: list[Individual],
+        diversity_history: list[list[float]],
+        logbook: Logbook,
+    ) -> GenerationInfo:
+        info = GenerationInfo(gen, nan_count, len(elites))
+        diversity = population.diversity() if self.track_diversity else []
+        if self.track_diversity:
+            diversity_history.append(diversity)
+        elite_history.append(population.best(1)[0].clone())
+        logbook.append(
+            self._log_entry(
+                gen, population, gen_start, n_evaluations - eval_before, info, diversity
+            )
+        )
+        logger.info(
+            "GA generation=%s best_fitness=%s mean_fitness=%s nan_fitness_count=%s cached_count=%s",
+            gen,
+            float(population.best(1)[0].fitness),
+            population.mean_fitness(),
+            nan_count,
+            len(elites),
+        )
+        return info
+
+    def _run_generation(
+        self,
+        *,
+        working_population: Sequence[Individual],
+        fitnesses: Sequence[float],
+        fitness_fn: Callable[[Individual], float | tuple[float, dict]],
+        gen: int,
+        n_evaluations: int,
+        elite_history: list[Individual],
+        diversity_history: list[list[float]],
+        logbook: Logbook,
+    ) -> tuple[list[Individual], list[float], int, bool, StopReason]:
+        gen_start = time.perf_counter()
+        current_pop = Population(working_population)
+        for callback in self.callbacks:
+            callback.on_generation_start(gen, current_pop)
+        if self._callbacks_should_stop():
+            return list(working_population), list(fitnesses), n_evaluations, True, "callback"
+
+        elites = self._clone_elites(working_population)
+        for elite in elites:
+            elite.fitness_valid = True
+
+        offspring = self._make_offspring(
+            working_population,
+            fitnesses,
+            gen,
+            self.population_size - len(elites),
+        )
+        next_population = elites + offspring
+
+        eval_before = n_evaluations
+        next_population, fitnesses, evaluated_now, nan_count = self._evaluate_with_budget(
+            next_population,
+            fitness_fn,
+            gen=gen,
+            n_evaluations=n_evaluations,
+        )
+        n_evaluations += evaluated_now
+        pop_obj = Population(next_population)
+        info = self._record_generation(
+            gen=gen,
+            gen_start=gen_start,
+            n_evaluations=n_evaluations,
+            eval_before=eval_before,
+            elites=elites,
+            nan_count=nan_count,
+            population=pop_obj,
+            elite_history=elite_history,
+            diversity_history=diversity_history,
+            logbook=logbook,
+        )
+
+        for callback in self.callbacks:
+            callback.on_generation_end(gen, pop_obj, info)
+        if self._callbacks_should_stop():
+            return next_population, fitnesses, n_evaluations, True, "callback"
+        if self.max_evaluations is not None and n_evaluations >= self.max_evaluations:
+            return next_population, fitnesses, n_evaluations, True, "max_evaluations"
+        return next_population, fitnesses, n_evaluations, False, "generations"
+
     def _copy_with_seed(self, seed: int) -> GAEngine:
         return GAEngine(
             gene_space=self.gene_space,
@@ -365,6 +536,7 @@ class GAEngine:
             process_initializer=self.process_initializer,
             process_initargs=self.process_initargs,
             seed=int(seed),
+            max_evaluations=self.max_evaluations,
             track_diversity=self.track_diversity,
             callbacks=copy.deepcopy(self.callbacks),
         )
@@ -385,83 +557,47 @@ class GAEngine:
         start = time.perf_counter()
         logbook = Logbook()
         working_population = [ind.clone() for ind in population]
-        initial_pending = sum(1 for ind in working_population if not ind.fitness_valid)
-        fitnesses, _ = self._evaluate_all(working_population, fitness_fn, gen=start_generation - 1)
-        n_evaluations = initial_pending
+        working_population, fitnesses, evaluated_now, _ = self._evaluate_with_budget(
+            working_population,
+            fitness_fn,
+            gen=start_generation - 1,
+            n_evaluations=0,
+        )
+        n_evaluations = evaluated_now
         elite_history: list[Individual] = []
         diversity_history: list[list[float]] = []
         stopped_early = False
+        stop_reason: StopReason = "generations"
+        if self.max_evaluations is not None and n_evaluations >= self.max_evaluations:
+            stopped_early = True
+            stop_reason = "max_evaluations"
 
         for gen in range(start_generation, self.generations):
-            gen_start = time.perf_counter()
-            current_pop = Population(working_population)
-            for callback in self.callbacks:
-                callback.on_generation_start(gen, current_pop)
-            if self._callbacks_should_stop():
+            if stop_reason == "max_evaluations":
+                break
+            (
+                working_population,
+                fitnesses,
+                n_evaluations,
+                generation_stopped,
+                generation_stop_reason,
+            ) = self._run_generation(
+                working_population=working_population,
+                fitnesses=fitnesses,
+                fitness_fn=fitness_fn,
+                gen=gen,
+                n_evaluations=n_evaluations,
+                elite_history=elite_history,
+                diversity_history=diversity_history,
+                logbook=logbook,
+            )
+            if generation_stopped:
                 stopped_early = True
+                stop_reason = generation_stop_reason
                 break
 
-            elites = self._clone_elites(working_population)
-            for elite in elites:
-                elite.fitness_valid = True
-
-            offspring_count = self.population_size - len(elites)
-            offspring_encoded: list[list[float]] = []
-            if offspring_count:
-                sigma_list = self.operators.sigma_abs_list(self._compute_sigma_fraction(gen))
-                offspring_encoded = _core.reproduce_population(
-                    self.operators.encode_population(working_population),
-                    fitnesses,
-                    self.crossover,
-                    self.crossover_prob,
-                    self.crossover_eta,
-                    self.crossover_alpha,
-                    self.mutation,
-                    self.mutation_prob,
-                    sigma_list,
-                    self.operators.gene_bounds,
-                    self.operators.gene_kinds,
-                    self.selection,
-                    self.tournament_size,
-                    offspring_count,
-                    self.seed,
-                    gen,
-                )
-
-            offspring = self.operators.decode_population(offspring_encoded)
-            working_population = elites + offspring
-
-            eval_before = n_evaluations
-            evaluated_now = sum(1 for ind in working_population if not ind.fitness_valid)
-            fitnesses, nan_count = self._evaluate_all(working_population, fitness_fn, gen=gen)
-            n_evaluations += evaluated_now
-
-            pop_obj = Population(working_population)
-            info = GenerationInfo(gen, nan_count, len(elites))
-            diversity = pop_obj.diversity() if self.track_diversity else []
-            if self.track_diversity:
-                diversity_history.append(diversity)
-            elite_history.append(pop_obj.best(1)[0].clone())
-            logbook.append(
-                self._log_entry(
-                    gen, pop_obj, gen_start, n_evaluations - eval_before, info, diversity
-                )
-            )
-            logger.info(
-                "GA generation=%s best_fitness=%s mean_fitness=%s nan_fitness_count=%s cached_count=%s",
-                gen,
-                float(pop_obj.best(1)[0].fitness),
-                pop_obj.mean_fitness(),
-                nan_count,
-                len(elites),
-            )
-
-            for callback in self.callbacks:
-                callback.on_generation_end(gen, pop_obj, info)
-            if self._callbacks_should_stop():
-                stopped_early = True
-                break
-
+        if not working_population:
+            raise FitnessError("GA run produced no evaluated individuals.")
         final_population = Population(working_population)
         best = final_population.best(1)[0]
         result = RunResult(
@@ -475,6 +611,11 @@ class GAEngine:
             diversity_history=diversity_history,
             seed=self.seed,
             stopped_early=stopped_early,
+            max_evaluations=self.max_evaluations,
+            stop_reason=stop_reason,
+            budget_reached=(
+                self.max_evaluations is not None and n_evaluations >= self.max_evaluations
+            ),
         )
         for callback in self.callbacks:
             callback.on_run_end(result)

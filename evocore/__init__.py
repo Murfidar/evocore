@@ -5,7 +5,7 @@ from importlib import metadata as _metadata
 try:
     __version__ = _metadata.version("evocore")
 except _metadata.PackageNotFoundError:
-    __version__ = "0.5.0"
+    __version__ = "0.6.0"
 
 from evocore._core import (
     OP_CMAES_ASK,
