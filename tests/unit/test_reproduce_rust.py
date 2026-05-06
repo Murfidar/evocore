@@ -79,6 +79,15 @@ class TestInitPopulation:
         with pytest.raises(Exception, match="gene kind"):
             init_population([(0.0, 1.0)], ["quantum"], 5, 42)
 
+    def test_fixed_float_and_int_bounds_initialize_to_fixed_values(self):
+        bounds = [(1.25, 1.25), (2.0, 2.0), (-5.0, 5.0)]
+        pop = init_population(bounds, ["float", "int", "float"], 12, 42)
+
+        assert len(pop) == 12
+        assert all(ind[0] == 1.25 for ind in pop)
+        assert all(ind[1] == 2.0 for ind in pop)
+        assert any(ind[2] != pop[0][2] for ind in pop[1:])
+
 
 class TestReproducePopulation:
     def test_returns_correct_population_size(self):
@@ -291,6 +300,34 @@ class TestReproducePopulation:
             0,
         )
         assert len(new_pop) == 12
+
+    def test_fixed_numeric_bounds_survive_uniform_mutation_and_crossover(self):
+        bounds = [(1.25, 1.25), (2.0, 2.0), (-5.0, 5.0)]
+        kinds = ["float", "int", "float"]
+        pop = init_population(bounds, kinds, 20, 42)
+        new_pop = reproduce_population(
+            pop,
+            [float(i) for i in range(20)],
+            "sbx",
+            1.0,
+            2.0,
+            0.5,
+            "uniform",
+            1.0,
+            [0.0, 0.0, 2.0],
+            bounds,
+            kinds,
+            "tournament",
+            3,
+            20,
+            42,
+            0,
+        )
+
+        assert len(new_pop) == 20
+        assert all(ind[0] == 1.25 for ind in new_pop)
+        assert all(ind[1] == 2.0 for ind in new_pop)
+        assert all(-5.0 <= ind[2] <= 5.0 for ind in new_pop)
 
     def test_blx_crossover_mode(self):
         pop = init_population([(-5.0, 5.0)] * 4, ["float"] * 4, 10, 42)

@@ -153,7 +153,11 @@ fn apply_mutation(
                 (MutationType::Uniform, GeneKind::Float) => {
                     if rng.gen::<f64>() < config.mutation_prob {
                         let (low, high) = config.gene_bounds[idx];
-                        rng.gen_range(low..high)
+                        if low == high {
+                            low
+                        } else {
+                            rng.gen_range(low..high)
+                        }
                     } else {
                         gene
                     }
@@ -206,7 +210,13 @@ pub fn init_population(
                 .map(|gene_idx| {
                     let (low, high) = gene_bounds[gene_idx];
                     match gene_kinds[gene_idx] {
-                        GeneKind::Float => rng.gen_range(low..high),
+                        GeneKind::Float => {
+                            if low == high {
+                                low
+                            } else {
+                                rng.gen_range(low..high)
+                            }
+                        }
                         GeneKind::Int => {
                             let low = low.round() as i64;
                             let high = high.round() as i64;
@@ -413,6 +423,44 @@ mod tests {
         let p1 = init_population(&bounds, &kinds, 10, 1);
         let p2 = init_population(&bounds, &kinds, 10, 2);
         assert_ne!(p1[0], p2[0], "different seeds must produce different genes");
+    }
+
+    #[test]
+    fn test_init_population_fixed_float_bounds_return_fixed_value() {
+        let bounds = vec![(1.25_f64, 1.25), (-5.0, 5.0)];
+        let kinds = vec![GeneKind::Float, GeneKind::Float];
+        let pop = init_population(&bounds, &kinds, 12, 42);
+
+        assert!(pop.iter().all(|ind| ind[0] == 1.25));
+        assert!(pop.iter().all(|ind| ind[1] >= -5.0 && ind[1] < 5.0));
+    }
+
+    #[test]
+    fn test_reproduce_fixed_numeric_bounds_are_preserved() {
+        let bounds = vec![(1.25_f64, 1.25), (2.0, 2.0), (-5.0, 5.0)];
+        let kinds = vec![GeneKind::Float, GeneKind::Int, GeneKind::Float];
+        let pop = init_population(&bounds, &kinds, 20, 42);
+        let fitnesses = (0..20).map(|value| value as f64).collect::<Vec<_>>();
+        let config = ReproduceConfig {
+            crossover_type: CrossoverType::Sbx,
+            crossover_prob: 1.0,
+            crossover_eta: 2.0,
+            crossover_alpha: 0.5,
+            mutation_type: MutationType::Uniform,
+            mutation_prob: 1.0,
+            mutation_sigmas: vec![0.0, 0.0, 2.0],
+            gene_bounds: bounds.clone(),
+            gene_kinds: kinds.clone(),
+            selection_type: SelectionType::Tournament,
+            tournament_size: 3,
+            population_size: 20,
+        };
+
+        let new_pop = reproduce(&pop, &fitnesses, &config, 42, 0);
+
+        assert!(new_pop.iter().all(|ind| ind[0] == 1.25));
+        assert!(new_pop.iter().all(|ind| ind[1] == 2.0));
+        assert!(new_pop.iter().all(|ind| ind[2] >= -5.0 && ind[2] <= 5.0));
     }
 
     #[test]
