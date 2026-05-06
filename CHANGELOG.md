@@ -6,8 +6,16 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-05-06
+
 ### Added
 
+- Fixed numeric gene support across GA full-genome workflows, including equal-bound
+  `GeneDef` values, fixed/variable gene metadata, initialization, mutation, and
+  reproduction.
+- Exact GA evaluation budget caps through `max_evaluations`.
+- GA stop diagnostics on `RunResult`, including `max_evaluations`, `stop_reason`, and
+  `budget_reached`.
 - Production CI gates for linting, Rust tests, Python tests, and platform smoke checks.
 - PEP 561 typing marker and PyO3 extension stubs.
 - MkDocs API documentation.
@@ -15,6 +23,17 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Manual PyPI publish workflow.
 - Runtime version export and package logging.
 - Targeted Hypothesis property tests.
+
+### Changed
+
+- Rust-backed GA initialization and reproduction preserve fixed numeric genes instead of
+  treating equal bounds as invalid ranges.
+- GA multi-run child engines propagate evaluation budget limits.
+
+### Fixed
+
+- `CMAESEngine` now rejects fixed numeric gene spaces with an explicit configuration
+  error until fixed-coordinate CMA-ES support is implemented.
 
 ## [0.5.0] - 2026-05-05
 
