@@ -439,7 +439,9 @@ class GAEngine:
             diversity_history.append(diversity)
         elite_history.append(population.best(1)[0].clone())
         logbook.append(
-            self._log_entry(gen, population, gen_start, n_evaluations - eval_before, info, diversity)
+            self._log_entry(
+                gen, population, gen_start, n_evaluations - eval_before, info, diversity
+            )
         )
         logger.info(
             "GA generation=%s best_fitness=%s mean_fitness=%s nan_fitness_count=%s cached_count=%s",
