@@ -29,6 +29,14 @@ from evocore.callbacks import (
     ProgressBar,
 )
 from evocore.cmaes import CMAESEngine
+from evocore.evaluation import (
+    Candidate,
+    CandidateScore,
+    EvaluationRecord,
+    Evaluator,
+    OptimizationTelemetry,
+    Rung,
+)
 from evocore.exceptions import (
     CheckpointError,
     ConfigurationError,
@@ -47,6 +55,7 @@ from evocore.parallel import ProcessParallel, ThreadParallel
 from evocore.stats import Logbook, LogEntry
 
 __all__ = [
+    # 1. SCREAMING_SNAKE_CASE (Constants)
     "OP_CMAES_ASK",
     "OP_CROSSOVER",
     "OP_CROSSOVER_PROB",
@@ -54,15 +63,20 @@ __all__ = [
     "OP_MULTI_RUN",
     "OP_MUTATION",
     "OP_SELECTION",
+    # 2. CamelCase (Classes)
     "BinaryIndividual",
     "CMAESEngine",
     "Callback",
+    "Candidate",
+    "CandidateScore",
     "CheckpointCallback",
     "CheckpointError",
     "ConfigurationError",
     "ConfigurationWarning",
     "ConvergenceError",
     "EarlyStopping",
+    "EvaluationRecord",
+    "Evaluator",
     "EvocoreError",
     "FitnessError",
     "FitnessWarning",
@@ -78,12 +92,15 @@ __all__ = [
     "MetricsLogger",
     "MultiRunResult",
     "OperatorSet",
+    "OptimizationTelemetry",
     "ParallelError",
     "Population",
     "ProcessParallel",
     "ProgressBar",
     "RunResult",
+    "Rung",
     "ThreadParallel",
+    # 3. snake_case / dunders
     "__version__",
     "py_derive_seed",
 ]

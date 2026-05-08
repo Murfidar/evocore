@@ -81,3 +81,12 @@ def test_cmaes_export_accessible_from_top_level():
     from evocore import CMAESEngine
 
     assert CMAESEngine is not None
+
+
+def test_vnext_public_exports_are_available() -> None:
+    import evocore
+
+    assert evocore.Candidate.__name__ == "Candidate"
+    assert evocore.EvaluationRecord.__name__ == "EvaluationRecord"
+    assert evocore.Rung.__name__ == "Rung"
+    assert evocore.OptimizationTelemetry.__name__ == "OptimizationTelemetry"
