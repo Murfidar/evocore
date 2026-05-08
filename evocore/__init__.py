@@ -52,6 +52,7 @@ from evocore.gene_space import GeneDef, GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ProcessParallel, ThreadParallel
+from evocore.policies import MultiFidelityPolicy
 from evocore.stats import Logbook, LogEntry
 
 __all__ = [
@@ -90,6 +91,7 @@ __all__ = [
     "LogEntry",
     "Logbook",
     "MetricsLogger",
+    "MultiFidelityPolicy",
     "MultiRunResult",
     "OperatorSet",
     "OptimizationTelemetry",
