@@ -10,8 +10,9 @@ from collections.abc import Callable, Sequence
 
 from evocore import _core
 from evocore.callbacks import Callback, GenerationInfo
+from evocore.evaluation import Candidate, EvaluationRecord, OptimizationTelemetry
 from evocore.exceptions import ConfigurationError, FitnessError, FitnessWarning
-from evocore.ga import RunResult
+from evocore.ga import EngineStateSummary, RunResult
 from evocore.gene_space import GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
@@ -96,6 +97,16 @@ class CMAESEngine:
         self.track_diversity = track_diversity
         self.operators = OperatorSet(gene_space, "sbx", "gaussian")
         self._fitness_warning_emitted = False
+        self._state: _core.PyCMAESState | None = None
+        self._event_index = 0
+        self._pending_samples_by_id: dict[str, list[float]] = {}
+        self._candidates_by_id: dict[str, Candidate] = {}
+        self.vnext_telemetry = OptimizationTelemetry()
+
+    @property
+    def generation(self) -> int:
+        """Return the current CMA generation."""
+        return 0 if self._state is None else int(self._state.generation)
 
     @property
     def _bounds_list(self) -> list[tuple[float, float]]:
@@ -223,6 +234,90 @@ class CMAESEngine:
 
     def _callbacks_should_stop(self) -> bool:
         return any(getattr(callback, "should_stop", False) for callback in self.callbacks)
+
+    def _ensure_state(self) -> _core.PyCMAESState:
+        if self._state is None:
+            self._state = _core.PyCMAESState(
+                self._initial_mean_encoded(),
+                self._sigma_abs(),
+                self.population_size,
+                self._bounds_list,
+            )
+        return self._state
+
+    def ask(self, n: int | None = None) -> list[Candidate]:
+        """Return a CMA candidate batch."""
+        if n is not None and int(n) != self.population_size:
+            raise ConfigurationError(
+                "CMAESEngine.ask currently requires n to equal population_size."
+            )
+        state = self._ensure_state()
+        event_index = self._event_index
+        samples_continuous = state.ask(self.seed, event_index)
+        samples_discrete = [
+            self._apply_bounds_and_round(sample) for sample in samples_continuous
+        ]
+        candidates: list[Candidate] = []
+        for index, sample in enumerate(samples_discrete):
+            individual = self._decode_individual(sample)
+            candidate_id = _core.candidate_id(self.seed, event_index, index)
+            candidate = Candidate(
+                candidate_id=candidate_id,
+                genes=list(individual.genes),
+                params=individual.params,
+                origin="cma_sample",
+                event_index=event_index,
+            )
+            self._pending_samples_by_id[candidate_id] = list(samples_continuous[index])
+            self._candidates_by_id[candidate_id] = candidate
+            candidates.append(candidate)
+        self._event_index += 1
+        self.vnext_telemetry.record_proposed(len(candidates))
+        return candidates
+
+    def tell(self, records: Sequence[EvaluationRecord]) -> EngineStateSummary:
+        """Update CMA state from trusted evaluation records."""
+        trusted_records: list[EvaluationRecord] = []
+        partial = surrogate = rejected = 0
+        for record in records:
+            candidate = self._candidates_by_id.get(record.candidate_id)
+            if candidate is None:
+                raise FitnessError(
+                    f"tell() received unknown candidate_id: {record.candidate_id!r}"
+                )
+            candidate.apply_record(record)
+            if record.confidence == "trusted_full":
+                trusted_records.append(record)
+                self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
+            elif record.confidence in ("partial", "cached"):
+                partial += 1
+                self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
+            elif record.confidence == "surrogate":
+                surrogate += 1
+                self.vnext_telemetry.record_screened(1)
+            else:
+                rejected += 1
+                self.vnext_telemetry.record_eliminated(1, rung=record.rung)
+
+        if len(trusted_records) == self.population_size:
+            samples = [
+                self._pending_samples_by_id[record.candidate_id]
+                for record in trusted_records
+            ]
+            fitnesses = [
+                float(record.score)
+                for record in trusted_records
+                if record.score is not None
+            ]
+            self._ensure_state().tell(samples, fitnesses)
+
+        return EngineStateSummary(
+            accepted_count=len(records),
+            trusted_count=len(trusted_records),
+            partial_count=partial,
+            surrogate_count=surrogate,
+            rejected_count=rejected,
+        )
 
     def run(self, fitness_fn: Callable[[Individual], float | tuple[float, dict]]) -> RunResult:
         """Run one CMA-ES optimization.
