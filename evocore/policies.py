@@ -34,8 +34,13 @@ class MultiFidelityPolicy:
         names = [rung.name for rung in self.rungs]
         if len(names) != len(set(names)):
             raise ConfigurationError("MultiFidelityPolicy contains duplicate rung names.")
-        if not any(rung.confidence == "trusted_full" for rung in self.rungs):
+        trusted_full_rungs = [rung for rung in self.rungs if rung.confidence == "trusted_full"]
+        if not trusted_full_rungs:
             raise ConfigurationError("MultiFidelityPolicy requires a trusted_full rung.")
+        if len(trusted_full_rungs) != 1:
+            raise ConfigurationError("MultiFidelityPolicy requires exactly one trusted_full rung.")
+        if self.rungs[-1].confidence != "trusted_full":
+            raise ConfigurationError("MultiFidelityPolicy final rung must be trusted_full.")
 
     @property
     def rung_names(self) -> Sequence[str]:

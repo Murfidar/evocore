@@ -62,6 +62,29 @@ def test_policy_rejects_invalid_budget_and_fractions() -> None:
         )
 
 
+def test_policy_requires_trusted_full_rung_to_be_final() -> None:
+    with pytest.raises(ConfigurationError, match="final rung"):
+        MultiFidelityPolicy(
+            rungs=[
+                Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+                Rung("audit", budget=1.0, promote_fraction=1.0, confidence="partial"),
+            ],
+            full_evaluation_budget=16,
+        )
+
+
+def test_policy_rejects_multiple_trusted_full_rungs() -> None:
+    with pytest.raises(ConfigurationError, match="exactly one trusted_full"):
+        MultiFidelityPolicy(
+            rungs=[
+                Rung("cheap", budget=0.1, promote_fraction=0.5, confidence="partial"),
+                Rung("full_a", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+                Rung("full_b", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+            ],
+            full_evaluation_budget=16,
+        )
+
+
 def test_scheduler_promotes_top_fraction_by_previous_rung_score() -> None:
     policy = MultiFidelityPolicy(
         rungs=[
