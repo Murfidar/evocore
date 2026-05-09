@@ -47,7 +47,7 @@ from evocore.exceptions import (
     FitnessWarning,
     ParallelError,
 )
-from evocore.ga import GAEngine, MultiRunResult, RunResult
+from evocore.ga import EngineStateSummary, GAEngine, MultiRunResult, RunResult
 from evocore.gene_space import GeneDef, GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
@@ -77,6 +77,7 @@ __all__ = [
     "ConfigurationWarning",
     "ConvergenceError",
     "EarlyStopping",
+    "EngineStateSummary",
     "EvaluationRecord",
     "EvaluationScheduler",
     "Evaluator",

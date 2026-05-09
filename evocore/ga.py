@@ -16,6 +16,7 @@ from typing import Literal
 
 from evocore import _core
 from evocore.callbacks import Callback, GenerationInfo
+from evocore.evaluation import Candidate, EvaluationRecord, OptimizationTelemetry
 from evocore.exceptions import (
     CheckpointError,
     ConfigurationError,
@@ -75,6 +76,17 @@ class MultiRunResult:
             "min": min(values) if values else float("nan"),
             "max": max(values) if values else float("nan"),
         }
+
+
+@dataclass(frozen=True)
+class EngineStateSummary:
+    """Summarize one vNext tell() state update."""
+
+    accepted_count: int
+    trusted_count: int
+    partial_count: int
+    surrogate_count: int
+    rejected_count: int
 
 
 def _run_child_engine(engine: GAEngine, seed: int, fitness_fn: Callable) -> RunResult:
@@ -192,6 +204,11 @@ class GAEngine:
         self.callbacks = list(callbacks or [])
         self.operators = OperatorSet(gene_space, crossover, mutation)
         self._fitness_warning_emitted = False
+        self._event_index = 0
+        self._candidates_by_id: dict[str, Candidate] = {}
+        self._trusted_population_vnext: list[Candidate] = []
+        self.vnext_telemetry = OptimizationTelemetry()
+        self.best_candidate: Candidate | None = None
 
         for gene in gene_space.genes:
             if gene.kind == "int" and gene.sigma is None and (gene.high - gene.low) > 100:
@@ -633,6 +650,124 @@ class GAEngine:
         for callback in self.callbacks:
             callback.on_run_end(result)
         return result
+
+    def _candidate_from_genes(
+        self,
+        genes: list[float | int | bool],
+        *,
+        origin: str,
+        event_index: int,
+        candidate_index: int,
+        parents: Sequence[str] = (),
+    ) -> Candidate:
+        candidate_id = _core.candidate_id(self.seed, event_index, candidate_index)
+        params = self.gene_space.params_for(genes)
+        return Candidate(
+            candidate_id=candidate_id,
+            genes=list(genes),
+            params=params,
+            origin=origin,
+            parents=parents,
+            event_index=event_index,
+        )
+
+    def ask(self, n: int | None = None) -> list[Candidate]:
+        """Return vNext candidates for external evaluation."""
+        count = int(n or self.population_size)
+        if count <= 0:
+            raise ConfigurationError("ask(n) requires n > 0.")
+
+        event_index = self._event_index
+        if not self._trusted_population_vnext:
+            encoded = _core.init_population(
+                self.operators.gene_bounds,
+                self.operators.gene_kinds,
+                count,
+                int(_core.py_derive_seed(self.seed, event_index, 0, _core.OP_INIT)),
+            )
+            individuals = self.operators.decode_population(encoded)
+            candidates = [
+                self._candidate_from_genes(
+                    individual.genes,
+                    origin="random",
+                    event_index=event_index,
+                    candidate_index=index,
+                )
+                for index, individual in enumerate(individuals)
+            ]
+        else:
+            trusted_individuals = [
+                Individual(
+                    list(candidate.genes),
+                    fitness=candidate.best_observed_score(),
+                    fitness_valid=True,
+                    metadata={"params": candidate.params} if candidate.params else {},
+                )
+                for candidate in self._trusted_population_vnext
+            ]
+            fitnesses = [individual.fitness or float("-inf") for individual in trusted_individuals]
+            offspring = self._make_offspring(
+                trusted_individuals,
+                fitnesses,
+                gen=event_index,
+                offspring_count=count,
+            )
+            candidates = [
+                self._candidate_from_genes(
+                    individual.genes,
+                    origin="mutation",
+                    event_index=event_index,
+                    candidate_index=index,
+                )
+                for index, individual in enumerate(offspring)
+            ]
+
+        for candidate in candidates:
+            self._candidates_by_id[candidate.candidate_id] = candidate
+        self._event_index += 1
+        self.vnext_telemetry.record_proposed(len(candidates))
+        return candidates
+
+    def tell(self, records: Sequence[EvaluationRecord]) -> EngineStateSummary:
+        """Update GA state from vNext evaluation records."""
+        trusted = partial = surrogate = rejected = 0
+        for record in records:
+            candidate = self._candidates_by_id.get(record.candidate_id)
+            if candidate is None:
+                raise FitnessError(
+                    f"tell() received unknown candidate_id: {record.candidate_id!r}"
+                )
+            candidate.apply_record(record)
+            if record.confidence == "trusted_full":
+                trusted += 1
+                self._trusted_population_vnext.append(candidate)
+                if (
+                    self.best_candidate is None
+                    or candidate.best_observed_score() > self.best_candidate.best_observed_score()
+                ):
+                    self.best_candidate = candidate
+                self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
+            elif record.confidence in ("partial", "cached"):
+                partial += 1
+                self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
+            elif record.confidence == "surrogate":
+                surrogate += 1
+                self.vnext_telemetry.record_screened(1)
+            else:
+                rejected += 1
+                self.vnext_telemetry.record_eliminated(1, rung=record.rung)
+
+        self._trusted_population_vnext.sort(
+            key=lambda candidate: candidate.best_observed_score(), reverse=True
+        )
+        self._trusted_population_vnext = self._trusted_population_vnext[: self.population_size]
+        return EngineStateSummary(
+            accepted_count=len(records),
+            trusted_count=trusted,
+            partial_count=partial,
+            surrogate_count=surrogate,
+            rejected_count=rejected,
+        )
 
     def run(self, fitness_fn: Callable[[Individual], float | tuple[float, dict]]) -> RunResult:
         """Run one GA optimization.
