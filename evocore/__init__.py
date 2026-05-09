@@ -51,6 +51,7 @@ from evocore.exceptions import (
 from evocore.ga import EngineStateSummary, GAEngine, MultiRunResult, RunResult
 from evocore.gene_space import GeneDef, GeneSpace
 from evocore.individual import Individual, Population
+from evocore.mixed_cma import CategoricalState, IntegerMargin
 from evocore.operators import OperatorSet
 from evocore.parallel import ProcessParallel, ThreadParallel
 from evocore.policies import MultiFidelityPolicy
@@ -73,6 +74,7 @@ __all__ = [
     "Callback",
     "Candidate",
     "CandidateScore",
+    "CategoricalState",
     "CheckpointCallback",
     "CheckpointError",
     "ConfigurationError",
@@ -93,6 +95,7 @@ __all__ = [
     "GenerationInfo",
     "Individual",
     "IntegerIndividual",
+    "IntegerMargin",
     "InverseDistanceSurrogateAdvisor",
     "LogEntry",
     "Logbook",
