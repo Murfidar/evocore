@@ -10,7 +10,10 @@ nav:
   - Install: install.md
   - Quickstart: quickstart.md
   - Genetic Algorithms: ga.md
-  - GA Benchmark Parity: ga-benchmark-parity.md
+  - Budget-Aware Optimization: budget-aware-optimization.md
+  - Ask/Tell Engines: ask-tell-engines.md
+  - Mixed-Variable Search: mixed-variable-search.md
+  - Optimizer Telemetry: optimizer-telemetry.md
   - CMA-ES: cmaes.md
   - Parallelism: parallelism.md
   - Callbacks And Checkpointing: callbacks-checkpointing.md
