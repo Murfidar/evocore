@@ -53,6 +53,7 @@ from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ProcessParallel, ThreadParallel
 from evocore.policies import MultiFidelityPolicy
+from evocore.scheduler import EvaluationScheduler
 from evocore.stats import Logbook, LogEntry
 
 __all__ = [
@@ -77,6 +78,7 @@ __all__ = [
     "ConvergenceError",
     "EarlyStopping",
     "EvaluationRecord",
+    "EvaluationScheduler",
     "Evaluator",
     "EvocoreError",
     "FitnessError",
