@@ -28,6 +28,7 @@ from evocore.callbacks import (
     MetricsLogger,
     ProgressBar,
 )
+from evocore.advisors import AdvisorScore, InverseDistanceSurrogateAdvisor
 from evocore.cmaes import CMAESEngine
 from evocore.evaluation import (
     Candidate,
@@ -66,6 +67,7 @@ __all__ = [
     "OP_MUTATION",
     "OP_SELECTION",
     # 2. CamelCase (Classes)
+    "AdvisorScore",
     "BinaryIndividual",
     "CMAESEngine",
     "Callback",
@@ -91,6 +93,7 @@ __all__ = [
     "GenerationInfo",
     "Individual",
     "IntegerIndividual",
+    "InverseDistanceSurrogateAdvisor",
     "LogEntry",
     "Logbook",
     "MetricsLogger",
