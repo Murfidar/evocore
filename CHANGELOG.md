@@ -6,6 +6,23 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-09
+
+### Breaking
+
+- Reoriented EvoCore around vNext expensive black-box optimization rather than DEAP parity.
+- Replaced GA execution with ask/tell and policy-driven multi-fidelity semantics.
+- Added vNext CMA ask/tell semantics for trusted-record distribution updates.
+
+### Added
+
+- Candidate, rung, evaluation record, and optimizer telemetry APIs.
+- Multi-fidelity policy and scheduler primitives.
+- Deterministic Rust candidate ID and confidence-aware ranking helpers.
+- Baseline surrogate advisor and audit-aware promotion support.
+- Mixed-variable CMA foundation types for integer margins and categorical state.
+- vNext docs and examples for budget-aware optimization.
+
 ## [0.6.1] - 2026-05-07
 
 ### Added
