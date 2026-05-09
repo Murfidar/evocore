@@ -10,13 +10,13 @@ import pickle
 import time
 import warnings
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from statistics import mean, stdev
 from typing import Literal
 
 from evocore import _core
 from evocore.callbacks import Callback, GenerationInfo
-from evocore.evaluation import Candidate, EvaluationRecord, OptimizationTelemetry
+from evocore.evaluation import Candidate, EvaluationRecord, Evaluator, OptimizationTelemetry
 from evocore.exceptions import (
     CheckpointError,
     ConfigurationError,
@@ -28,6 +28,8 @@ from evocore.gene_space import GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ProcessParallel, ThreadParallel, ensure_picklable
+from evocore.policies import MultiFidelityPolicy
+from evocore.scheduler import EvaluationScheduler
 from evocore.stats import Logbook, LogEntry
 
 logger = logging.getLogger(__name__)
@@ -52,6 +54,7 @@ class RunResult:
     max_evaluations: int | None = None
     stop_reason: StopReason = "generations"
     budget_reached: bool = False
+    telemetry: OptimizationTelemetry = field(default_factory=OptimizationTelemetry)
 
 
 @dataclass
@@ -769,24 +772,98 @@ class GAEngine:
             rejected_count=rejected,
         )
 
-    def run(self, fitness_fn: Callable[[Individual], float | tuple[float, dict]]) -> RunResult:
-        """Run one GA optimization.
+    def run(self, evaluator: Evaluator, policy: MultiFidelityPolicy | None = None) -> RunResult:
+        """Run vNext policy-driven GA optimization."""
+        if not isinstance(evaluator, Evaluator):
+            raise ConfigurationError(
+                "GAEngine.run now requires an Evaluator instance with evaluate(candidates, rung)."
+            )
 
-        Args:
-            fitness_fn: Callable receiving an `Individual` and returning either a fitness
-                float or `(fitness, metrics_dict)`.
+        resolved_policy = policy or MultiFidelityPolicy.single_full(
+            budget=max(1, self.population_size * max(1, self.generations)),
+            batch_size=self.population_size,
+        )
+        scheduler = EvaluationScheduler(resolved_policy)
+        start = time.perf_counter()
+        n_evaluations = 0
+        final_candidates: list[Candidate] = []
 
-        Returns:
-            Run result containing the best individual, final population, logbook, and timing.
+        while (
+            self.vnext_telemetry.candidates_full_evaluated < resolved_policy.full_evaluation_budget
+        ):
+            remaining = (
+                resolved_policy.full_evaluation_budget
+                - self.vnext_telemetry.candidates_full_evaluated
+            )
+            batch_size = min(resolved_policy.batch_size or self.population_size, remaining)
+            active_candidates = self.ask(batch_size)
 
-        Raises:
-            FitnessError: If the fitness function raises or returns an invalid value.
-            ConfigurationError: If process mode receives a non-picklable fitness function.
-        """
-        return self._run_from_population(
-            self._initial_population(),
-            fitness_fn,
-            start_generation=0,
+            for rung in resolved_policy.rungs:
+                assigned = scheduler.assign_rung(active_candidates, rung_name=rung.name)
+                records = list(evaluator.evaluate(assigned, rung))
+                self.tell(records)
+                if rung.confidence == "trusted_full":
+                    n_evaluations += len(records)
+                    final_candidates.extend(assigned)
+                    break
+                active_candidates = scheduler.promote(assigned, completed_rung=rung.name)
+
+        if self.best_candidate is None:
+            # Defensive: only possible if policy has no trusted_full rung,
+            # which MultiFidelityPolicy.__post_init__ already rejects.
+            best = Individual([0.0], fitness=float("-inf"), fitness_valid=False)
+            return RunResult(
+                best_individual=best,
+                best_fitness=float("-inf"),
+                final_population=Population([best]),
+                logbook=Logbook(),
+                wall_time_seconds=time.perf_counter() - start,
+                n_evaluations=n_evaluations,
+                elite_history=[],
+                diversity_history=[],
+                seed=self.seed,
+                stopped_early=True,
+                max_evaluations=resolved_policy.full_evaluation_budget,
+                stop_reason="max_evaluations",
+                budget_reached=True,
+                telemetry=self.vnext_telemetry,
+            )
+
+        best = Individual(
+            list(self.best_candidate.genes),
+            fitness=self.best_candidate.best_observed_score(),
+            fitness_valid=True,
+            metadata={
+                "params": self.best_candidate.params,
+                "candidate_id": self.best_candidate.candidate_id,
+            },
+        )
+        final_population = Population(
+            [
+                Individual(
+                    list(candidate.genes),
+                    fitness=candidate.best_observed_score(),
+                    fitness_valid=candidate.confidence == "trusted_full",
+                    metadata={"params": candidate.params, "candidate_id": candidate.candidate_id},
+                )
+                for candidate in final_candidates
+            ]
+        )
+        return RunResult(
+            best_individual=best,
+            best_fitness=float(best.fitness),
+            final_population=final_population,
+            logbook=Logbook(),
+            wall_time_seconds=time.perf_counter() - start,
+            n_evaluations=n_evaluations,
+            elite_history=[],
+            diversity_history=[],
+            seed=self.seed,
+            stopped_early=True,
+            max_evaluations=resolved_policy.full_evaluation_budget,
+            stop_reason="max_evaluations",
+            budget_reached=True,
+            telemetry=self.vnext_telemetry,
         )
 
     def run_multiple(

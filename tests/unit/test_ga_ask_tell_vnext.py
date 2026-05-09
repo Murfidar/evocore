@@ -1,4 +1,27 @@
-from evocore import EvaluationRecord, GAEngine, GeneDef, GeneSpace
+from evocore import (
+    EvaluationRecord,
+    Evaluator,
+    GAEngine,
+    GeneDef,
+    GeneSpace,
+    MultiFidelityPolicy,
+    Rung,
+)
+
+
+class SphereEvaluator(Evaluator):
+    def evaluate(self, candidates, rung):
+        confidence = rung.confidence
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                score=-sum(float(value) ** 2 for value in candidate.genes),
+                confidence=confidence,
+                rung=rung.name,
+                cost=rung.budget,
+            )
+            for candidate in candidates
+        ]
 
 
 def _space() -> GeneSpace:
@@ -61,3 +84,15 @@ def test_ga_tell_surrogate_records_do_not_build_trusted_population() -> None:
 
     assert engine.vnext_telemetry.candidates_screened == 4
     assert engine.best_candidate is None
+
+
+def test_ga_run_uses_policy_and_returns_vnext_telemetry() -> None:
+    engine = GAEngine(_space(), population_size=6, generations=20, seed=123)
+    policy = MultiFidelityPolicy.single_full(budget=12, batch_size=4)
+
+    result = engine.run(SphereEvaluator(), policy=policy)
+
+    assert result.n_evaluations == 12
+    assert result.best_individual.fitness_valid
+    assert result.telemetry.candidates_full_evaluated == 12
+    assert result.stop_reason == "max_evaluations"
