@@ -9,12 +9,14 @@ import os
 import pickle
 import time
 import warnings
+from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from statistics import mean, stdev
 from typing import Literal
 
 from evocore import _core
+from evocore.batches import CandidateBatch, batch_id_from_seed
 from evocore.callbacks import Callback, GenerationInfo
 from evocore.evaluation import Candidate, EvaluationRecord, Evaluator, OptimizationTelemetry
 from evocore.exceptions import (
@@ -207,13 +209,18 @@ class GAEngine:
         self.callbacks = list(callbacks or [])
         self.operators = OperatorSet(gene_space, crossover, mutation)
         self._fitness_warning_emitted = False
+        self._reset_vnext_state()
+
+        self._warn_if_large_int_gene_without_sigma()
+
+    def _reset_vnext_state(self) -> None:
+        """Reset state used by the vNext ask/tell and run APIs."""
         self._event_index = 0
         self._candidates_by_id: dict[str, Candidate] = {}
+        self._batches_by_id: dict[str, CandidateBatch] = {}
         self._trusted_population_vnext: list[Candidate] = []
         self.vnext_telemetry = OptimizationTelemetry()
         self.best_candidate: Candidate | None = None
-
-        self._warn_if_large_int_gene_without_sigma()
 
     def _warn_if_large_int_gene_without_sigma(self) -> None:
         for gene in self.gene_space.genes:
@@ -661,6 +668,7 @@ class GAEngine:
         self,
         genes: list[float | int | bool],
         *,
+        batch_id: str,
         origin: str,
         event_index: int,
         candidate_index: int,
@@ -671,6 +679,7 @@ class GAEngine:
         return Candidate(
             candidate_id=candidate_id,
             genes=list(genes),
+            batch_id=batch_id,
             params=params,
             origin=origin,
             parents=parents,
@@ -684,6 +693,7 @@ class GAEngine:
             raise ConfigurationError("ask(n) requires n > 0.")
 
         event_index = self._event_index
+        batch_id = batch_id_from_seed(self.seed, event_index)
         if not self._trusted_population_vnext:
             encoded = _core.init_population(
                 self.operators.gene_bounds,
@@ -695,6 +705,7 @@ class GAEngine:
             candidates = [
                 self._candidate_from_genes(
                     individual.genes,
+                    batch_id=batch_id,
                     origin="random",
                     event_index=event_index,
                     candidate_index=index,
@@ -721,6 +732,7 @@ class GAEngine:
             candidates = [
                 self._candidate_from_genes(
                     individual.genes,
+                    batch_id=batch_id,
                     origin="mutation",
                     event_index=event_index,
                     candidate_index=index,
@@ -730,6 +742,10 @@ class GAEngine:
 
         for candidate in candidates:
             self._candidates_by_id[candidate.candidate_id] = candidate
+        self._batches_by_id[batch_id] = CandidateBatch(
+            batch_id=batch_id,
+            candidate_ids=tuple(candidate.candidate_id for candidate in candidates),
+        )
         self._event_index += 1
         self.vnext_telemetry.record_proposed(len(candidates))
         return candidates
@@ -743,6 +759,10 @@ class GAEngine:
                 raise FitnessError(
                     f"tell() received unknown candidate_id: {record.candidate_id!r}"
                 )
+            batch = self._batches_by_id.get(candidate.batch_id)
+            if batch is None:
+                raise FitnessError(f"tell() received unknown batch_id: {candidate.batch_id!r}")
+            batch.accept_record(record)
             candidate.apply_record(record)
             if record.confidence == "trusted_full":
                 trusted += 1
@@ -775,12 +795,65 @@ class GAEngine:
             rejected_count=rejected,
         )
 
+    def _validate_evaluator_records(
+        self,
+        assigned: Sequence[Candidate],
+        records: Sequence[EvaluationRecord],
+    ) -> None:
+        """Reject incomplete or mismatched synchronous evaluator results."""
+        expected_ids = [candidate.candidate_id for candidate in assigned]
+        returned_ids = [record.candidate_id for record in records]
+        expected_counts = Counter(expected_ids)
+        returned_counts = Counter(returned_ids)
+
+        missing_ids = [
+            candidate_id for candidate_id in expected_ids if returned_counts[candidate_id] == 0
+        ]
+        unexpected_ids = [
+            candidate_id for candidate_id in returned_counts if candidate_id not in expected_counts
+        ]
+        duplicate_ids = [
+            candidate_id
+            for candidate_id, count in returned_counts.items()
+            if count > expected_counts[candidate_id]
+        ]
+
+        if missing_ids:
+            raise FitnessError(
+                "Evaluator returned missing evaluation records for candidate_ids: "
+                f"{sorted(set(missing_ids))!r}."
+            )
+        if unexpected_ids:
+            raise FitnessError(
+                "Evaluator returned unknown evaluation records for candidate_ids: "
+                f"{sorted(unexpected_ids)!r}."
+            )
+        if duplicate_ids:
+            raise FitnessError(
+                "Evaluator returned duplicate evaluation records for candidate_ids: "
+                f"{sorted(duplicate_ids)!r}."
+            )
+
+        batch_ids = {candidate.batch_id for candidate in assigned}
+        if len(batch_ids) != 1:
+            raise FitnessError(
+                "Assigned candidates must belong to exactly one batch for synchronous evaluation."
+            )
+        expected_batch_id = next(iter(batch_ids))
+        for record in records:
+            if record.batch_id is not None and record.batch_id != expected_batch_id:
+                raise FitnessError(
+                    f"Evaluator returned record batch_id {record.batch_id!r} for batch "
+                    f"{expected_batch_id!r}."
+                )
+
     def run(self, evaluator: Evaluator, policy: MultiFidelityPolicy | None = None) -> RunResult:
         """Run vNext policy-driven GA optimization."""
         if not isinstance(evaluator, Evaluator):
             raise ConfigurationError(
                 "GAEngine.run now requires an Evaluator instance with evaluate(candidates, rung)."
             )
+        self._reset_vnext_state()
 
         resolved_policy = policy or MultiFidelityPolicy.single_full(
             budget=max(1, self.population_size * max(1, self.generations)),
@@ -804,6 +877,7 @@ class GAEngine:
             for rung in resolved_policy.rungs:
                 assigned = scheduler.assign_rung(active_candidates, rung_name=rung.name)
                 records = list(evaluator.evaluate(assigned, rung))
+                self._validate_evaluator_records(assigned, records)
                 self.tell(records)
                 if rung.confidence == "trusted_full":
                     n_evaluations += len(records)

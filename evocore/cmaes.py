@@ -9,6 +9,7 @@ import warnings
 from collections.abc import Callable, Sequence
 
 from evocore import _core
+from evocore.batches import CandidateBatch, batch_id_from_seed
 from evocore.callbacks import Callback, GenerationInfo
 from evocore.evaluation import Candidate, EvaluationRecord, OptimizationTelemetry
 from evocore.exceptions import ConfigurationError, FitnessError, FitnessWarning
@@ -99,7 +100,7 @@ class CMAESEngine:
         self._fitness_warning_emitted = False
         self._state: _core.PyCMAESState | None = None
         self._event_index = 0
-        self._pending_samples_by_id: dict[str, list[float]] = {}
+        self._batches_by_id: dict[str, CandidateBatch] = {}
         self._candidates_by_id: dict[str, Candidate] = {}
         self.vnext_telemetry = OptimizationTelemetry()
 
@@ -253,22 +254,30 @@ class CMAESEngine:
             )
         state = self._ensure_state()
         event_index = self._event_index
+        batch_id = batch_id_from_seed(self.seed, event_index)
         samples_continuous = state.ask(self.seed, event_index)
         samples_discrete = [self._apply_bounds_and_round(sample) for sample in samples_continuous]
         candidates: list[Candidate] = []
+        continuous_samples_by_id: dict[str, list[float]] = {}
         for index, sample in enumerate(samples_discrete):
             individual = self._decode_individual(sample)
             candidate_id = _core.candidate_id(self.seed, event_index, index)
             candidate = Candidate(
                 candidate_id=candidate_id,
                 genes=list(individual.genes),
+                batch_id=batch_id,
                 params=individual.params,
                 origin="cma_sample",
                 event_index=event_index,
             )
-            self._pending_samples_by_id[candidate_id] = list(samples_continuous[index])
+            continuous_samples_by_id[candidate_id] = list(samples_continuous[index])
             self._candidates_by_id[candidate_id] = candidate
             candidates.append(candidate)
+        self._batches_by_id[batch_id] = CandidateBatch(
+            batch_id=batch_id,
+            candidate_ids=tuple(candidate.candidate_id for candidate in candidates),
+            continuous_samples_by_id=continuous_samples_by_id,
+        )
         self._event_index += 1
         self.vnext_telemetry.record_proposed(len(candidates))
         return candidates
@@ -277,12 +286,18 @@ class CMAESEngine:
         """Update CMA state from trusted evaluation records."""
         trusted_records: list[EvaluationRecord] = []
         partial = surrogate = rejected = 0
+        touched_batch_ids: set[str] = set()
         for record in records:
             candidate = self._candidates_by_id.get(record.candidate_id)
             if candidate is None:
                 raise FitnessError(
                     f"tell() received unknown candidate_id: {record.candidate_id!r}"
                 )
+            batch = self._batches_by_id.get(candidate.batch_id)
+            if batch is None:
+                raise FitnessError(f"tell() received unknown batch_id: {candidate.batch_id!r}")
+            batch.accept_record(record, reject_consumed_trusted=True)
+            touched_batch_ids.add(batch.batch_id)
             candidate.apply_record(record)
             if record.confidence == "trusted_full":
                 trusted_records.append(record)
@@ -297,14 +312,27 @@ class CMAESEngine:
                 rejected += 1
                 self.vnext_telemetry.record_eliminated(1, rung=record.rung)
 
-        if len(trusted_records) == self.population_size:
-            samples = [
-                self._pending_samples_by_id[record.candidate_id] for record in trusted_records
-            ]
-            fitnesses = [
-                float(record.score) for record in trusted_records if record.score is not None
-            ]
+        for batch_id in touched_batch_ids:
+            batch = self._batches_by_id[batch_id]
+            ordered_records = batch.ordered_trusted_full_records()
+            if ordered_records is None or batch.consumed:
+                continue
+            samples = []
+            fitnesses = []
+            for record in ordered_records:
+                sample = batch.continuous_samples_by_id.get(record.candidate_id)
+                if sample is None:
+                    raise FitnessError(
+                        f"missing continuous sample for candidate_id {record.candidate_id!r}."
+                    )
+                samples.append(sample)
+                if record.score is None:
+                    raise FitnessError(
+                        f"trusted_full record for candidate_id {record.candidate_id!r} is missing score."
+                    )
+                fitnesses.append(float(record.score))
             self._ensure_state().tell(samples, fitnesses)
+            batch.consumed = True
 
         return EngineStateSummary(
             accepted_count=len(records),

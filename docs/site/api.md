@@ -14,6 +14,11 @@
 
 ## vNext Expensive Optimization
 
+`Candidate.batch_id` groups candidates that came from the same `ask()` event.
+`EvaluationRecord.batch_id` may be supplied to make asynchronous evaluators explicit;
+when present, it must match the candidate batch. Batch IDs are especially useful when
+trusted records arrive in multiple `tell()` calls.
+
 ::: evocore.evaluation.Candidate
 
 ::: evocore.evaluation.EvaluationRecord

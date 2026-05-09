@@ -6,6 +6,20 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+### Added
+
+- Public `batch_id` fields on vNext `Candidate` and `EvaluationRecord` so async
+  evaluators can group results by ask batch.
+
+### Changed
+
+- `GAEngine` and `CMAESEngine` ask/tell flows now treat partial trusted batches as a
+  first-class API, with strict duplicate and batch-mismatch validation.
+- `GAEngine.run(...)` now fails fast when a synchronous evaluator omits assigned
+  candidates instead of stalling the policy loop.
+- `MultiFidelityPolicy` now requires exactly one `trusted_full` rung and it must be the
+  final rung.
+
 ## [0.7.0] - 2026-05-09
 
 ### Breaking
