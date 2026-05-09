@@ -63,6 +63,51 @@ def test_candidate_rejects_record_for_different_candidate() -> None:
         candidate.apply_record(record)
 
 
+def test_candidate_and_record_expose_batch_ids() -> None:
+    candidate = Candidate(
+        candidate_id="c-1",
+        batch_id="b-1",
+        genes=[1.0],
+        origin="random",
+        event_index=0,
+    )
+    record = EvaluationRecord(
+        candidate_id="c-1",
+        batch_id="b-1",
+        score=1.0,
+        confidence="trusted_full",
+        rung="full",
+        cost=1.0,
+    )
+
+    candidate.apply_record(record)
+
+    assert candidate.batch_id == "b-1"
+    assert record.batch_id == "b-1"
+    assert candidate.status == "trusted"
+
+
+def test_candidate_rejects_record_for_different_batch() -> None:
+    candidate = Candidate(
+        candidate_id="c-1",
+        batch_id="b-left",
+        genes=[1.0],
+        origin="random",
+        event_index=0,
+    )
+    record = EvaluationRecord(
+        candidate_id="c-1",
+        batch_id="b-right",
+        score=1.0,
+        confidence="trusted_full",
+        rung="full",
+        cost=1.0,
+    )
+
+    with pytest.raises(FitnessError, match="batch_id"):
+        candidate.apply_record(record)
+
+
 def test_surrogate_score_does_not_mark_candidate_trusted() -> None:
     candidate = Candidate(candidate_id="c-2", genes=[0.0], origin="random", event_index=0)
     candidate.apply_record(

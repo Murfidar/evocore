@@ -72,6 +72,7 @@ class EvaluationRecord:
     rung: str
     cost: float = 0.0
     metrics: dict[str, Any] = field(default_factory=dict)
+    batch_id: str | None = None
 
     def __post_init__(self) -> None:
         if not self.candidate_id:
@@ -94,6 +95,7 @@ class Candidate:
 
     candidate_id: str
     genes: list[GeneValue]
+    batch_id: str = ""
     params: dict[str, GeneValue] | None = None
     origin: CandidateOrigin = "random"
     parents: Sequence[str] = ()
@@ -112,6 +114,11 @@ class Candidate:
             raise FitnessError(
                 f"EvaluationRecord candidate_id {record.candidate_id!r} does not match "
                 f"candidate {self.candidate_id!r}."
+            )
+        if record.batch_id is not None and self.batch_id and record.batch_id != self.batch_id:
+            raise FitnessError(
+                f"EvaluationRecord batch_id {record.batch_id!r} does not match "
+                f"candidate batch {self.batch_id!r}."
             )
         self.rung = record.rung
         self.confidence = record.confidence
