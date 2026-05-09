@@ -1,6 +1,7 @@
 import time
 
 from evocore import GAEngine, GeneSpace
+from tests.vnext_helpers import IndividualEvaluator
 
 
 def sphere(ind):
@@ -13,7 +14,7 @@ def test_run_multiple_parallel_scaling_smoke():
     )
 
     started = time.perf_counter()
-    sequential = engine.run_multiple(sphere, n_runs=2, run_parallel=False)
+    sequential = engine.run_multiple(IndividualEvaluator(sphere), n_runs=2, run_parallel=False)
     elapsed = time.perf_counter() - started
 
     assert sequential.n_runs == 2

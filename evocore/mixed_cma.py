@@ -61,11 +61,11 @@ class CategoricalState:
         if not (0.0 < self.learning_rate <= 1.0):
             raise ConfigurationError("CategoricalState learning_rate must be in (0, 1].")
         probability = 1.0 / len(self.categories)
-        self.probabilities = {category: probability for category in self.categories}
+        self.probabilities = dict.fromkeys(self.categories, probability)
 
     def update(self, *, weighted_observations: list[tuple[int, float]]) -> None:
         """Move probability mass toward weighted observed categories."""
-        target = {category: 0.0 for category in self.categories}
+        target = dict.fromkeys(self.categories, 0.0)
         for category, weight in weighted_observations:
             if category not in target:
                 raise ConfigurationError(f"unknown category: {category!r}")
@@ -75,10 +75,9 @@ class CategoricalState:
             return
         target = {category: value / total for category, value in target.items()}
         for category in self.categories:
-            self.probabilities[category] = (
-                (1.0 - self.learning_rate) * self.probabilities[category]
-                + self.learning_rate * target[category]
-            )
+            self.probabilities[category] = (1.0 - self.learning_rate) * self.probabilities[
+                category
+            ] + self.learning_rate * target[category]
         normalizer = sum(self.probabilities.values())
         self.probabilities = {
             category: value / normalizer for category, value in self.probabilities.items()

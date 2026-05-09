@@ -1,4 +1,5 @@
 from evocore import GAEngine, GeneDef, GeneSpace
+from tests.vnext_helpers import IndividualEvaluator
 
 
 def onemax(ind):
@@ -16,6 +17,6 @@ def test_binary_onemax_smoke():
         seed=42,
     )
 
-    result = engine.run(onemax)
+    result = engine.run(IndividualEvaluator(onemax))
 
     assert result.best_fitness >= 40

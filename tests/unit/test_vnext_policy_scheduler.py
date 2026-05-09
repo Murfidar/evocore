@@ -1,9 +1,9 @@
 import pytest
-from evocore.scheduler import EvaluationScheduler
 
 from evocore.evaluation import Candidate, EvaluationRecord, Rung
 from evocore.exceptions import ConfigurationError
 from evocore.policies import MultiFidelityPolicy
+from evocore.scheduler import EvaluationScheduler
 
 
 def _candidate(index: int) -> Candidate:
@@ -163,4 +163,3 @@ def test_scheduler_audit_fraction_promotes_one_low_ranked_candidate() -> None:
     assert len(promoted) == 4
     # Top 2 by score (c-7, c-6) + 2 audit from remaining (c-5, c-4)
     assert {"c-5", "c-4"}.issubset(promoted_ids)
-

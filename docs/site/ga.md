@@ -1,36 +1,31 @@
 # Genetic Algorithms
 
-`GAEngine` runs deterministic genetic algorithm optimization over a `GeneSpace`.
+`GAEngine` proposes deterministic candidate batches over a `GeneSpace` and updates state from
+`EvaluationRecord` values.
 
-Use `parallel="none"` for fast Python fitness functions, `parallel="thread"` when the fitness
-function releases the GIL, and `parallel="process"` for pickle-safe module-level fitness
-functions.
+Use `ask()` and `tell()` directly when an external system owns evaluation. Use `run()` with an
+`Evaluator` and optional `MultiFidelityPolicy` when EvoCore should drive the budget loop.
 
-## DEAP-Parity Controls
+## Budgeted Evaluation
 
-EvoCore keeps deterministic seed derivation while matching common DEAP GA semantics when needed:
-
-- `crossover="uniform"` is available for numeric spaces as well as binary spaces. For mixed
-  float, integer, and categorical-by-integer chromosomes, this swaps alleles between parents
-  instead of averaging them as SBX or BLX would.
-- `mutation_prob` is the per-gene mutation probability after an offspring is selected for
-  mutation.
-- `mutation_individual_prob` is the per-offspring mutation gate. Leave it at `1.0` for legacy
-  EvoCore behavior, or set it to the same outer mutation probability used by a DEAP pipeline.
-- Tournament selection samples aspirants with replacement, matching DEAP `selTournament`.
+`GAEngine.run()` expects an evaluator object:
 
 ```python
-engine = GAEngine(
-    space,
-    crossover="uniform",
-    crossover_prob=0.8,
-    mutation="gaussian",
-    mutation_prob=0.2,
-    mutation_individual_prob=0.2,
-    selection="tournament",
-    tournament_size=4,
-    seed=42,
-)
+from evocore import EvaluationRecord, Evaluator
+
+
+class Objective(Evaluator):
+    def evaluate(self, candidates, rung):
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                score=-sum(float(value) ** 2 for value in candidate.genes),
+                confidence=rung.confidence,
+                rung=rung.name,
+                cost=rung.budget,
+            )
+            for candidate in candidates
+        ]
 ```
 
 ::: evocore.ga.GAEngine

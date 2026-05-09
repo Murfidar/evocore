@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 
+pub mod candidate;
 mod cmaes;
 mod gene_spec;
 mod individual;
@@ -8,9 +9,8 @@ pub mod parallel;
 pub mod reproduce;
 pub mod selection;
 pub mod utils;
-pub mod candidate;
 
-
+use candidate::{candidate_id as candidate_id_impl, rank_top_k as rank_top_k_impl};
 use cmaes::PyCMAESState;
 use gene_spec::GeneKind;
 use individual::{BinaryIndividual, FloatIndividual, IntegerIndividual};
@@ -24,8 +24,6 @@ use utils::{
     py_derive_seed, OP_CMAES_ASK, OP_CROSSOVER, OP_CROSSOVER_PROB, OP_INIT, OP_MULTI_RUN,
     OP_MUTATION, OP_SELECTION,
 };
-use candidate::{candidate_id as candidate_id_impl, rank_top_k as rank_top_k_impl};
-
 
 #[pyfunction]
 fn blend_crossover(
@@ -357,7 +355,6 @@ fn rank_top_k(scores: Vec<f64>, trusted_mask: Vec<bool>, k: usize) -> Vec<usize>
     rank_top_k_impl(&scores, &trusted_mask, k)
 }
 
-
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     rayon::ThreadPoolBuilder::new()
@@ -405,7 +402,6 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(candidate_id, m)?)?;
     m.add_function(wrap_pyfunction!(rank_top_k, m)?)?;
-
 
     Ok(())
 }

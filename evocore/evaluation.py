@@ -80,9 +80,10 @@ class EvaluationRecord:
             raise FitnessError("EvaluationRecord rung must be non-empty.")
         if self.confidence not in ("surrogate", "partial", "cached", "trusted_full", "rejected"):
             raise FitnessError("EvaluationRecord confidence is invalid.")
-        if self.confidence != "rejected":
-            if self.score is None or not math.isfinite(float(self.score)):
-                raise FitnessError("EvaluationRecord requires a finite score unless rejected.")
+        if self.confidence != "rejected" and (
+            self.score is None or not math.isfinite(float(self.score))
+        ):
+            raise FitnessError("EvaluationRecord requires a finite score unless rejected.")
         if not math.isfinite(float(self.cost)) or self.cost < 0.0:
             raise FitnessError("EvaluationRecord cost must be finite and >= 0.")
 
@@ -152,23 +153,29 @@ class OptimizationTelemetry:
     cost_by_rung: dict[str, float] = field(default_factory=dict)
 
     def record_proposed(self, count: int) -> None:
+        """Record newly proposed candidate count."""
         self.total_candidates_proposed += int(count)
 
     def record_screened(self, count: int) -> None:
+        """Record candidates scored by a surrogate or screen."""
         self.candidates_screened += int(count)
 
     def record_partial(self, count: int, *, rung: str, cost: float) -> None:
+        """Record partial-fidelity evaluations and their cost."""
         self.candidates_partial_evaluated += int(count)
         self.cost_by_rung[rung] = self.cost_by_rung.get(rung, 0.0) + float(cost)
 
     def record_full(self, count: int, *, rung: str, cost: float) -> None:
+        """Record full trusted evaluations and their cost."""
         self.candidates_full_evaluated += int(count)
         self.cost_by_rung[rung] = self.cost_by_rung.get(rung, 0.0) + float(cost)
 
     def record_promoted(self, count: int, *, rung: str) -> None:
+        """Record candidates promoted from a rung."""
         self.promoted_by_rung[rung] = self.promoted_by_rung.get(rung, 0) + int(count)
 
     def record_eliminated(self, count: int, *, rung: str) -> None:
+        """Record candidates eliminated at a rung."""
         self.eliminated_by_rung[rung] = self.eliminated_by_rung.get(rung, 0) + int(count)
 
 

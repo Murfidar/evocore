@@ -254,9 +254,7 @@ class CMAESEngine:
         state = self._ensure_state()
         event_index = self._event_index
         samples_continuous = state.ask(self.seed, event_index)
-        samples_discrete = [
-            self._apply_bounds_and_round(sample) for sample in samples_continuous
-        ]
+        samples_discrete = [self._apply_bounds_and_round(sample) for sample in samples_continuous]
         candidates: list[Candidate] = []
         for index, sample in enumerate(samples_discrete):
             individual = self._decode_individual(sample)
@@ -301,13 +299,10 @@ class CMAESEngine:
 
         if len(trusted_records) == self.population_size:
             samples = [
-                self._pending_samples_by_id[record.candidate_id]
-                for record in trusted_records
+                self._pending_samples_by_id[record.candidate_id] for record in trusted_records
             ]
             fitnesses = [
-                float(record.score)
-                for record in trusted_records
-                if record.score is not None
+                float(record.score) for record in trusted_records if record.score is not None
             ]
             self._ensure_state().tell(samples, fitnesses)
 

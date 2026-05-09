@@ -92,8 +92,8 @@ class EngineStateSummary:
     rejected_count: int
 
 
-def _run_child_engine(engine: GAEngine, seed: int, fitness_fn: Callable) -> RunResult:
-    return engine._copy_with_seed(seed).run(fitness_fn)
+def _run_child_engine(engine: GAEngine, seed: int, evaluator: Evaluator) -> RunResult:
+    return engine._copy_with_seed(seed).run(evaluator)
 
 
 class GAEngine:
@@ -213,12 +213,15 @@ class GAEngine:
         self.vnext_telemetry = OptimizationTelemetry()
         self.best_candidate: Candidate | None = None
 
-        for gene in gene_space.genes:
+        self._warn_if_large_int_gene_without_sigma()
+
+    def _warn_if_large_int_gene_without_sigma(self) -> None:
+        for gene in self.gene_space.genes:
             if gene.kind == "int" and gene.sigma is None and (gene.high - gene.low) > 100:
-                sigma_abs = mutation_sigma * (gene.high - gene.low)
+                sigma_abs = self.mutation_sigma * (gene.high - gene.low)
                 warnings.warn(
                     f'GeneDef("{gene.name}", "int", {gene.low}, {gene.high}) has range '
-                    f"{gene.high - gene.low} and no per-gene sigma. With mutation_sigma={mutation_sigma}, "
+                    f"{gene.high - gene.low} and no per-gene sigma. With mutation_sigma={self.mutation_sigma}, "
                     f"sigma_abs={sigma_abs:g} may prevent fine-tuning. Consider sigma=0.03.",
                     category=ConfigurationWarning,
                     stacklevel=2,
@@ -868,7 +871,7 @@ class GAEngine:
 
     def run_multiple(
         self,
-        fitness_fn: Callable,
+        evaluator: Evaluator,
         n_runs: int = 10,
         aggregate: str = "best",
         run_parallel: bool = False,
@@ -876,7 +879,7 @@ class GAEngine:
         """Run multiple deterministic child runs from derived seeds.
 
         Args:
-            fitness_fn: Fitness callable passed to each child run.
+            evaluator: Evaluator passed to each child run.
             n_runs: Number of child runs.
             aggregate: Aggregation mode. `"best"` and `"all"` are accepted.
             run_parallel: Whether to execute child runs in spawned processes.
@@ -900,7 +903,7 @@ class GAEngine:
 
         started = time.perf_counter()
         if run_parallel:
-            ensure_picklable(fitness_fn, context="run_multiple(run_parallel=True)")
+            ensure_picklable(evaluator, context="run_multiple(run_parallel=True)")
             ensure_picklable(self, context="run_multiple(run_parallel=True) engine")
 
             import concurrent.futures
@@ -913,13 +916,13 @@ class GAEngine:
             )
             try:
                 futures = [
-                    pool.submit(_run_child_engine, self, seed, fitness_fn) for seed in child_seeds
+                    pool.submit(_run_child_engine, self, seed, evaluator) for seed in child_seeds
                 ]
                 results = [future.result() for future in concurrent.futures.as_completed(futures)]
             finally:
                 pool.shutdown(cancel_futures=True, wait=False)
         else:
-            results = [self._copy_with_seed(seed).run(fitness_fn) for seed in child_seeds]
+            results = [self._copy_with_seed(seed).run(evaluator) for seed in child_seeds]
 
         results.sort(key=lambda run: run.best_fitness, reverse=True)
         return MultiRunResult(

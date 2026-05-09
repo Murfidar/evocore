@@ -1,6 +1,6 @@
 # evocore
 
-Rust-native Genetic Algorithms and CMA-ES for Python.
+Rust-backed expensive black-box optimization for Python.
 
 ## Install for Development
 
@@ -10,44 +10,55 @@ maturin develop --release
 pytest tests/unit/ tests/integration/ -v
 ```
 
-## Genetic Algorithm Quickstart
+## Budget-Aware GA Quickstart
 
 ```python
-from evocore import GAEngine, GeneSpace
+from evocore import EvaluationRecord, Evaluator, GAEngine, GeneSpace
 
 
-def sphere(ind):
-    return -sum(x * x for x in ind.genes)
+class SphereEvaluator(Evaluator):
+    def evaluate(self, candidates, rung):
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                score=-sum(float(value) ** 2 for value in candidate.genes),
+                confidence=rung.confidence,
+                rung=rung.name,
+                cost=rung.budget,
+            )
+            for candidate in candidates
+        ]
 
 
 engine = GAEngine(GeneSpace.uniform(-5.0, 5.0, 10), population_size=100, generations=100, seed=42)
-result = engine.run(sphere)
+result = engine.run(SphereEvaluator())
 print(result.best_fitness, result.best_individual.genes)
 ```
 
-## DEAP-Parity GA Configuration
+## vNext Optimizer Model
 
-For mixed numeric chromosomes that encode categorical choices as integers, use uniform
-crossover and the optional per-offspring mutation gate to mirror DEAP-style GA pipelines:
+EvoCore vNext separates candidate proposal from evaluation. Engines call `ask()` to create
+stable candidate IDs, evaluators return `EvaluationRecord` objects, and `tell()` updates
+optimizer state from trusted records. `MultiFidelityPolicy` and `Rung` let you spend cheap,
+partial, and full budgets deliberately.
 
 ```python
-engine = GAEngine(
-    space,
-    crossover="uniform",
-    crossover_prob=0.8,
-    mutation="gaussian",
-    mutation_prob=0.2,
-    mutation_individual_prob=0.2,
-    selection="tournament",
-    tournament_size=4,
-    seed=42,
+from evocore import MultiFidelityPolicy, Rung
+
+policy = MultiFidelityPolicy(
+    rungs=[
+        Rung("cheap", budget=0.10, promote_fraction=0.50, confidence="partial"),
+        Rung("full", budget=1.00, promote_fraction=1.00, confidence="trusted_full"),
+    ],
+    full_evaluation_budget=64,
+    batch_size=16,
 )
 ```
 
 ## Named Mixed Gene Space
 
 ```python
-from evocore import GAEngine, GeneDef, GeneSpace
+from evocore import EvaluationRecord, Evaluator, GAEngine, GeneDef, GeneSpace
 
 space = GeneSpace(
     [
@@ -57,11 +68,24 @@ space = GeneSpace(
 )
 
 
-def objective(ind):
-    return -abs(ind.params["period"] - 21) - abs(ind.params["threshold"] - 0.35)
+class MixedEvaluator(Evaluator):
+    def evaluate(self, candidates, rung):
+        records = []
+        for candidate in candidates:
+            params = candidate.params
+            records.append(
+                EvaluationRecord(
+                    candidate_id=candidate.candidate_id,
+                    score=-abs(params["period"] - 21) - abs(params["threshold"] - 0.35),
+                    confidence=rung.confidence,
+                    rung=rung.name,
+                    cost=rung.budget,
+                )
+            )
+        return records
 
 
-result = GAEngine(space, seed=42).run(objective)
+result = GAEngine(space, seed=42).run(MixedEvaluator())
 ```
 
 ## CMA-ES
@@ -81,12 +105,11 @@ and thread worker count does not change the generated populations.
 
 ## Parallelism
 
-- `parallel="none"`: simplest and best for fast fitness functions.
-- `parallel="thread"`: useful when the fitness function releases the GIL.
-- `parallel="process"`: available on `GAEngine`; requires a module-level picklable fitness function.
+- vNext `GAEngine.run()` delegates evaluation strategy to your `Evaluator`.
+- Legacy generation-loop helpers still support `parallel="none"`, `"thread"`, and `"process"`.
 - `CMAESEngine` rejects `parallel="process"` because its Rust covariance state is not picklable.
 
-## Fitness Function Protocol
+## Evaluation Protocol
 
-Fitness functions receive `Individual` and return either `float` or `(float, metrics_dict)`.
-NaN and Inf are treated as `-inf` for selection and emit `FitnessWarning` once per run.
+Evaluators receive `Candidate` values and return `EvaluationRecord` values. Non-rejected
+records must include finite scores; rejected records can carry only diagnostics in `metrics`.

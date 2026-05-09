@@ -5,7 +5,6 @@ from evocore import (
     GeneDef,
     GeneSpace,
     MultiFidelityPolicy,
-    Rung,
 )
 
 

@@ -1,11 +1,11 @@
 import pytest
+
 from evocore.evaluation import (
     Candidate,
     EvaluationRecord,
     OptimizationTelemetry,
     Rung,
 )
-
 from evocore.exceptions import ConfigurationError, FitnessError
 
 

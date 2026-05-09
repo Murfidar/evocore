@@ -3,6 +3,7 @@ import time
 import pytest
 
 from evocore import GAEngine, GeneSpace
+from tests.vnext_helpers import IndividualEvaluator
 
 
 def sphere(ind):
@@ -15,7 +16,7 @@ def test_evocore_ga_wall_time_smoke():
     )
 
     started = time.perf_counter()
-    result = engine.run(sphere)
+    result = engine.run(IndividualEvaluator(sphere))
     elapsed = time.perf_counter() - started
 
     assert result.best_fitness <= 0.0

@@ -20,6 +20,7 @@ from evocore._core import (
     IntegerIndividual,
     py_derive_seed,
 )
+from evocore.advisors import AdvisorScore, InverseDistanceSurrogateAdvisor
 from evocore.callbacks import (
     Callback,
     CheckpointCallback,
@@ -28,7 +29,6 @@ from evocore.callbacks import (
     MetricsLogger,
     ProgressBar,
 )
-from evocore.advisors import AdvisorScore, InverseDistanceSurrogateAdvisor
 from evocore.cmaes import CMAESEngine
 from evocore.evaluation import (
     Candidate,

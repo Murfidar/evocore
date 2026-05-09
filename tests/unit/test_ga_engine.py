@@ -245,7 +245,7 @@ def test_ga_run_with_callback_generation_tracking():
         return -sum(x * x for x in ind.genes)
 
     pop = engine._initial_population()
-    result = engine._run_from_population(pop, sphere_fn, start_generation=0)
+    engine._run_from_population(pop, sphere_fn, start_generation=0)
 
     assert len(received) == 3
     assert all(isinstance(info, GenerationInfo) for info in received)

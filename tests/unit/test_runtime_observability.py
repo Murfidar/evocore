@@ -1,7 +1,9 @@
 import logging
 
+import pytest
+
 import evocore
-from evocore import CMAESEngine, GAEngine, GeneSpace
+from evocore import CMAESEngine, FitnessWarning, GAEngine, GeneSpace
 
 
 def sphere(ind):
@@ -25,7 +27,7 @@ def test_ga_logs_generation_progress(caplog):
     engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=6, generations=1, seed=7)
 
     with caplog.at_level(logging.INFO, logger="evocore"):
-        engine.run(sphere)
+        engine._run_from_population(engine._initial_population(), sphere, start_generation=0)
 
     messages = [record.getMessage() for record in caplog.records if record.name == "evocore.ga"]
     assert any("GA generation=0" in message for message in messages)
@@ -34,8 +36,13 @@ def test_ga_logs_generation_progress(caplog):
 def test_ga_logs_non_finite_fitness_warning(caplog):
     engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, generations=1, seed=7)
 
-    with caplog.at_level(logging.WARNING, logger="evocore"):
-        engine.run(non_finite_once)
+    with (
+        caplog.at_level(logging.WARNING, logger="evocore"),
+        pytest.warns(FitnessWarning, match="returned NaN or Inf fitness"),
+    ):
+        engine._run_from_population(
+            engine._initial_population(), non_finite_once, start_generation=0
+        )
 
     messages = [record.getMessage() for record in caplog.records if record.name == "evocore.ga"]
     assert any("non-finite fitness" in message for message in messages)
