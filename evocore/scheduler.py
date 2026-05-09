@@ -37,7 +37,7 @@ class EvaluationScheduler:
         return assigned
 
     def promote(self, candidates: Sequence[Candidate], *, completed_rung: str) -> list[Candidate]:
-        """Promote the top candidate fraction after a completed rung."""
+        """Promote top candidates plus deterministic audit samples."""
         if completed_rung not in self.policy.rung_names:
             raise ConfigurationError(f"unknown rung: {completed_rung!r}")
 
@@ -46,7 +46,13 @@ class EvaluationScheduler:
             candidates, key=lambda candidate: candidate.best_observed_score(), reverse=True
         )
         promote_count = max(1, int(math.ceil(len(ranked) * rung.promote_fraction)))
-        promoted = ranked[:promote_count]
+        audit_count = int(math.floor(len(ranked) * self.policy.audit_fraction))
+        promoted = list(ranked[:promote_count])
+
+        if audit_count > 0 and len(ranked) > promote_count:
+            audit_pool = ranked[promote_count:]
+            promoted.extend(audit_pool[:audit_count])
+
         promoted_ids = {candidate.candidate_id for candidate in promoted}
         for candidate in ranked:
             if candidate.candidate_id in promoted_ids:

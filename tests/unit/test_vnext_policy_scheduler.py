@@ -132,3 +132,35 @@ def test_scheduler_counts_eliminated_candidates() -> None:
 
     assert len(promoted) == 2
     assert [candidate.candidate_id for candidate in eliminated] == ["c-0", "c-1"]
+
+
+def test_scheduler_audit_fraction_promotes_one_low_ranked_candidate() -> None:
+    policy = MultiFidelityPolicy(
+        rungs=[
+            Rung("cheap", budget=0.10, promote_fraction=0.25, confidence="partial"),
+            Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+        ],
+        full_evaluation_budget=10,
+        audit_fraction=0.25,
+    )
+    scheduler = EvaluationScheduler(policy)
+    candidates = [_candidate(index) for index in range(8)]
+    for index, candidate in enumerate(candidates):
+        candidate.apply_record(
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                score=float(index),
+                confidence="partial",
+                rung="cheap",
+                cost=0.1,
+            )
+        )
+
+    promoted = scheduler.promote(candidates, completed_rung="cheap")
+    promoted_ids = {candidate.candidate_id for candidate in promoted}
+
+    assert {"c-7", "c-6"}.issubset(promoted_ids)
+    assert len(promoted) == 4
+    # Top 2 by score (c-7, c-6) + 2 audit from remaining (c-5, c-4)
+    assert {"c-5", "c-4"}.issubset(promoted_ids)
+
