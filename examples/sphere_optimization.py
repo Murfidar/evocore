@@ -1,18 +1,19 @@
-from evocore import EvaluationContext, EvaluationRecord, GAEngine, GeneSpace
+from evocore import EvaluationRecord, GAEngine, GeneSpace
 
 
 class SphereEvaluator:
     def evaluate(self, candidates, context):
-        assert isinstance(context, EvaluationContext)
-        assert context.rung is not None
+        rung = context.rung
+        if rung is None:
+            raise ValueError("SphereEvaluator requires a scheduled rung.")
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
                 batch_id=candidate.batch_id,
                 score=-sum(float(value) ** 2 for value in candidate.genes),
-                confidence=context.rung.confidence,
-                rung=context.rung.name,
-                cost=context.rung.budget,
+                confidence=rung.confidence,
+                rung=rung.name,
+                cost=rung.budget,
             )
             for candidate in candidates
         ]

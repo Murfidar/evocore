@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from evocore import (
-    EvaluationContext,
     EvaluationRecord,
     GAEngine,
     GeneDef,
@@ -15,18 +14,19 @@ from evocore import (
 
 class TwoRungSphere:
     def evaluate(self, candidates, context):
-        assert isinstance(context, EvaluationContext)
-        assert context.rung is not None
-        scale = 0.5 if context.rung.name == "cheap" else 1.0
+        rung = context.rung
+        if rung is None:
+            raise ValueError("TwoRungSphere requires a scheduled rung.")
+        scale = 0.5 if rung.name == "cheap" else 1.0
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
                 batch_id=candidate.batch_id,
                 score=-scale * sum(float(value) ** 2 for value in candidate.genes),
-                confidence=context.rung.confidence,
-                rung=context.rung.name,
-                cost=context.rung.budget,
-                metrics={"rung": context.rung.name},
+                confidence=rung.confidence,
+                rung=rung.name,
+                cost=rung.budget,
+                metrics={"rung": rung.name},
             )
             for candidate in candidates
         ]

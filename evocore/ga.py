@@ -802,11 +802,9 @@ class GAEngine:
             if record.confidence == "trusted_full":
                 trusted += 1
                 self._trusted_population_vnext.append(candidate)
-                if (
-                    self.best_candidate is None
-                    or candidate.comparison_score(self.direction)
-                    > self.best_candidate.comparison_score(self.direction)
-                ):
+                if self.best_candidate is None or candidate.comparison_score(
+                    self.direction
+                ) > self.best_candidate.comparison_score(self.direction):
                     self.best_candidate = candidate
                 self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
             elif record.confidence == "cached":

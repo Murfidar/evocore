@@ -293,6 +293,67 @@ class CMAESEngine:
             )
         return self._state
 
+    def _candidate_and_batch_for_record(
+        self, record: EvaluationRecord
+    ) -> tuple[Candidate, CandidateBatch]:
+        candidate = self._candidates_by_id.get(record.candidate_id)
+        if candidate is None:
+            raise FitnessError(f"tell() received unknown candidate_id: {record.candidate_id!r}")
+        if record.batch_id is not None and record.batch_id not in self._batches_by_id:
+            raise FitnessError(f"tell() received unknown batch_id: {record.batch_id!r}")
+        batch = self._batches_by_id.get(candidate.batch_id)
+        if batch is None:
+            raise FitnessError(f"tell() received unknown batch_id: {candidate.batch_id!r}")
+        return candidate, batch
+
+    def _apply_record_confidence(
+        self,
+        candidate: Candidate,
+        record: EvaluationRecord,
+        trusted_records: list[EvaluationRecord],
+    ) -> str:
+        if record.confidence == "trusted_full":
+            trusted_records.append(record)
+            if self.best_candidate is None or candidate.comparison_score(
+                self.direction
+            ) > self.best_candidate.comparison_score(self.direction):
+                self.best_candidate = candidate
+            self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
+            return "trusted"
+        if record.confidence == "cached":
+            self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
+            return "cached"
+        if record.confidence == "partial":
+            self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
+            return "partial"
+        if record.confidence == "surrogate":
+            self.vnext_telemetry.record_screened(1)
+            return "surrogate"
+        self.vnext_telemetry.record_eliminated(1, rung=record.rung)
+        return "rejected"
+
+    def _consume_complete_batch(self, batch: CandidateBatch) -> bool:
+        ordered_records = batch.ordered_trusted_full_records()
+        if ordered_records is None or batch.consumed:
+            return False
+        samples = []
+        fitnesses = []
+        for record in ordered_records:
+            sample = batch.continuous_samples_by_id.get(record.candidate_id)
+            if sample is None:
+                raise FitnessError(
+                    f"missing continuous sample for candidate_id {record.candidate_id!r}."
+                )
+            samples.append(sample)
+            if record.score is None:
+                raise FitnessError(
+                    f"trusted_full record for candidate_id {record.candidate_id!r} is missing score."
+                )
+            fitnesses.append(score_for_direction(float(record.score), self.direction))
+        self._ensure_state().tell(samples, fitnesses)
+        batch.consumed = True
+        return True
+
     def ask(self, n: int | None = None) -> list[Candidate]:
         """Return a CMA candidate batch."""
         if n is not None and int(n) != self.population_size:
@@ -332,76 +393,31 @@ class CMAESEngine:
     def tell(self, records: Sequence[EvaluationRecord]) -> TellResult:
         """Update CMA state from trusted evaluation records."""
         trusted_records: list[EvaluationRecord] = []
-        partial = surrogate = cached = rejected = 0
+        counts = {"partial": 0, "surrogate": 0, "cached": 0, "rejected": 0}
         touched_batch_ids: set[str] = set()
         consumed_batch_ids: set[str] = set()
         for record in records:
-            candidate = self._candidates_by_id.get(record.candidate_id)
-            if candidate is None:
-                raise FitnessError(
-                    f"tell() received unknown candidate_id: {record.candidate_id!r}"
-                )
-            if record.batch_id is not None and record.batch_id not in self._batches_by_id:
-                raise FitnessError(f"tell() received unknown batch_id: {record.batch_id!r}")
-            batch = self._batches_by_id.get(candidate.batch_id)
-            if batch is None:
-                raise FitnessError(f"tell() received unknown batch_id: {candidate.batch_id!r}")
+            candidate, batch = self._candidate_and_batch_for_record(record)
             batch.accept_record(record, reject_consumed_trusted=True)
             touched_batch_ids.add(batch.batch_id)
             candidate.apply_record(record)
-            if record.confidence == "trusted_full":
-                trusted_records.append(record)
-                if (
-                    self.best_candidate is None
-                    or candidate.comparison_score(self.direction)
-                    > self.best_candidate.comparison_score(self.direction)
-                ):
-                    self.best_candidate = candidate
-                self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
-            elif record.confidence == "cached":
-                cached += 1
-                self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
-            elif record.confidence == "partial":
-                partial += 1
-                self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
-            elif record.confidence == "surrogate":
-                surrogate += 1
-                self.vnext_telemetry.record_screened(1)
-            else:
-                rejected += 1
-                self.vnext_telemetry.record_eliminated(1, rung=record.rung)
+            confidence = self._apply_record_confidence(candidate, record, trusted_records)
+            if confidence in counts:
+                counts[confidence] += 1
 
         for batch_id in touched_batch_ids:
             batch = self._batches_by_id[batch_id]
-            ordered_records = batch.ordered_trusted_full_records()
-            if ordered_records is None or batch.consumed:
-                continue
-            samples = []
-            fitnesses = []
-            for record in ordered_records:
-                sample = batch.continuous_samples_by_id.get(record.candidate_id)
-                if sample is None:
-                    raise FitnessError(
-                        f"missing continuous sample for candidate_id {record.candidate_id!r}."
-                    )
-                samples.append(sample)
-                if record.score is None:
-                    raise FitnessError(
-                        f"trusted_full record for candidate_id {record.candidate_id!r} is missing score."
-                    )
-                fitnesses.append(score_for_direction(float(record.score), self.direction))
-            self._ensure_state().tell(samples, fitnesses)
-            batch.consumed = True
-            consumed_batch_ids.add(batch.batch_id)
+            if self._consume_complete_batch(batch):
+                consumed_batch_ids.add(batch.batch_id)
 
         best_candidate_id, best_score = self._best_candidate_id_and_score()
         return TellResult(
             accepted_count=len(records),
             trusted_count=len(trusted_records),
-            partial_count=partial,
-            surrogate_count=surrogate,
-            cached_count=cached,
-            rejected_count=rejected,
+            partial_count=counts["partial"],
+            surrogate_count=counts["surrogate"],
+            cached_count=counts["cached"],
+            rejected_count=counts["rejected"],
             best_candidate_id=best_candidate_id,
             best_score=best_score,
             consumed_batch_ids=tuple(sorted(consumed_batch_ids)),
