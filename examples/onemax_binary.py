@@ -1,15 +1,18 @@
-from evocore import EvaluationRecord, Evaluator, GAEngine, GeneDef, GeneSpace
+from evocore import EvaluationContext, EvaluationRecord, GAEngine, GeneDef, GeneSpace
 
 
-class OneMaxEvaluator(Evaluator):
-    def evaluate(self, candidates, rung):
+class OneMaxEvaluator:
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.rung is not None
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
                 score=sum(candidate.genes),
-                confidence=rung.confidence,
-                rung=rung.name,
-                cost=rung.budget,
+                confidence=context.rung.confidence,
+                rung=context.rung.name,
+                cost=context.rung.budget,
             )
             for candidate in candidates
         ]

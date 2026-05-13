@@ -8,11 +8,18 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ### Added
 
+- Structural `Optimizer` and `Evaluator` protocols for the clean-break ask/tell
+  lifecycle.
+- `EvaluationContext`, `TellResult`, and shared `EngineStateSummary` records for
+  evaluator calls, `tell(...)` summaries, and stable state inspection.
 - Public `batch_id` fields on vNext `Candidate` and `EvaluationRecord` so async
   evaluators can group results by ask batch.
 
 ### Changed
 
+- `GAEngine` and `CMAESEngine` now expose `direction` and preserve raw scores while
+  using direction-aware comparisons for best-candidate tracking.
+- Policy-driven evaluators now receive `EvaluationContext` instead of a bare rung.
 - `GAEngine` and `CMAESEngine` ask/tell flows now treat partial trusted batches as a
   first-class API, with strict duplicate and batch-mismatch validation.
 - `GAEngine.run(...)` now fails fast when a synchronous evaluator omits assigned

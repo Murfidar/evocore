@@ -1,18 +1,21 @@
-from evocore import EvaluationRecord, Evaluator, GAEngine, GeneDef, GeneSpace
+from evocore import EvaluationContext, EvaluationRecord, GAEngine, GeneDef, GeneSpace
 
 
-class MixedEvaluator(Evaluator):
-    def evaluate(self, candidates, rung):
+class MixedEvaluator:
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.rung is not None
         records = []
         for candidate in candidates:
             params = candidate.params or {}
             records.append(
                 EvaluationRecord(
                     candidate_id=candidate.candidate_id,
+                    batch_id=candidate.batch_id,
                     score=-abs(params["period"] - 21) - abs(params["threshold"] - 0.35),
-                    confidence=rung.confidence,
-                    rung=rung.name,
-                    cost=rung.budget,
+                    confidence=context.rung.confidence,
+                    rung=context.rung.name,
+                    cost=context.rung.budget,
                 )
             )
         return records

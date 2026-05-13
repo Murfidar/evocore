@@ -1,28 +1,38 @@
 # Ask/Tell Engines
 
-`GAEngine` and `CMAESEngine` expose ask/tell state.
+EvoCore optimizers expose a structural ask/tell lifecycle. An optimizer does not need
+to inherit from a base class; it satisfies `Optimizer` when it exposes `direction`,
+`ask(...)`, `tell(...)`, and `state_summary()`.
 
-`ask()` returns candidates with stable IDs and decoded params. `tell()` accepts
-`EvaluationRecord` values and updates engine state only according to each record's
-confidence level.
+`ask()` returns `Candidate` objects with stable `candidate_id` values, decoded genes,
+optional params, and one shared `batch_id` for the ask event. `tell()` accepts only
+`EvaluationRecord` values and returns `TellResult`.
 
-Each `ask()` call also assigns one shared `batch_id` to the returned candidates. That
-batch token is public and deterministic for a given engine seed and ask event, so remote
-or asynchronous evaluators can safely regroup partial results before calling `tell()`.
+Evaluators satisfy the structural `Evaluator` protocol by implementing:
 
-`tell()` is first-class asynchronous: you may report any subset of records from an ask
-batch, in any order, as long as each candidate/rung pair is reported at most once.
-Duplicate trusted results for the same candidate are rejected.
+```python
+def evaluate(candidates, context):
+    return []
+```
 
-Trusted full records update optimizer state by default. Surrogate and partial records are
-used for scheduling, screening, and telemetry unless a policy explicitly allows
-aggressive state updates.
+`EvaluationContext` carries the rung, batch ID, event index, direction, budget, and
+metadata for the evaluator call.
 
-For `GAEngine.run(...)`, EvoCore stays stricter than the manual ask/tell API. A
-synchronous evaluator must return exactly one record for each assigned candidate at each
-rung. Missing, duplicate, or batch-mismatched records raise `FitnessError` instead of
-silently stalling the policy loop.
+`tell()` is asynchronous-friendly: callers may report any subset of a batch, in any
+order, as long as each candidate/rung pair is reported at most once. `tell([])` is a
+valid no-op for queue polling integrations.
 
-For `CMAESEngine`, trusted full records are accumulated per `batch_id` and only advance
-the covariance state once a full trusted batch is complete. After a batch has been
-consumed, later trusted records for that batch are rejected.
+Confidence values are explicit:
+
+- `trusted_full` updates optimizer state by default.
+- `partial` and `surrogate` can inform scheduling and telemetry.
+- `cached` records are tracked separately so policies can decide whether to trust them.
+- `rejected` records may omit score.
+
+Raw user scores are preserved. Optimizers use `direction="maximize"` or
+`direction="minimize"` to compare candidates without rewriting the score stored in
+`EvaluationRecord`.
+
+Invalid records raise `FitnessError`: unknown candidates, unknown explicit batch IDs,
+batch mismatches, duplicate candidate/rung records, and non-finite non-rejected scores
+are rejected.

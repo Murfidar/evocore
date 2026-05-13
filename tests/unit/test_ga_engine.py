@@ -7,8 +7,8 @@ from evocore import (
     CheckpointError,
     ConfigurationError,
     ConfigurationWarning,
+    EvaluationContext,
     EvaluationRecord,
-    Evaluator,
     FitnessError,
     FitnessWarning,
     GAEngine,
@@ -23,18 +23,21 @@ from evocore.individual import Individual, Population
 from evocore.stats import Logbook
 
 
-class CallableEvaluator(Evaluator):
+class CallableEvaluator:
     def __init__(self, fn):
         self.fn = fn
 
-    def evaluate(self, candidates, rung):
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.rung is not None
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
                 score=float(self.fn(candidate.genes)),
-                confidence=rung.confidence,
-                rung=rung.name,
-                cost=rung.budget,
+                confidence=context.rung.confidence,
+                rung=context.rung.name,
+                cost=context.rung.budget,
             )
             for candidate in candidates
         ]
@@ -292,15 +295,18 @@ def test_elitism_caches_best_individual_via_internal_run():
     assert any(entry.cached_count == 2 for entry in result.logbook)
 
 
-class ModuleSphereEvaluator(Evaluator):
-    def evaluate(self, candidates, rung):
+class ModuleSphereEvaluator:
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.rung is not None
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
                 score=-sum(float(v) ** 2 for v in candidate.genes),
-                confidence=rung.confidence,
-                rung=rung.name,
-                cost=rung.budget,
+                confidence=context.rung.confidence,
+                rung=context.rung.name,
+                cost=context.rung.budget,
             )
             for candidate in candidates
         ]

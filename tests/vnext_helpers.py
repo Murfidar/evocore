@@ -1,12 +1,14 @@
-from evocore import EvaluationRecord, Evaluator, MultiFidelityPolicy, Rung
+from evocore import EvaluationContext, EvaluationRecord, MultiFidelityPolicy, Rung
 from evocore.individual import Individual
 
 
-class IndividualEvaluator(Evaluator):
+class IndividualEvaluator:
     def __init__(self, fn):
         self.fn = fn
 
-    def evaluate(self, candidates, rung):
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.rung is not None
         records = []
         for candidate in candidates:
             individual = Individual(
@@ -19,10 +21,11 @@ class IndividualEvaluator(Evaluator):
             records.append(
                 EvaluationRecord(
                     candidate_id=candidate.candidate_id,
+                    batch_id=candidate.batch_id,
                     score=float(self.fn(individual)),
-                    confidence=rung.confidence,
-                    rung=rung.name,
-                    cost=rung.budget,
+                    confidence=context.rung.confidence,
+                    rung=context.rung.name,
+                    cost=context.rung.budget,
                 )
             )
         return records

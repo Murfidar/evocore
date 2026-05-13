@@ -1,6 +1,6 @@
 from evocore import (
+    EvaluationContext,
     EvaluationRecord,
-    Evaluator,
     GAEngine,
     GeneSpace,
     MultiFidelityPolicy,
@@ -8,8 +8,10 @@ from evocore import (
 )
 
 
-class DeceptiveSphere(Evaluator):
-    def evaluate(self, candidates, rung):
+class DeceptiveSphere:
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.rung is not None
         records = []
         for candidate in candidates:
             true_score = -sum(float(value) ** 2 for value in candidate.genes)
@@ -17,10 +19,11 @@ class DeceptiveSphere(Evaluator):
             records.append(
                 EvaluationRecord(
                     candidate_id=candidate.candidate_id,
-                    score=cheap_score if rung.name == "cheap" else true_score,
-                    confidence=rung.confidence,
-                    rung=rung.name,
-                    cost=rung.budget,
+                    batch_id=candidate.batch_id,
+                    score=cheap_score if context.rung.name == "cheap" else true_score,
+                    confidence=context.rung.confidence,
+                    rung=context.rung.name,
+                    cost=context.rung.budget,
                 )
             )
         return records

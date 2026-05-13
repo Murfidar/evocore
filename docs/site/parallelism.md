@@ -2,7 +2,7 @@
 
 EvoCore vNext lets evaluators own expensive evaluation strategy.
 
-`GAEngine.run()` calls your `Evaluator.evaluate(candidates, rung)` method for each scheduled
+`GAEngine.run()` calls your `Evaluator.evaluate(candidates, context)` method for each scheduled
 batch. Put thread pools, process pools, remote jobs, cached simulations, or service rate limits
 inside that evaluator.
 

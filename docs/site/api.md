@@ -12,16 +12,24 @@
 
 ::: evocore.exceptions
 
-## vNext Expensive Optimization
+## Optimizer Lifecycle
 
-`Candidate.batch_id` groups candidates that came from the same `ask()` event.
-`EvaluationRecord.batch_id` may be supplied to make asynchronous evaluators explicit;
-when present, it must match the candidate batch. Batch IDs are especially useful when
-trusted records arrive in multiple `tell()` calls.
+`Optimizer` and `Evaluator` are structural protocols. Engines and evaluators conform by
+shape, without subclassing.
+
+::: evocore.protocols.Optimizer
+
+::: evocore.protocols.Evaluator
 
 ::: evocore.evaluation.Candidate
 
 ::: evocore.evaluation.EvaluationRecord
+
+::: evocore.evaluation.EvaluationContext
+
+::: evocore.evaluation.TellResult
+
+::: evocore.evaluation.EngineStateSummary
 
 ::: evocore.evaluation.Rung
 
