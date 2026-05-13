@@ -309,11 +309,12 @@ class GAEngine:
             )
             ensure_picklable(fitness_fn, context="parallel='process'")
             try:
-                raw_results = ProcessParallel(
+                with ProcessParallel(
                     self.n_workers,
                     initializer=self.process_initializer,
                     initargs=self.process_initargs,
-                ).evaluate(pending, fitness_fn)
+                ) as parallel:
+                    raw_results = parallel.evaluate(pending, fitness_fn)
             except Exception as exc:
                 raise FitnessError(
                     f"fitness_fn raised {type(exc).__name__} during process evaluation at generation {gen}. "
@@ -747,7 +748,7 @@ class GAEngine:
             candidate_ids=tuple(candidate.candidate_id for candidate in candidates),
         )
         self._event_index += 1
-        self.vnext_telemetry.record_proposed(len(candidates))
+        self.vnext_telemetry.record_proposed_candidates(candidates)
         return candidates
 
     def tell(self, records: Sequence[EvaluationRecord]) -> EngineStateSummary:

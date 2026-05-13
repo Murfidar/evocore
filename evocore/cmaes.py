@@ -279,7 +279,7 @@ class CMAESEngine:
             continuous_samples_by_id=continuous_samples_by_id,
         )
         self._event_index += 1
-        self.vnext_telemetry.record_proposed(len(candidates))
+        self.vnext_telemetry.record_proposed_candidates(candidates)
         return candidates
 
     def tell(self, records: Sequence[EvaluationRecord]) -> EngineStateSummary:

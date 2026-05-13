@@ -19,6 +19,22 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   candidates instead of stalling the policy loop.
 - `MultiFidelityPolicy` now requires exactly one `trusted_full` rung and it must be the
   final rung.
+- `ProcessParallel` now reuses a persistent process pool across repeated `evaluate(...)`
+  calls until closed.
+
+### Fixed
+
+- Scheduler promotion now ranks candidates by the completed rung score, so surrogate or
+  later-rung observations cannot distort promotion from an earlier rung.
+- `exploration_fraction` now adds deterministic tail exploration candidates during
+  scheduler promotion.
+- `OptimizationTelemetry.unique_candidate_hashes` is populated from proposed candidate
+  genomes.
+- Rust-backed Rayon evaluation now honors `n_threads` and rejects non-positive thread
+  counts.
+- Numeric gene bounds now reject `nan` and infinite values.
+- The inverse-distance surrogate advisor now normalizes feature distances by gene-space
+  bounds when provided.
 
 ## [0.7.0] - 2026-05-09
 

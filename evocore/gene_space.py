@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Literal
@@ -46,6 +47,8 @@ class GeneDef:
         else:
             if self.low is None or self.high is None:
                 raise ConfigurationError(f"bounds required for {self.kind} gene '{self.name}'.")
+            if not math.isfinite(float(self.low)) or not math.isfinite(float(self.high)):
+                raise ConfigurationError(f"GeneDef('{self.name}') requires finite numeric bounds.")
             if self.low > self.high:
                 raise ConfigurationError(f"GeneDef('{self.name}') requires low <= high.")
             if self.kind == "int" and (
@@ -98,6 +101,8 @@ class GeneSpace:
         """
         if length <= 0:
             raise ConfigurationError("GeneSpace.uniform length must be positive.")
+        if not math.isfinite(float(low)) or not math.isfinite(float(high)):
+            raise ConfigurationError("GeneSpace.uniform requires finite numeric bounds.")
         if low >= high:
             raise ConfigurationError("GeneSpace.uniform requires low < high.")
         return cls(

@@ -112,6 +112,77 @@ def test_scheduler_promotes_top_fraction_by_previous_rung_score() -> None:
     assert all(candidate.status == "promoted" for candidate in promoted)
 
 
+def test_scheduler_promotes_by_completed_rung_score_not_best_observed_score() -> None:
+    policy = MultiFidelityPolicy(
+        rungs=[
+            Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
+            Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+        ],
+        full_evaluation_budget=10,
+        exploration_fraction=0.0,
+    )
+    scheduler = EvaluationScheduler(policy)
+    candidates = [_candidate(0), _candidate(1)]
+    candidates[0].apply_record(
+        EvaluationRecord(
+            candidate_id="c-0",
+            score=1.0,
+            confidence="partial",
+            rung="cheap",
+            cost=0.1,
+        )
+    )
+    candidates[0].apply_record(
+        EvaluationRecord(
+            candidate_id="c-0",
+            score=100.0,
+            confidence="surrogate",
+            rung="surrogate",
+            cost=0.0,
+        )
+    )
+    candidates[1].apply_record(
+        EvaluationRecord(
+            candidate_id="c-1",
+            score=2.0,
+            confidence="partial",
+            rung="cheap",
+            cost=0.1,
+        )
+    )
+
+    promoted = scheduler.promote(candidates, completed_rung="cheap")
+
+    assert [candidate.candidate_id for candidate in promoted] == ["c-1"]
+
+
+def test_scheduler_exploration_fraction_adds_tail_candidates() -> None:
+    policy = MultiFidelityPolicy(
+        rungs=[
+            Rung("cheap", budget=0.10, promote_fraction=0.25, confidence="partial"),
+            Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+        ],
+        full_evaluation_budget=10,
+        exploration_fraction=0.25,
+    )
+    scheduler = EvaluationScheduler(policy)
+    candidates = [_candidate(index) for index in range(8)]
+    for index, candidate in enumerate(candidates):
+        candidate.apply_record(
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                score=float(index),
+                confidence="partial",
+                rung="cheap",
+                cost=0.1,
+            )
+        )
+
+    promoted = scheduler.promote(candidates, completed_rung="cheap")
+
+    assert [candidate.candidate_id for candidate in promoted] == ["c-7", "c-6", "c-0", "c-1"]
+
+
 def test_scheduler_assigns_first_rung_to_new_candidates() -> None:
     policy = MultiFidelityPolicy(
         rungs=[

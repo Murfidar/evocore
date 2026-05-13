@@ -1,5 +1,7 @@
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use rayon::prelude::*;
+use rayon::ThreadPoolBuilder;
 
 pub fn evaluate_batch_sequential<F>(population: &[Vec<f64>], fitness_fn: F) -> Vec<f64>
 where
@@ -11,15 +13,26 @@ where
 pub fn evaluate_batch_parallel<F>(
     population: &[Vec<f64>],
     fitness_fn: F,
-    _n_threads: usize,
+    n_threads: usize,
 ) -> Vec<f64>
 where
     F: Fn(&[f64]) -> f64 + Send + Sync,
 {
-    population
-        .par_iter()
-        .map(|genes| fitness_fn(genes))
-        .collect()
+    assert!(n_threads > 0, "n_threads must be positive");
+    if n_threads == 1 {
+        return population.iter().map(|genes| fitness_fn(genes)).collect();
+    }
+
+    let pool = ThreadPoolBuilder::new()
+        .num_threads(n_threads)
+        .build()
+        .expect("failed to build rayon thread pool");
+    pool.install(|| {
+        population
+            .par_iter()
+            .map(|genes| fitness_fn(genes))
+            .collect()
+    })
 }
 
 #[pyfunction]
@@ -44,23 +57,47 @@ pub fn evaluate_parallel_rayon(
     fitness_fn: Py<PyAny>,
     n_threads: usize,
 ) -> PyResult<Vec<f64>> {
-    let _ = n_threads;
+    if n_threads == 0 {
+        return Err(PyValueError::new_err("n_threads must be positive."));
+    }
     py.detach(|| {
-        genes_list
-            .par_iter()
-            .map(|genes| {
-                Python::attach(|py| {
-                    let result = fitness_fn.call1(py, (genes.clone(),))?;
-                    result.extract::<f64>(py)
+        if n_threads == 1 {
+            return genes_list
+                .iter()
+                .map(|genes| {
+                    Python::attach(|py| {
+                        let result = fitness_fn.call1(py, (genes.clone(),))?;
+                        result.extract::<f64>(py)
+                    })
                 })
-            })
-            .collect()
+                .collect();
+        }
+
+        let pool = ThreadPoolBuilder::new()
+            .num_threads(n_threads)
+            .build()
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+        pool.install(|| {
+            genes_list
+                .par_iter()
+                .map(|genes| {
+                    Python::attach(|py| {
+                        let result = fitness_fn.call1(py, (genes.clone(),))?;
+                        result.extract::<f64>(py)
+                    })
+                })
+                .collect()
+        })
     })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashSet;
+    use std::sync::{Arc, Mutex};
+    use std::thread;
+    use std::time::Duration;
 
     fn double_sum(genes: &[f64]) -> f64 {
         genes.iter().sum::<f64>() * 2.0
@@ -103,5 +140,25 @@ mod tests {
                 p
             );
         }
+    }
+
+    #[test]
+    fn test_evaluate_batch_parallel_respects_single_thread_limit() {
+        let pop: Vec<Vec<f64>> = (0..64).map(|i| vec![i as f64]).collect();
+        let thread_ids = Arc::new(Mutex::new(HashSet::new()));
+        let seen = Arc::clone(&thread_ids);
+
+        let results = evaluate_batch_parallel(
+            &pop,
+            move |genes| {
+                seen.lock().unwrap().insert(thread::current().id());
+                thread::sleep(Duration::from_millis(1));
+                genes[0]
+            },
+            1,
+        );
+
+        assert_eq!(results.len(), pop.len());
+        assert_eq!(thread_ids.lock().unwrap().len(), 1);
     }
 }

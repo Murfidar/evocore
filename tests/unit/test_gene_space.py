@@ -9,6 +9,19 @@ def test_gene_def_float_requires_bounds():
         GeneDef("x", "float")
 
 
+def test_gene_def_float_rejects_non_finite_bounds():
+    with pytest.raises(ConfigurationError, match="finite"):
+        GeneDef("x", "float", float("nan"), 1.0)
+
+    with pytest.raises(ConfigurationError, match="finite"):
+        GeneDef("x", "float", 0.0, float("inf"))
+
+
+def test_uniform_space_rejects_non_finite_bounds():
+    with pytest.raises(ConfigurationError, match="finite"):
+        GeneSpace.uniform(float("-inf"), 1.0, 3)
+
+
 def test_gene_def_int_requires_integer_bounds():
     with pytest.raises(ConfigurationError, match="integer bounds"):
         GeneDef("period", "int", 1.5, 10)

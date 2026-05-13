@@ -167,3 +167,17 @@ def test_telemetry_records_counts_and_costs() -> None:
     assert telemetry.eliminated_by_rung["cheap"] == 1
     assert telemetry.cost_by_rung["cheap"] == pytest.approx(0.6)
     assert telemetry.cost_by_rung["full"] == pytest.approx(1.0)
+
+
+def test_telemetry_records_unique_candidate_hashes_for_proposals() -> None:
+    telemetry = OptimizationTelemetry()
+    candidates = [
+        Candidate(candidate_id="c-1", genes=[1.0, 2, True], origin="random", event_index=0),
+        Candidate(candidate_id="c-2", genes=[1.0, 2, True], origin="random", event_index=0),
+        Candidate(candidate_id="c-3", genes=[1.0, 3, True], origin="random", event_index=0),
+    ]
+
+    telemetry.record_proposed_candidates(candidates)
+
+    assert telemetry.total_candidates_proposed == 3
+    assert len(telemetry.unique_candidate_hashes) == 2

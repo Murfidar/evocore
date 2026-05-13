@@ -38,3 +38,59 @@ def test_process_parallel_evaluates_population():
     pp = ProcessParallel(n_workers=2)
     pop = [Individual([1.0]), Individual([2.0])]
     assert pp.evaluate(pop, module_level_fitness) == [1.0, 2.0]
+
+
+def test_process_parallel_reuses_executor_until_closed(monkeypatch):
+    created = []
+    shutdowns = []
+
+    class FakeProcessPoolExecutor:
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            created.append(self)
+
+        def map(self, fitness_fn, population):
+            return [fitness_fn(individual) for individual in population]
+
+        def shutdown(self, *, cancel_futures=False, wait=True):
+            shutdowns.append((cancel_futures, wait))
+
+    monkeypatch.setattr(
+        "concurrent.futures.ProcessPoolExecutor",
+        FakeProcessPoolExecutor,
+    )
+
+    pp = ProcessParallel(n_workers=2)
+    pop = [Individual([1.0]), Individual([2.0])]
+
+    assert pp.evaluate(pop, module_level_fitness) == [1.0, 2.0]
+    assert pp.evaluate(pop, module_level_fitness) == [1.0, 2.0]
+    assert len(created) == 1
+
+    pp.close()
+
+    assert shutdowns == [(True, True)]
+
+
+def test_process_parallel_context_manager_closes_executor(monkeypatch):
+    shutdowns = []
+
+    class FakeProcessPoolExecutor:
+        def __init__(self, **_kwargs):
+            pass
+
+        def map(self, fitness_fn, population):
+            return [fitness_fn(individual) for individual in population]
+
+        def shutdown(self, *, cancel_futures=False, wait=True):
+            shutdowns.append((cancel_futures, wait))
+
+    monkeypatch.setattr(
+        "concurrent.futures.ProcessPoolExecutor",
+        FakeProcessPoolExecutor,
+    )
+
+    with ProcessParallel(n_workers=2) as pp:
+        assert pp.evaluate([Individual([1.0])], module_level_fitness) == [1.0]
+
+    assert shutdowns == [(True, True)]

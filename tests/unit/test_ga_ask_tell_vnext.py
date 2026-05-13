@@ -73,6 +73,17 @@ def test_ga_ask_assigns_stable_batch_id_per_batch() -> None:
     assert first[0].batch_id.startswith("b-")
 
 
+def test_ga_ask_populates_unique_candidate_hash_telemetry() -> None:
+    engine = GAEngine(_space(), population_size=6, generations=5, seed=123)
+
+    candidates = engine.ask(4)
+
+    assert engine.vnext_telemetry.total_candidates_proposed == 4
+    assert len(engine.vnext_telemetry.unique_candidate_hashes) == len(
+        {tuple(candidate.genes) for candidate in candidates}
+    )
+
+
 def test_ga_tell_trusted_records_builds_trusted_population() -> None:
     engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
     candidates = engine.ask(4)

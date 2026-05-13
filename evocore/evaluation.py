@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -145,6 +147,21 @@ class Candidate:
         values = [score.score for score in self.scores.values() if score.score is not None]
         return max(values) if values else float("-inf")
 
+    def candidate_hash(self) -> str:
+        """Return a stable hash for this candidate's decoded genes."""
+        encoded: list[list[Any]] = []
+        for value in self.genes:
+            if isinstance(value, bool):
+                encoded.append(["bool", value])
+            elif isinstance(value, int):
+                encoded.append(["int", value])
+            elif isinstance(value, float):
+                encoded.append(["float", value.hex()])
+            else:
+                encoded.append([type(value).__name__, repr(value)])
+        payload = json.dumps(encoded, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
 
 @dataclass
 class OptimizationTelemetry:
@@ -162,6 +179,12 @@ class OptimizationTelemetry:
     def record_proposed(self, count: int) -> None:
         """Record newly proposed candidate count."""
         self.total_candidates_proposed += int(count)
+
+    def record_proposed_candidates(self, candidates: Sequence[Candidate]) -> None:
+        """Record newly proposed candidates and their unique genome hashes."""
+        proposed = list(candidates)
+        self.record_proposed(len(proposed))
+        self.unique_candidate_hashes.update(candidate.candidate_hash() for candidate in proposed)
 
     def record_screened(self, count: int) -> None:
         """Record candidates scored by a surrogate or screen."""

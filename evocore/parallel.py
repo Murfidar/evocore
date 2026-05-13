@@ -7,6 +7,8 @@ import multiprocessing
 import os
 import pickle
 from collections.abc import Callable, Sequence
+from contextlib import suppress
+from typing import Self
 
 from evocore.exceptions import ConfigurationError
 from evocore.individual import Individual
@@ -49,6 +51,34 @@ class ProcessParallel:
         self.initializer = initializer
         self.initargs = initargs
         self._ctx = multiprocessing.get_context("spawn")
+        self._pool: concurrent.futures.ProcessPoolExecutor | None = None
+
+    def __enter__(self) -> Self:
+        return self
+
+    def __exit__(self, exc_type, exc, traceback) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        with suppress(Exception):
+            self.close(wait=False)
+
+    def _executor(self) -> concurrent.futures.ProcessPoolExecutor:
+        if self._pool is None:
+            self._pool = concurrent.futures.ProcessPoolExecutor(
+                max_workers=self.n_workers,
+                mp_context=self._ctx,
+                initializer=self.initializer,
+                initargs=self.initargs,
+            )
+        return self._pool
+
+    def close(self, *, wait: bool = True, cancel_futures: bool = True) -> None:
+        """Shut down the persistent process pool."""
+        if self._pool is None:
+            return
+        self._pool.shutdown(cancel_futures=cancel_futures, wait=wait)
+        self._pool = None
 
     def evaluate(
         self, population: Sequence[Individual], fitness_fn: Callable[[Individual], object]
@@ -58,13 +88,4 @@ class ProcessParallel:
             return []
 
         ensure_picklable(fitness_fn, context="parallel='process'")
-        pool = concurrent.futures.ProcessPoolExecutor(
-            max_workers=self.n_workers,
-            mp_context=self._ctx,
-            initializer=self.initializer,
-            initargs=self.initargs,
-        )
-        try:
-            return list(pool.map(fitness_fn, population))
-        finally:
-            pool.shutdown(cancel_futures=True, wait=False)
+        return list(self._executor().map(fitness_fn, population))
