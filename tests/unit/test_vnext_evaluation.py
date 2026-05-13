@@ -2,9 +2,13 @@ import pytest
 
 from evocore.evaluation import (
     Candidate,
+    EngineStateSummary,
+    EvaluationContext,
     EvaluationRecord,
     OptimizationTelemetry,
     Rung,
+    TellResult,
+    score_for_direction,
 )
 from evocore.exceptions import ConfigurationError, FitnessError
 
@@ -181,3 +185,105 @@ def test_telemetry_records_unique_candidate_hashes_for_proposals() -> None:
 
     assert telemetry.total_candidates_proposed == 3
     assert len(telemetry.unique_candidate_hashes) == 2
+
+
+def test_evaluation_record_preserves_metadata() -> None:
+    record = EvaluationRecord(
+        candidate_id="c-1",
+        score=1.25,
+        confidence="trusted_full",
+        rung="full",
+        cost=1.0,
+        metrics={"loss": 0.2},
+        metadata={"source": "unit"},
+        batch_id="b-1",
+    )
+
+    assert record.metadata["source"] == "unit"
+    assert record.metrics["loss"] == pytest.approx(0.2)
+
+
+def test_evaluation_context_carries_batch_rung_direction_and_budget() -> None:
+    rung = Rung("cheap", budget=0.25, promote_fraction=0.5, confidence="partial")
+
+    context = EvaluationContext(
+        rung=rung,
+        batch_id="b-1",
+        event_index=3,
+        direction="minimize",
+        budget=0.25,
+        metadata={"phase": "screen"},
+    )
+
+    assert context.rung is rung
+    assert context.batch_id == "b-1"
+    assert context.event_index == 3
+    assert context.direction == "minimize"
+    assert context.budget == pytest.approx(0.25)
+    assert context.metadata["phase"] == "screen"
+
+
+def test_tell_result_and_state_summary_have_stable_fields() -> None:
+    telemetry = OptimizationTelemetry()
+    tell_result = TellResult(
+        accepted_count=3,
+        trusted_count=1,
+        partial_count=1,
+        surrogate_count=0,
+        cached_count=0,
+        rejected_count=1,
+        best_candidate_id="c-2",
+        best_score=2.5,
+        consumed_batch_ids=("b-1",),
+        pending_batch_ids=("b-2",),
+        telemetry=telemetry,
+    )
+    state = EngineStateSummary(
+        best_candidate_id="c-2",
+        best_score=2.5,
+        event_index=4,
+        pending_batch_ids=("b-2",),
+        trusted_count=5,
+        telemetry=telemetry,
+    )
+
+    assert tell_result.accepted_count == 3
+    assert tell_result.cached_count == 0
+    assert tell_result.consumed_batch_ids == ("b-1",)
+    assert state.best_candidate_id == "c-2"
+    assert state.pending_batch_ids == ("b-2",)
+
+
+def test_candidate_best_observed_score_honors_direction() -> None:
+    candidate = Candidate(candidate_id="c-1", genes=[1.0], batch_id="b-1")
+    candidate.apply_record(
+        EvaluationRecord(
+            candidate_id="c-1",
+            score=10.0,
+            confidence="partial",
+            rung="cheap",
+            cost=0.1,
+        )
+    )
+    candidate.apply_record(
+        EvaluationRecord(
+            candidate_id="c-1",
+            score=2.0,
+            confidence="trusted_full",
+            rung="full",
+            cost=1.0,
+        )
+    )
+
+    assert candidate.best_observed_score("maximize") == pytest.approx(10.0)
+    assert candidate.best_observed_score("minimize") == pytest.approx(2.0)
+    assert candidate.comparison_score("maximize") == pytest.approx(10.0)
+    assert candidate.comparison_score("minimize") == pytest.approx(-2.0)
+
+
+def test_score_for_direction_rejects_invalid_direction() -> None:
+    assert score_for_direction(3.0, "maximize") == pytest.approx(3.0)
+    assert score_for_direction(3.0, "minimize") == pytest.approx(-3.0)
+
+    with pytest.raises(ConfigurationError, match="direction"):
+        score_for_direction(3.0, "lowest")  # type: ignore[arg-type]

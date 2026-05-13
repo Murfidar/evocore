@@ -1,8 +1,8 @@
 import pytest
 
 from evocore import (
+    EvaluationContext,
     EvaluationRecord,
-    Evaluator,
     GAEngine,
     GeneDef,
     GeneSpace,
@@ -11,31 +11,35 @@ from evocore import (
 from evocore.exceptions import FitnessError
 
 
-class SphereEvaluator(Evaluator):
-    def evaluate(self, candidates, rung):
-        confidence = rung.confidence
+class SphereEvaluator:
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.rung is not None
+        confidence = context.rung.confidence
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
                 score=-sum(float(value) ** 2 for value in candidate.genes),
                 confidence=confidence,
-                rung=rung.name,
-                cost=rung.budget,
+                rung=context.rung.name,
+                cost=context.rung.budget,
             )
             for candidate in candidates
         ]
 
 
-class DroppingEvaluator(Evaluator):
-    def evaluate(self, candidates, rung):
+class DroppingEvaluator:
+    def evaluate(self, candidates, context):
+        assert context.rung is not None
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
                 batch_id=candidate.batch_id,
                 score=1.0,
-                confidence=rung.confidence,
-                rung=rung.name,
-                cost=rung.budget,
+                confidence=context.rung.confidence,
+                rung=context.rung.name,
+                cost=context.rung.budget,
             )
             for candidate in candidates[:-1]
         ]
@@ -220,3 +224,91 @@ def test_ga_run_resets_vnext_state_for_repeated_runs() -> None:
     assert second.n_evaluations == 8
     assert len(second.final_population) == 8
     assert second.telemetry.candidates_full_evaluated == 8
+
+
+def test_ga_tell_empty_records_returns_noop_tell_result() -> None:
+    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+
+    result = engine.tell([])
+
+    assert result.accepted_count == 0
+    assert result.trusted_count == 0
+    assert result.pending_batch_ids == ()
+
+
+def test_ga_tell_rejects_unknown_explicit_batch_id() -> None:
+    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    candidate = engine.ask(1)[0]
+
+    with pytest.raises(FitnessError, match="unknown batch_id"):
+        engine.tell(
+            [
+                EvaluationRecord(
+                    candidate_id=candidate.candidate_id,
+                    batch_id="b-missing",
+                    score=1.0,
+                    confidence="trusted_full",
+                    rung="full",
+                    cost=1.0,
+                )
+            ]
+        )
+
+
+def test_ga_state_summary_reports_best_and_pending_batches() -> None:
+    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    candidates = engine.ask(2)
+
+    before = engine.state_summary()
+
+    assert before.best_candidate_id is None
+    assert before.pending_batch_ids == (candidates[0].batch_id,)
+
+    engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidates[0].candidate_id,
+                batch_id=candidates[0].batch_id,
+                score=1.0,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+            )
+        ]
+    )
+
+    after = engine.state_summary()
+
+    assert after.best_candidate_id == candidates[0].candidate_id
+    assert after.best_score == pytest.approx(1.0)
+    assert after.trusted_count == 1
+
+
+def test_ga_minimize_direction_selects_lowest_trusted_score() -> None:
+    engine = GAEngine(_space(), population_size=4, generations=5, seed=123, direction="minimize")
+    candidates = engine.ask(2)
+
+    result = engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidates[0].candidate_id,
+                batch_id=candidates[0].batch_id,
+                score=10.0,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+            ),
+            EvaluationRecord(
+                candidate_id=candidates[1].candidate_id,
+                batch_id=candidates[1].batch_id,
+                score=2.0,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+            ),
+        ]
+    )
+
+    assert engine.best_candidate is not None
+    assert engine.best_candidate.candidate_id == candidates[1].candidate_id
+    assert result.best_score == pytest.approx(2.0)

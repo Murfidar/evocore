@@ -12,6 +12,7 @@ from typing import Any, Literal
 from evocore.exceptions import ConfigurationError, FitnessError
 from evocore.individual import GeneValue
 
+Direction = Literal["maximize", "minimize"]
 CandidateOrigin = Literal[
     "random",
     "crossover",
@@ -31,6 +32,15 @@ CandidateStatus = Literal[
     "archived",
 ]
 EvaluationConfidence = Literal["surrogate", "partial", "cached", "trusted_full", "rejected"]
+
+
+def score_for_direction(score: float, direction: Direction) -> float:
+    """Return a comparison score where larger is always better."""
+    if direction == "maximize":
+        return float(score)
+    if direction == "minimize":
+        return -float(score)
+    raise ConfigurationError("direction must be 'maximize' or 'minimize'.")
 
 
 @dataclass(frozen=True)
@@ -54,6 +64,30 @@ class Rung:
 
 
 @dataclass(frozen=True)
+class EvaluationContext:
+    """Describe the evaluator call context for one ask/tell batch."""
+
+    rung: Rung | None
+    batch_id: str
+    event_index: int
+    direction: Direction
+    budget: float | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.batch_id:
+            raise ConfigurationError("EvaluationContext batch_id must be non-empty.")
+        if int(self.event_index) < 0:
+            raise ConfigurationError("EvaluationContext event_index must be >= 0.")
+        if self.direction not in ("maximize", "minimize"):
+            raise ConfigurationError("direction must be 'maximize' or 'minimize'.")
+        if self.budget is not None and (
+            not math.isfinite(float(self.budget)) or float(self.budget) <= 0.0
+        ):
+            raise ConfigurationError("EvaluationContext budget must be finite and > 0.")
+
+
+@dataclass(frozen=True)
 class CandidateScore:
     """Store one score observation for one candidate and rung."""
 
@@ -62,6 +96,7 @@ class CandidateScore:
     rung: str
     cost: float
     metrics: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -74,6 +109,7 @@ class EvaluationRecord:
     rung: str
     cost: float = 0.0
     metrics: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, Any] = field(default_factory=dict)
     batch_id: str | None = None
 
     def __post_init__(self) -> None:
@@ -131,8 +167,10 @@ class Candidate:
             rung=record.rung,
             cost=record.cost,
             metrics=dict(record.metrics),
+            metadata=dict(record.metadata),
         )
         self.metadata["metrics"] = dict(record.metrics)
+        self.metadata["record_metadata"] = dict(record.metadata)
         if record.confidence == "trusted_full":
             self.status = "trusted"
         elif record.confidence == "rejected":
@@ -142,10 +180,23 @@ class Candidate:
         else:
             self.status = "screened"
 
-    def best_observed_score(self) -> float:
-        """Return the best finite score observed for this candidate."""
+    def best_observed_score(self, direction: Direction = "maximize") -> float:
+        """Return the best raw finite score observed for this candidate."""
         values = [score.score for score in self.scores.values() if score.score is not None]
-        return max(values) if values else float("-inf")
+        if not values:
+            return float("inf") if direction == "minimize" else float("-inf")
+        if direction == "minimize":
+            return min(float(value) for value in values)
+        if direction == "maximize":
+            return max(float(value) for value in values)
+        raise ConfigurationError("direction must be 'maximize' or 'minimize'.")
+
+    def comparison_score(self, direction: Direction = "maximize") -> float:
+        """Return the best observed score normalized so larger is better."""
+        best = self.best_observed_score(direction)
+        if not math.isfinite(best):
+            return best if direction == "maximize" else -best
+        return score_for_direction(best, direction)
 
     def candidate_hash(self) -> str:
         """Return a stable hash for this candidate's decoded genes."""
@@ -209,13 +260,30 @@ class OptimizationTelemetry:
         self.eliminated_by_rung[rung] = self.eliminated_by_rung.get(rung, 0) + int(count)
 
 
-class Evaluator:
-    """Base class for vNext evaluators."""
+@dataclass(frozen=True)
+class TellResult:
+    """Summarize one optimizer tell() update."""
 
-    def evaluate(
-        self,
-        candidates: Sequence[Candidate],
-        rung: Rung,
-    ) -> Sequence[EvaluationRecord]:
-        """Evaluate candidates for a rung."""
-        raise NotImplementedError("Evaluator.evaluate must be implemented by subclasses.")
+    accepted_count: int
+    trusted_count: int
+    partial_count: int
+    surrogate_count: int
+    cached_count: int
+    rejected_count: int
+    best_candidate_id: str | None = None
+    best_score: float | None = None
+    consumed_batch_ids: tuple[str, ...] = ()
+    pending_batch_ids: tuple[str, ...] = ()
+    telemetry: OptimizationTelemetry | None = None
+
+
+@dataclass(frozen=True)
+class EngineStateSummary:
+    """Expose a stable read-only optimizer state summary."""
+
+    best_candidate_id: str | None
+    best_score: float | None
+    event_index: int
+    pending_batch_ids: tuple[str, ...]
+    trusted_count: int
+    telemetry: OptimizationTelemetry

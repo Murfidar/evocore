@@ -134,3 +134,91 @@ def test_cma_tell_rejects_duplicate_trusted_record_after_batch_consumed() -> Non
 
     with pytest.raises(FitnessError, match="consumed"):
         engine.tell([records[0]])
+
+
+def test_cma_tell_empty_records_returns_noop_tell_result() -> None:
+    engine = CMAESEngine(_space(), population_size=4, seed=7)
+
+    result = engine.tell([])
+
+    assert result.accepted_count == 0
+    assert result.trusted_count == 0
+    assert result.pending_batch_ids == ()
+
+
+def test_cma_tell_rejects_unknown_explicit_batch_id() -> None:
+    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    candidate = engine.ask()[0]
+
+    with pytest.raises(FitnessError, match="unknown batch_id"):
+        engine.tell(
+            [
+                EvaluationRecord(
+                    candidate_id=candidate.candidate_id,
+                    batch_id="b-missing",
+                    score=1.0,
+                    confidence="trusted_full",
+                    rung="full",
+                    cost=1.0,
+                )
+            ]
+        )
+
+
+def test_cma_state_summary_reports_best_and_pending_batches() -> None:
+    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    candidates = engine.ask()
+
+    before = engine.state_summary()
+
+    assert before.best_candidate_id is None
+    assert before.pending_batch_ids == (candidates[0].batch_id,)
+
+    engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidates[0].candidate_id,
+                batch_id=candidates[0].batch_id,
+                score=3.0,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+            )
+        ]
+    )
+
+    after = engine.state_summary()
+
+    assert after.best_candidate_id == candidates[0].candidate_id
+    assert after.best_score == pytest.approx(3.0)
+    assert after.trusted_count == 1
+
+
+def test_cma_minimize_direction_tracks_lowest_trusted_score() -> None:
+    engine = CMAESEngine(_space(), population_size=4, seed=7, direction="minimize")
+    candidates = engine.ask()
+
+    result = engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidates[0].candidate_id,
+                batch_id=candidates[0].batch_id,
+                score=10.0,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+            ),
+            EvaluationRecord(
+                candidate_id=candidates[1].candidate_id,
+                batch_id=candidates[1].batch_id,
+                score=2.0,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+            ),
+        ]
+    )
+
+    assert engine.best_candidate is not None
+    assert engine.best_candidate.candidate_id == candidates[1].candidate_id
+    assert result.best_score == pytest.approx(2.0)

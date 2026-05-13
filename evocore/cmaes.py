@@ -11,9 +11,17 @@ from collections.abc import Callable, Sequence
 from evocore import _core
 from evocore.batches import CandidateBatch, batch_id_from_seed
 from evocore.callbacks import Callback, GenerationInfo
-from evocore.evaluation import Candidate, EvaluationRecord, OptimizationTelemetry
+from evocore.evaluation import (
+    Candidate,
+    Direction,
+    EngineStateSummary,
+    EvaluationRecord,
+    OptimizationTelemetry,
+    TellResult,
+    score_for_direction,
+)
 from evocore.exceptions import ConfigurationError, FitnessError, FitnessWarning
-from evocore.ga import EngineStateSummary, RunResult
+from evocore.ga import RunResult
 from evocore.gene_space import GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
@@ -53,6 +61,7 @@ class CMAESEngine:
         n_workers: int | None = None,
         callbacks: Sequence[Callback] | None = None,
         seed: int = 0,
+        direction: Direction = "maximize",
         track_diversity: bool = False,
     ) -> None:
         if gene_space is None:
@@ -95,6 +104,9 @@ class CMAESEngine:
         self.n_workers = n_workers
         self.callbacks = list(callbacks or [])
         self.seed = int(seed)
+        if direction not in ("maximize", "minimize"):
+            raise ConfigurationError("direction must be 'maximize' or 'minimize'.")
+        self.direction = direction
         self.track_diversity = track_diversity
         self.operators = OperatorSet(gene_space, "sbx", "gaussian")
         self._fitness_warning_emitted = False
@@ -103,11 +115,46 @@ class CMAESEngine:
         self._batches_by_id: dict[str, CandidateBatch] = {}
         self._candidates_by_id: dict[str, Candidate] = {}
         self.vnext_telemetry = OptimizationTelemetry()
+        self.best_candidate: Candidate | None = None
 
     @property
     def generation(self) -> int:
         """Return the current CMA generation."""
         return 0 if self._state is None else int(self._state.generation)
+
+    def _pending_batch_ids(self) -> tuple[str, ...]:
+        return tuple(
+            batch_id
+            for batch_id, batch in self._batches_by_id.items()
+            if not batch.consumed and len(batch.records_by_key) < len(batch.candidate_ids)
+        )
+
+    def _best_candidate_id_and_score(self) -> tuple[str | None, float | None]:
+        if self.best_candidate is None:
+            return None, None
+        return (
+            self.best_candidate.candidate_id,
+            self.best_candidate.best_observed_score(self.direction),
+        )
+
+    def _trusted_count(self) -> int:
+        return sum(
+            1
+            for candidate in self._candidates_by_id.values()
+            if any(score.confidence == "trusted_full" for score in candidate.scores.values())
+        )
+
+    def state_summary(self) -> EngineStateSummary:
+        """Return a stable read-only vNext state summary."""
+        best_candidate_id, best_score = self._best_candidate_id_and_score()
+        return EngineStateSummary(
+            best_candidate_id=best_candidate_id,
+            best_score=best_score,
+            event_index=self._event_index,
+            pending_batch_ids=self._pending_batch_ids(),
+            trusted_count=self._trusted_count(),
+            telemetry=self.vnext_telemetry,
+        )
 
     @property
     def _bounds_list(self) -> list[tuple[float, float]]:
@@ -282,17 +329,20 @@ class CMAESEngine:
         self.vnext_telemetry.record_proposed_candidates(candidates)
         return candidates
 
-    def tell(self, records: Sequence[EvaluationRecord]) -> EngineStateSummary:
+    def tell(self, records: Sequence[EvaluationRecord]) -> TellResult:
         """Update CMA state from trusted evaluation records."""
         trusted_records: list[EvaluationRecord] = []
-        partial = surrogate = rejected = 0
+        partial = surrogate = cached = rejected = 0
         touched_batch_ids: set[str] = set()
+        consumed_batch_ids: set[str] = set()
         for record in records:
             candidate = self._candidates_by_id.get(record.candidate_id)
             if candidate is None:
                 raise FitnessError(
                     f"tell() received unknown candidate_id: {record.candidate_id!r}"
                 )
+            if record.batch_id is not None and record.batch_id not in self._batches_by_id:
+                raise FitnessError(f"tell() received unknown batch_id: {record.batch_id!r}")
             batch = self._batches_by_id.get(candidate.batch_id)
             if batch is None:
                 raise FitnessError(f"tell() received unknown batch_id: {candidate.batch_id!r}")
@@ -301,8 +351,17 @@ class CMAESEngine:
             candidate.apply_record(record)
             if record.confidence == "trusted_full":
                 trusted_records.append(record)
+                if (
+                    self.best_candidate is None
+                    or candidate.comparison_score(self.direction)
+                    > self.best_candidate.comparison_score(self.direction)
+                ):
+                    self.best_candidate = candidate
                 self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
-            elif record.confidence in ("partial", "cached"):
+            elif record.confidence == "cached":
+                cached += 1
+                self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
+            elif record.confidence == "partial":
                 partial += 1
                 self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
             elif record.confidence == "surrogate":
@@ -330,16 +389,24 @@ class CMAESEngine:
                     raise FitnessError(
                         f"trusted_full record for candidate_id {record.candidate_id!r} is missing score."
                     )
-                fitnesses.append(float(record.score))
+                fitnesses.append(score_for_direction(float(record.score), self.direction))
             self._ensure_state().tell(samples, fitnesses)
             batch.consumed = True
+            consumed_batch_ids.add(batch.batch_id)
 
-        return EngineStateSummary(
+        best_candidate_id, best_score = self._best_candidate_id_and_score()
+        return TellResult(
             accepted_count=len(records),
             trusted_count=len(trusted_records),
             partial_count=partial,
             surrogate_count=surrogate,
+            cached_count=cached,
             rejected_count=rejected,
+            best_candidate_id=best_candidate_id,
+            best_score=best_score,
+            consumed_batch_ids=tuple(sorted(consumed_batch_ids)),
+            pending_batch_ids=self._pending_batch_ids(),
+            telemetry=self.vnext_telemetry,
         )
 
     def run(self, fitness_fn: Callable[[Individual], float | tuple[float, dict]]) -> RunResult:

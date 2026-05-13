@@ -33,10 +33,12 @@ from evocore.cmaes import CMAESEngine
 from evocore.evaluation import (
     Candidate,
     CandidateScore,
+    EngineStateSummary,
+    EvaluationContext,
     EvaluationRecord,
-    Evaluator,
     OptimizationTelemetry,
     Rung,
+    TellResult,
 )
 from evocore.exceptions import (
     CheckpointError,
@@ -48,13 +50,14 @@ from evocore.exceptions import (
     FitnessWarning,
     ParallelError,
 )
-from evocore.ga import EngineStateSummary, GAEngine, MultiRunResult, RunResult
+from evocore.ga import GAEngine, MultiRunResult, RunResult
 from evocore.gene_space import GeneDef, GeneSpace
 from evocore.individual import Individual, Population
 from evocore.mixed_cma import CategoricalState, IntegerMargin
 from evocore.operators import OperatorSet
 from evocore.parallel import ProcessParallel, ThreadParallel
 from evocore.policies import MultiFidelityPolicy
+from evocore.protocols import Evaluator, Optimizer
 from evocore.scheduler import EvaluationScheduler
 from evocore.stats import Logbook, LogEntry
 
@@ -82,6 +85,7 @@ __all__ = [
     "ConvergenceError",
     "EarlyStopping",
     "EngineStateSummary",
+    "EvaluationContext",
     "EvaluationRecord",
     "EvaluationScheduler",
     "Evaluator",
@@ -103,6 +107,7 @@ __all__ = [
     "MultiFidelityPolicy",
     "MultiRunResult",
     "OperatorSet",
+    "Optimizer",
     "OptimizationTelemetry",
     "ParallelError",
     "Population",
@@ -110,6 +115,7 @@ __all__ = [
     "ProgressBar",
     "RunResult",
     "Rung",
+    "TellResult",
     "ThreadParallel",
     # 3. snake_case / dunders
     "__version__",

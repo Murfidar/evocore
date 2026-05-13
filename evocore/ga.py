@@ -18,7 +18,15 @@ from typing import Literal
 from evocore import _core
 from evocore.batches import CandidateBatch, batch_id_from_seed
 from evocore.callbacks import Callback, GenerationInfo
-from evocore.evaluation import Candidate, EvaluationRecord, Evaluator, OptimizationTelemetry
+from evocore.evaluation import (
+    Candidate,
+    Direction,
+    EngineStateSummary,
+    EvaluationContext,
+    EvaluationRecord,
+    OptimizationTelemetry,
+    TellResult,
+)
 from evocore.exceptions import (
     CheckpointError,
     ConfigurationError,
@@ -31,6 +39,7 @@ from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ProcessParallel, ThreadParallel, ensure_picklable
 from evocore.policies import MultiFidelityPolicy
+from evocore.protocols import Evaluator
 from evocore.scheduler import EvaluationScheduler
 from evocore.stats import Logbook, LogEntry
 
@@ -81,17 +90,6 @@ class MultiRunResult:
             "min": min(values) if values else float("nan"),
             "max": max(values) if values else float("nan"),
         }
-
-
-@dataclass(frozen=True)
-class EngineStateSummary:
-    """Summarize one vNext tell() state update."""
-
-    accepted_count: int
-    trusted_count: int
-    partial_count: int
-    surrogate_count: int
-    rejected_count: int
 
 
 def _run_child_engine(engine: GAEngine, seed: int, evaluator: Evaluator) -> RunResult:
@@ -156,6 +154,7 @@ class GAEngine:
         process_initializer: Callable[..., object] | None = None,
         process_initargs: tuple[object, ...] = (),
         seed: int = 0,
+        direction: Direction = "maximize",
         max_evaluations: int | None = None,
         track_diversity: bool = False,
         callbacks: Sequence[Callback] | None = None,
@@ -204,6 +203,9 @@ class GAEngine:
         self.process_initializer = process_initializer
         self.process_initargs = process_initargs
         self.seed = int(seed)
+        if direction not in ("maximize", "minimize"):
+            raise ConfigurationError("direction must be 'maximize' or 'minimize'.")
+        self.direction = direction
         self.max_evaluations = max_evaluations
         self.track_diversity = track_diversity
         self.callbacks = list(callbacks or [])
@@ -221,6 +223,33 @@ class GAEngine:
         self._trusted_population_vnext: list[Candidate] = []
         self.vnext_telemetry = OptimizationTelemetry()
         self.best_candidate: Candidate | None = None
+
+    def _pending_batch_ids(self) -> tuple[str, ...]:
+        return tuple(
+            batch_id
+            for batch_id, batch in self._batches_by_id.items()
+            if len(batch.records_by_key) < len(batch.candidate_ids)
+        )
+
+    def _best_candidate_id_and_score(self) -> tuple[str | None, float | None]:
+        if self.best_candidate is None:
+            return None, None
+        return (
+            self.best_candidate.candidate_id,
+            self.best_candidate.best_observed_score(self.direction),
+        )
+
+    def state_summary(self) -> EngineStateSummary:
+        """Return a stable read-only vNext state summary."""
+        best_candidate_id, best_score = self._best_candidate_id_and_score()
+        return EngineStateSummary(
+            best_candidate_id=best_candidate_id,
+            best_score=best_score,
+            event_index=self._event_index,
+            pending_batch_ids=self._pending_batch_ids(),
+            trusted_count=len(self._trusted_population_vnext),
+            telemetry=self.vnext_telemetry,
+        )
 
     def _warn_if_large_int_gene_without_sigma(self) -> None:
         for gene in self.gene_space.genes:
@@ -580,6 +609,7 @@ class GAEngine:
             process_initializer=self.process_initializer,
             process_initargs=self.process_initargs,
             seed=int(seed),
+            direction=self.direction,
             max_evaluations=self.max_evaluations,
             track_diversity=self.track_diversity,
             callbacks=copy.deepcopy(self.callbacks),
@@ -717,7 +747,7 @@ class GAEngine:
             trusted_individuals = [
                 Individual(
                     list(candidate.genes),
-                    fitness=candidate.best_observed_score(),
+                    fitness=candidate.comparison_score(self.direction),
                     fitness_valid=True,
                     metadata={"params": candidate.params} if candidate.params else {},
                 )
@@ -751,30 +781,38 @@ class GAEngine:
         self.vnext_telemetry.record_proposed_candidates(candidates)
         return candidates
 
-    def tell(self, records: Sequence[EvaluationRecord]) -> EngineStateSummary:
+    def tell(self, records: Sequence[EvaluationRecord]) -> TellResult:
         """Update GA state from vNext evaluation records."""
-        trusted = partial = surrogate = rejected = 0
+        trusted = partial = surrogate = cached = rejected = 0
+        touched_batch_ids: set[str] = set()
         for record in records:
             candidate = self._candidates_by_id.get(record.candidate_id)
             if candidate is None:
                 raise FitnessError(
                     f"tell() received unknown candidate_id: {record.candidate_id!r}"
                 )
+            if record.batch_id is not None and record.batch_id not in self._batches_by_id:
+                raise FitnessError(f"tell() received unknown batch_id: {record.batch_id!r}")
             batch = self._batches_by_id.get(candidate.batch_id)
             if batch is None:
                 raise FitnessError(f"tell() received unknown batch_id: {candidate.batch_id!r}")
             batch.accept_record(record)
+            touched_batch_ids.add(batch.batch_id)
             candidate.apply_record(record)
             if record.confidence == "trusted_full":
                 trusted += 1
                 self._trusted_population_vnext.append(candidate)
                 if (
                     self.best_candidate is None
-                    or candidate.best_observed_score() > self.best_candidate.best_observed_score()
+                    or candidate.comparison_score(self.direction)
+                    > self.best_candidate.comparison_score(self.direction)
                 ):
                     self.best_candidate = candidate
                 self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
-            elif record.confidence in ("partial", "cached"):
+            elif record.confidence == "cached":
+                cached += 1
+                self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
+            elif record.confidence == "partial":
                 partial += 1
                 self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
             elif record.confidence == "surrogate":
@@ -785,15 +823,48 @@ class GAEngine:
                 self.vnext_telemetry.record_eliminated(1, rung=record.rung)
 
         self._trusted_population_vnext.sort(
-            key=lambda candidate: candidate.best_observed_score(), reverse=True
+            key=lambda candidate: candidate.comparison_score(self.direction), reverse=True
         )
         self._trusted_population_vnext = self._trusted_population_vnext[: self.population_size]
-        return EngineStateSummary(
+        best_candidate_id, best_score = self._best_candidate_id_and_score()
+        consumed_batch_ids = tuple(
+            batch_id
+            for batch_id in touched_batch_ids
+            if len(self._batches_by_id[batch_id].records_by_key)
+            >= len(self._batches_by_id[batch_id].candidate_ids)
+        )
+        return TellResult(
             accepted_count=len(records),
             trusted_count=trusted,
             partial_count=partial,
             surrogate_count=surrogate,
+            cached_count=cached,
             rejected_count=rejected,
+            best_candidate_id=best_candidate_id,
+            best_score=best_score,
+            consumed_batch_ids=consumed_batch_ids,
+            pending_batch_ids=self._pending_batch_ids(),
+            telemetry=self.vnext_telemetry,
+        )
+
+    def _evaluation_context(
+        self,
+        assigned: Sequence[Candidate],
+        rung,
+    ) -> EvaluationContext:
+        batch_ids = {candidate.batch_id for candidate in assigned}
+        if len(batch_ids) != 1:
+            raise FitnessError(
+                "Assigned candidates must belong to exactly one batch for synchronous evaluation."
+            )
+        batch_id = next(iter(batch_ids))
+        event_index = assigned[0].event_index if assigned else self._event_index
+        return EvaluationContext(
+            rung=rung,
+            batch_id=batch_id,
+            event_index=event_index,
+            direction=self.direction,
+            budget=rung.budget,
         )
 
     def _validate_evaluator_records(
@@ -852,7 +923,7 @@ class GAEngine:
         """Run vNext policy-driven GA optimization."""
         if not isinstance(evaluator, Evaluator):
             raise ConfigurationError(
-                "GAEngine.run now requires an Evaluator instance with evaluate(candidates, rung)."
+                "GAEngine.run requires an evaluator with evaluate(candidates, context)."
             )
         self._reset_vnext_state()
 
@@ -877,7 +948,8 @@ class GAEngine:
 
             for rung in resolved_policy.rungs:
                 assigned = scheduler.assign_rung(active_candidates, rung_name=rung.name)
-                records = list(evaluator.evaluate(assigned, rung))
+                context = self._evaluation_context(assigned, rung)
+                records = list(evaluator.evaluate(assigned, context))
                 self._validate_evaluator_records(assigned, records)
                 self.tell(records)
                 if rung.confidence == "trusted_full":
@@ -909,7 +981,7 @@ class GAEngine:
 
         best = Individual(
             list(self.best_candidate.genes),
-            fitness=self.best_candidate.best_observed_score(),
+            fitness=self.best_candidate.best_observed_score(self.direction),
             fitness_valid=True,
             metadata={
                 "params": self.best_candidate.params,
@@ -920,7 +992,7 @@ class GAEngine:
             [
                 Individual(
                     list(candidate.genes),
-                    fitness=candidate.best_observed_score(),
+                    fitness=candidate.best_observed_score(self.direction),
                     fitness_valid=candidate.confidence == "trusted_full",
                     metadata={"params": candidate.params, "candidate_id": candidate.candidate_id},
                 )
