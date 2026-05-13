@@ -32,6 +32,12 @@ CandidateStatus = Literal[
     "archived",
 ]
 EvaluationConfidence = Literal["surrogate", "partial", "cached", "trusted_full", "rejected"]
+STATE_UPDATE_CONFIDENCES: tuple[EvaluationConfidence, ...] = ("trusted_full", "cached")
+
+
+def is_state_update_confidence(confidence: EvaluationConfidence) -> bool:
+    """Return whether a confidence value is eligible for optimizer state updates."""
+    return confidence in STATE_UPDATE_CONFIDENCES
 
 
 def score_for_direction(score: float, direction: Direction) -> float:
@@ -109,8 +115,8 @@ class EvaluationRecord:
     rung: str
     cost: float = 0.0
     metrics: dict[str, Any] = field(default_factory=dict)
-    metadata: dict[str, Any] = field(default_factory=dict)
     batch_id: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.candidate_id:
@@ -171,18 +177,25 @@ class Candidate:
         )
         self.metadata["metrics"] = dict(record.metrics)
         self.metadata["record_metadata"] = dict(record.metadata)
-        if record.confidence == "trusted_full":
+        if is_state_update_confidence(record.confidence):
             self.status = "trusted"
         elif record.confidence == "rejected":
             self.status = "eliminated"
-        elif record.confidence in ("partial", "cached"):
+        elif record.confidence == "partial":
             self.status = "racing"
         else:
             self.status = "screened"
 
-    def best_observed_score(self, direction: Direction = "maximize") -> float:
-        """Return the best raw finite score observed for this candidate."""
-        values = [score.score for score in self.scores.values() if score.score is not None]
+    def _best_score_for_confidences(
+        self,
+        direction: Direction,
+        confidences: tuple[EvaluationConfidence, ...] | None,
+    ) -> float:
+        values = [
+            score.score
+            for score in self.scores.values()
+            if score.score is not None and (confidences is None or score.confidence in confidences)
+        ]
         if not values:
             return float("inf") if direction == "minimize" else float("-inf")
         if direction == "minimize":
@@ -191,9 +204,24 @@ class Candidate:
             return max(float(value) for value in values)
         raise ConfigurationError("direction must be 'maximize' or 'minimize'.")
 
+    def best_observed_score(self, direction: Direction = "maximize") -> float:
+        """Return the best raw finite score observed for this candidate."""
+        return self._best_score_for_confidences(direction, None)
+
     def comparison_score(self, direction: Direction = "maximize") -> float:
         """Return the best observed score normalized so larger is better."""
         best = self.best_observed_score(direction)
+        if not math.isfinite(best):
+            return best if direction == "maximize" else -best
+        return score_for_direction(best, direction)
+
+    def best_state_score(self, direction: Direction = "maximize") -> float:
+        """Return the best raw score eligible for optimizer state updates."""
+        return self._best_score_for_confidences(direction, STATE_UPDATE_CONFIDENCES)
+
+    def state_comparison_score(self, direction: Direction = "maximize") -> float:
+        """Return the state-eligible score normalized so larger is better."""
+        best = self.best_state_score(direction)
         if not math.isfinite(best):
             return best if direction == "maximize" else -best
         return score_for_direction(best, direction)

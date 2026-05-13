@@ -284,6 +284,77 @@ def test_ga_state_summary_reports_best_and_pending_batches() -> None:
     assert after.trusted_count == 1
 
 
+def test_ga_best_state_ignores_partial_scores() -> None:
+    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    candidates = engine.ask(2)
+
+    engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidates[0].candidate_id,
+                batch_id=candidates[0].batch_id,
+                score=999.0,
+                confidence="partial",
+                rung="cheap",
+                cost=0.1,
+            )
+        ]
+    )
+    result = engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidates[0].candidate_id,
+                batch_id=candidates[0].batch_id,
+                score=0.0,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+            ),
+            EvaluationRecord(
+                candidate_id=candidates[1].candidate_id,
+                batch_id=candidates[1].batch_id,
+                score=10.0,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+            ),
+        ]
+    )
+
+    assert result.best_candidate_id == candidates[1].candidate_id
+    assert result.best_score == pytest.approx(10.0)
+
+
+def test_ga_cached_records_are_eligible_for_best_state() -> None:
+    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    candidates = engine.ask(2)
+
+    result = engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidates[0].candidate_id,
+                batch_id=candidates[0].batch_id,
+                score=12.0,
+                confidence="cached",
+                rung="full",
+                cost=0.0,
+            ),
+            EvaluationRecord(
+                candidate_id=candidates[1].candidate_id,
+                batch_id=candidates[1].batch_id,
+                score=10.0,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+            ),
+        ]
+    )
+
+    assert result.cached_count == 1
+    assert result.best_candidate_id == candidates[0].candidate_id
+    assert result.best_score == pytest.approx(12.0)
+
+
 def test_ga_minimize_direction_selects_lowest_trusted_score() -> None:
     engine = GAEngine(_space(), population_size=4, generations=5, seed=123, direction="minimize")
     candidates = engine.ask(2)

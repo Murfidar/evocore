@@ -26,6 +26,8 @@ from evocore.evaluation import (
     EvaluationRecord,
     OptimizationTelemetry,
     TellResult,
+    is_state_update_confidence,
+    score_for_direction,
 )
 from evocore.exceptions import (
     CheckpointError,
@@ -236,8 +238,19 @@ class GAEngine:
             return None, None
         return (
             self.best_candidate.candidate_id,
-            self.best_candidate.best_observed_score(self.direction),
+            self.best_candidate.best_state_score(self.direction),
         )
+
+    def _record_state_candidate(self, candidate: Candidate) -> None:
+        if not any(
+            existing.candidate_id == candidate.candidate_id
+            for existing in self._trusted_population_vnext
+        ):
+            self._trusted_population_vnext.append(candidate)
+        if self.best_candidate is None or candidate.state_comparison_score(
+            self.direction
+        ) > self.best_candidate.state_comparison_score(self.direction):
+            self.best_candidate = candidate
 
     def state_summary(self) -> EngineStateSummary:
         """Return a stable read-only vNext state summary."""
@@ -747,7 +760,7 @@ class GAEngine:
             trusted_individuals = [
                 Individual(
                     list(candidate.genes),
-                    fitness=candidate.comparison_score(self.direction),
+                    fitness=candidate.state_comparison_score(self.direction),
                     fitness_valid=True,
                     metadata={"params": candidate.params} if candidate.params else {},
                 )
@@ -799,17 +812,14 @@ class GAEngine:
             batch.accept_record(record)
             touched_batch_ids.add(batch.batch_id)
             candidate.apply_record(record)
+            if is_state_update_confidence(record.confidence):
+                self._record_state_candidate(candidate)
             if record.confidence == "trusted_full":
                 trusted += 1
-                self._trusted_population_vnext.append(candidate)
-                if self.best_candidate is None or candidate.comparison_score(
-                    self.direction
-                ) > self.best_candidate.comparison_score(self.direction):
-                    self.best_candidate = candidate
                 self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
             elif record.confidence == "cached":
                 cached += 1
-                self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
+                self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
             elif record.confidence == "partial":
                 partial += 1
                 self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
@@ -821,7 +831,7 @@ class GAEngine:
                 self.vnext_telemetry.record_eliminated(1, rung=record.rung)
 
         self._trusted_population_vnext.sort(
-            key=lambda candidate: candidate.comparison_score(self.direction), reverse=True
+            key=lambda candidate: candidate.state_comparison_score(self.direction), reverse=True
         )
         self._trusted_population_vnext = self._trusted_population_vnext[: self.population_size]
         best_candidate_id, best_score = self._best_candidate_id_and_score()
@@ -979,7 +989,7 @@ class GAEngine:
 
         best = Individual(
             list(self.best_candidate.genes),
-            fitness=self.best_candidate.best_observed_score(self.direction),
+            fitness=self.best_candidate.best_state_score(self.direction),
             fitness_valid=True,
             metadata={
                 "params": self.best_candidate.params,
@@ -990,8 +1000,9 @@ class GAEngine:
             [
                 Individual(
                     list(candidate.genes),
-                    fitness=candidate.best_observed_score(self.direction),
-                    fitness_valid=candidate.confidence == "trusted_full",
+                    fitness=candidate.best_state_score(self.direction),
+                    fitness_valid=candidate.confidence is not None
+                    and is_state_update_confidence(candidate.confidence),
                     metadata={"params": candidate.params, "candidate_id": candidate.candidate_id},
                 )
                 for candidate in final_candidates
@@ -1069,7 +1080,10 @@ class GAEngine:
         else:
             results = [self._copy_with_seed(seed).run(evaluator) for seed in child_seeds]
 
-        results.sort(key=lambda run: run.best_fitness, reverse=True)
+        results.sort(
+            key=lambda run: score_for_direction(run.best_fitness, self.direction),
+            reverse=True,
+        )
         return MultiRunResult(
             best=results[0],
             all_runs=results,

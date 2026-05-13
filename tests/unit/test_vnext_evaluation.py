@@ -203,6 +203,22 @@ def test_evaluation_record_preserves_metadata() -> None:
     assert record.metrics["loss"] == pytest.approx(0.2)
 
 
+def test_evaluation_record_preserves_positional_batch_id() -> None:
+    record = EvaluationRecord(
+        "c-1",
+        1.25,
+        "trusted_full",
+        "full",
+        1.0,
+        {"loss": 0.2},
+        "b-1",
+    )
+
+    assert record.metrics["loss"] == pytest.approx(0.2)
+    assert record.batch_id == "b-1"
+    assert record.metadata == {}
+
+
 def test_evaluation_context_carries_batch_rung_direction_and_budget() -> None:
     rung = Rung("cheap", budget=0.25, promote_fraction=0.5, confidence="partial")
 

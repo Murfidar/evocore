@@ -1,7 +1,9 @@
 # Genetic Algorithms
 
 `GAEngine` proposes deterministic candidate batches over a `GeneSpace` and updates state from
-`EvaluationRecord` values.
+state-eligible `EvaluationRecord` values. `trusted_full` and `cached` records can update
+best-candidate state; `partial` and `surrogate` records remain available for scheduling and
+telemetry.
 
 Use `ask()` and `tell()` directly when an external system owns evaluation. Use `run()` with an
 an evaluator object and optional `MultiFidelityPolicy` when EvoCore should drive the budget loop.

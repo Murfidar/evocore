@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from evocore import _core
-from evocore.evaluation import EvaluationRecord
+from evocore.evaluation import EvaluationRecord, is_state_update_confidence
 from evocore.exceptions import FitnessError
 
 
@@ -33,10 +33,14 @@ class CandidateBatch:
         self,
         record: EvaluationRecord,
         *,
-        reject_consumed_trusted: bool = False,
+        reject_consumed_state_record: bool = False,
     ) -> None:
         """Validate and store one record for this batch."""
-        if reject_consumed_trusted and self.consumed and record.confidence == "trusted_full":
+        if (
+            reject_consumed_state_record
+            and self.consumed
+            and is_state_update_confidence(record.confidence)
+        ):
             raise FitnessError(f"batch {self.batch_id!r} has already been consumed.")
         if record.batch_id is not None and record.batch_id != self.batch_id:
             raise FitnessError(
@@ -47,14 +51,13 @@ class CandidateBatch:
             raise FitnessError(
                 f"candidate_id {record.candidate_id!r} does not belong to batch {self.batch_id!r}."
             )
-        if record.confidence == "trusted_full":
+        if is_state_update_confidence(record.confidence):
             for existing in self.records_by_key.values():
-                if (
-                    existing.candidate_id == record.candidate_id
-                    and existing.confidence == "trusted_full"
+                if existing.candidate_id == record.candidate_id and is_state_update_confidence(
+                    existing.confidence
                 ):
                     raise FitnessError(
-                        f"candidate_id {record.candidate_id!r} already has a trusted_full record "
+                        f"candidate_id {record.candidate_id!r} already has a state update record "
                         f"for batch {self.batch_id!r}."
                     )
         key = (record.candidate_id, record.rung)
@@ -65,12 +68,14 @@ class CandidateBatch:
             )
         self.records_by_key[key] = record
 
-    def ordered_trusted_full_records(self) -> list[EvaluationRecord] | None:
-        """Return trusted records in ask order once the batch is complete."""
-        trusted_by_candidate: dict[str, EvaluationRecord] = {}
+    def ordered_state_update_records(self) -> list[EvaluationRecord] | None:
+        """Return state-eligible records in ask order once the batch is complete."""
+        state_records_by_candidate: dict[str, EvaluationRecord] = {}
         for record in self.records_by_key.values():
-            if record.confidence == "trusted_full":
-                trusted_by_candidate[record.candidate_id] = record
-        if any(candidate_id not in trusted_by_candidate for candidate_id in self.candidate_ids):
+            if is_state_update_confidence(record.confidence):
+                state_records_by_candidate[record.candidate_id] = record
+        if any(
+            candidate_id not in state_records_by_candidate for candidate_id in self.candidate_ids
+        ):
             return None
-        return [trusted_by_candidate[candidate_id] for candidate_id in self.candidate_ids]
+        return [state_records_by_candidate[candidate_id] for candidate_id in self.candidate_ids]

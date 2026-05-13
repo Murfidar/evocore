@@ -42,8 +42,8 @@ print(result.best_fitness, result.best_individual.genes)
 
 EvoCore vNext separates candidate proposal from evaluation. Engines call `ask()` to create
 stable candidate IDs, evaluators return `EvaluationRecord` objects, and `tell()` updates
-optimizer state from trusted records. `MultiFidelityPolicy` and `Rung` let you spend cheap,
-partial, and full budgets deliberately.
+optimizer state from trusted or cached records. `MultiFidelityPolicy` and `Rung` let you
+spend cheap, partial, and full budgets deliberately.
 
 ```python
 from evocore import MultiFidelityPolicy, Rung

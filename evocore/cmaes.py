@@ -18,6 +18,7 @@ from evocore.evaluation import (
     EvaluationRecord,
     OptimizationTelemetry,
     TellResult,
+    is_state_update_confidence,
     score_for_direction,
 )
 from evocore.exceptions import ConfigurationError, FitnessError, FitnessWarning
@@ -134,14 +135,16 @@ class CMAESEngine:
             return None, None
         return (
             self.best_candidate.candidate_id,
-            self.best_candidate.best_observed_score(self.direction),
+            self.best_candidate.best_state_score(self.direction),
         )
 
     def _trusted_count(self) -> int:
         return sum(
             1
             for candidate in self._candidates_by_id.values()
-            if any(score.confidence == "trusted_full" for score in candidate.scores.values())
+            if any(
+                is_state_update_confidence(score.confidence) for score in candidate.scores.values()
+            )
         )
 
     def state_summary(self) -> EngineStateSummary:
@@ -220,6 +223,20 @@ class CMAESEngine:
         ind.fitness = fitness
         ind.fitness_valid = True
         return fitness, 0
+
+    def _fitness_comparison_score(self, fitness: float | None) -> float:
+        if fitness is None:
+            return float("-inf")
+        fitness = float(fitness)
+        if not math.isfinite(fitness):
+            return float("-inf")
+        return score_for_direction(fitness, self.direction)
+
+    def _best_population_individual(self, population: Population) -> Individual:
+        return max(
+            population,
+            key=lambda individual: self._fitness_comparison_score(individual.fitness),
+        )
 
     def _evaluate_all(
         self,
@@ -312,16 +329,18 @@ class CMAESEngine:
         record: EvaluationRecord,
         trusted_records: list[EvaluationRecord],
     ) -> str:
+        if is_state_update_confidence(record.confidence) and (
+            self.best_candidate is None
+            or candidate.state_comparison_score(self.direction)
+            > self.best_candidate.state_comparison_score(self.direction)
+        ):
+            self.best_candidate = candidate
         if record.confidence == "trusted_full":
             trusted_records.append(record)
-            if self.best_candidate is None or candidate.comparison_score(
-                self.direction
-            ) > self.best_candidate.comparison_score(self.direction):
-                self.best_candidate = candidate
             self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
             return "trusted"
         if record.confidence == "cached":
-            self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
+            self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
             return "cached"
         if record.confidence == "partial":
             self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
@@ -333,7 +352,7 @@ class CMAESEngine:
         return "rejected"
 
     def _consume_complete_batch(self, batch: CandidateBatch) -> bool:
-        ordered_records = batch.ordered_trusted_full_records()
+        ordered_records = batch.ordered_state_update_records()
         if ordered_records is None or batch.consumed:
             return False
         samples = []
@@ -398,7 +417,7 @@ class CMAESEngine:
         consumed_batch_ids: set[str] = set()
         for record in records:
             candidate, batch = self._candidate_and_batch_for_record(record)
-            batch.accept_record(record, reject_consumed_trusted=True)
+            batch.accept_record(record, reject_consumed_state_record=True)
             touched_batch_ids.add(batch.batch_id)
             candidate.apply_record(record)
             confidence = self._apply_record_confidence(candidate, record, trusted_records)
@@ -473,11 +492,14 @@ class CMAESEngine:
             individuals = [self._decode_individual(sample) for sample in samples_discrete]
             fitnesses, nan_count = self._evaluate_all(individuals, fitness_fn, gen)
             n_evaluations += len(individuals)
-            state.tell(samples_continuous, fitnesses)
+            state.tell(
+                samples_continuous,
+                [self._fitness_comparison_score(fitness) for fitness in fitnesses],
+            )
 
             final_population = Population(individuals)
             info = GenerationInfo(gen, nan_count, 0)
-            best = final_population.best(1)[0]
+            best = self._best_population_individual(final_population)
             diversity = final_population.diversity() if self.track_diversity else []
             if self.track_diversity:
                 diversity_history.append(diversity)
@@ -510,7 +532,7 @@ class CMAESEngine:
                 break
 
         if len(final_population):
-            best = final_population.best(1)[0]
+            best = self._best_population_individual(final_population)
             best_individual = best.clone()
             best_fitness = float(best.fitness)
         else:

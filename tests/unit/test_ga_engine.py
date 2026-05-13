@@ -323,6 +323,40 @@ def test_run_multiple_sequential_returns_sorted_runs():
     assert multi.wall_time_seconds > 0.0
 
 
+class ModuleMinimizeSphereEvaluator:
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.rung is not None
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=sum(float(v) ** 2 for v in candidate.genes),
+                confidence=context.rung.confidence,
+                rung=context.rung.name,
+                cost=context.rung.budget,
+            )
+            for candidate in candidates
+        ]
+
+
+def test_run_multiple_minimize_returns_lowest_scoring_run_as_best():
+    engine = GAEngine(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        population_size=10,
+        generations=2,
+        seed=42,
+        direction="minimize",
+    )
+
+    multi = engine.run_multiple(ModuleMinimizeSphereEvaluator(), n_runs=3, run_parallel=False)
+
+    assert multi.best.best_fitness == pytest.approx(
+        min(run.best_fitness for run in multi.all_runs)
+    )
+    assert multi.all_runs == sorted(multi.all_runs, key=lambda run: run.best_fitness)
+
+
 def test_run_multiple_parallel_rejects_lambda():
     engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=10, generations=2, seed=42)
 

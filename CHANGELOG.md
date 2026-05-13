@@ -28,6 +28,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   final rung.
 - `ProcessParallel` now reuses a persistent process pool across repeated `evaluate(...)`
   calls until closed.
+- Cached evaluation records are now eligible for optimizer state updates and full-budget
+  accounting while remaining separately counted in `TellResult.cached_count`.
 
 ### Fixed
 
@@ -42,6 +44,13 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Numeric gene bounds now reject `nan` and infinite values.
 - The inverse-distance surrogate advisor now normalizes feature distances by gene-space
   bounds when provided.
+- GA and CMA best-candidate tracking now ignores partial and surrogate observations when
+  selecting the optimizer state best candidate.
+- `CMAESEngine(direction="minimize").run(...)` now optimizes and reports the lowest raw
+  fitness instead of treating larger values as better.
+- `GAEngine.run_multiple(...)` now chooses the best child run using the engine direction.
+- Positional `EvaluationRecord(..., metrics, batch_id)` construction again preserves the
+  supplied batch ID after adding record metadata.
 
 ## [0.7.0] - 2026-05-09
 

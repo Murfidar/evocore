@@ -49,6 +49,21 @@ def test_cmaes_run_returns_result():
     assert result.seed == 42
 
 
+def test_cmaes_run_minimize_direction_returns_lowest_raw_fitness():
+    engine = CMAESEngine(
+        GeneSpace.uniform(-5.0, 5.0, 2),
+        population_size=8,
+        generations=1,
+        seed=1,
+        direction="minimize",
+    )
+
+    result = engine.run(lambda ind: sum(float(x) ** 2 for x in ind.genes))
+
+    population_fitnesses = [individual.fitness for individual in result.final_population]
+    assert result.best_fitness == pytest.approx(min(population_fitnesses))
+
+
 def test_cmaes_thread_parallel_allowed():
     engine = CMAESEngine(
         GeneSpace.uniform(-2.0, 2.0, 3),

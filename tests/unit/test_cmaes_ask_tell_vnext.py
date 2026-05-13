@@ -194,6 +194,72 @@ def test_cma_state_summary_reports_best_and_pending_batches() -> None:
     assert after.trusted_count == 1
 
 
+def test_cma_best_state_ignores_partial_scores() -> None:
+    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    candidates = engine.ask()
+
+    engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidates[0].candidate_id,
+                batch_id=candidates[0].batch_id,
+                score=999.0,
+                confidence="partial",
+                rung="cheap",
+                cost=0.1,
+            )
+        ]
+    )
+    result = engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidates[0].candidate_id,
+                batch_id=candidates[0].batch_id,
+                score=0.0,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+            ),
+            EvaluationRecord(
+                candidate_id=candidates[1].candidate_id,
+                batch_id=candidates[1].batch_id,
+                score=10.0,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+            ),
+        ]
+    )
+
+    assert result.best_candidate_id == candidates[1].candidate_id
+    assert result.best_score == pytest.approx(10.0)
+
+
+def test_cma_cached_records_are_eligible_for_best_state_and_batch_update() -> None:
+    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    candidates = engine.ask()
+
+    result = engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=10.0 + index,
+                confidence="cached",
+                rung="full",
+                cost=0.0,
+            )
+            for index, candidate in enumerate(candidates)
+        ]
+    )
+
+    assert result.cached_count == 4
+    assert result.consumed_batch_ids == (candidates[0].batch_id,)
+    assert engine.generation == 1
+    assert result.best_candidate_id == candidates[-1].candidate_id
+    assert result.best_score == pytest.approx(13.0)
+
+
 def test_cma_minimize_direction_tracks_lowest_trusted_score() -> None:
     engine = CMAESEngine(_space(), population_size=4, seed=7, direction="minimize")
     candidates = engine.ask()

@@ -26,12 +26,16 @@ Confidence values are explicit:
 
 - `trusted_full` updates optimizer state by default.
 - `partial` and `surrogate` can inform scheduling and telemetry.
-- `cached` records are tracked separately so policies can decide whether to trust them.
+- `cached` records are eligible for optimizer state updates and full-budget accounting,
+  while still being reported separately in `TellResult.cached_count`.
 - `rejected` records may omit score.
 
 Raw user scores are preserved. Optimizers use `direction="maximize"` or
 `direction="minimize"` to compare candidates without rewriting the score stored in
-`EvaluationRecord`.
+`EvaluationRecord`. State best-candidate tracking compares only state-eligible
+`trusted_full` and `cached` scores, so partial and surrogate scores cannot become the
+reported optimizer best. `EngineStateSummary.trusted_count` counts candidates with
+state-eligible records.
 
 Invalid records raise `FitnessError`: unknown candidates, unknown explicit batch IDs,
 batch mismatches, duplicate candidate/rung records, and non-finite non-rejected scores
