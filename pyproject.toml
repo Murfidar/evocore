@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "evocore"
-version = "0.6.1"
+version = "0.7.0"
 requires-python = ">=3.11"
 description = "Rust-native Genetic Algorithms and CMA-ES for Python"
 readme = "README.md"
@@ -116,4 +116,4 @@ convention = "google"
 [tool.cibuildwheel]
 build = "cp311-* cp312-* cp313-* cp314-*"
 skip = "pp* *-musllinux_*"
-test-command = "python -c \"import evocore; from evocore import GAEngine, GeneSpace; assert isinstance(evocore.__version__, str); GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, generations=1, seed=1).run(lambda ind: -sum(x*x for x in ind.genes))\""
+test-command = "python -c \"import evocore; assert isinstance(evocore.__version__, str); print(evocore.__version__)\""

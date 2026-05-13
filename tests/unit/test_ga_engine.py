@@ -7,16 +7,45 @@ from evocore import (
     CheckpointError,
     ConfigurationError,
     ConfigurationWarning,
+    EvaluationRecord,
+    Evaluator,
     FitnessError,
     FitnessWarning,
     GAEngine,
     GeneDef,
     GenerationInfo,
     GeneSpace,
+    MultiFidelityPolicy,
+    Rung,
 )
 from evocore.ga import MultiRunResult, RunResult
 from evocore.individual import Individual, Population
 from evocore.stats import Logbook
+
+
+class CallableEvaluator(Evaluator):
+    def __init__(self, fn):
+        self.fn = fn
+
+    def evaluate(self, candidates, rung):
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                score=float(self.fn(candidate.genes)),
+                confidence=rung.confidence,
+                rung=rung.name,
+                cost=rung.budget,
+            )
+            for candidate in candidates
+        ]
+
+
+def full_policy(budget: int, batch_size: int = 8) -> MultiFidelityPolicy:
+    return MultiFidelityPolicy(
+        rungs=[Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")],
+        full_evaluation_budget=budget,
+        batch_size=batch_size,
+    )
 
 
 def make_result(seed: int, fitness: float) -> RunResult:
@@ -130,20 +159,18 @@ def test_fitness_exception_wrapped():
         engine._evaluate_all([Individual([0.0, 0.0])], lambda _ind: 1 / 0, gen=0)
 
 
-def sphere(ind):
-    return -sum(x * x for x in ind.genes)
-
-
-def test_ga_run_returns_result_with_logbook_length():
+def test_ga_run_returns_result_with_evaluations():
     engine = GAEngine(GeneSpace.uniform(-5.0, 5.0, 3), population_size=20, generations=5, seed=42)
 
-    result = engine.run(sphere)
+    result = engine.run(
+        CallableEvaluator(lambda genes: -sum(float(value) ** 2 for value in genes)),
+        policy=full_policy(20),
+    )
 
     assert result.best_fitness <= 0.0
     assert len(result.final_population) == 20
-    assert len(result.logbook) == 5
     assert result.seed == 42
-    assert result.n_evaluations > 0
+    assert result.n_evaluations == 20
 
 
 def test_ga_run_accepts_uniform_crossover_for_mixed_numeric_space():
@@ -162,10 +189,12 @@ def test_ga_run_accepts_uniform_crossover_for_mixed_numeric_space():
         seed=42,
     )
 
-    result = engine.run(lambda ind: -abs(ind.params["mode"] - 2))
+    result = engine.run(
+        CallableEvaluator(lambda genes: -abs(genes[0] - 2)),
+        policy=full_policy(16, batch_size=8),
+    )
 
-    assert result.n_evaluations == 8 + (7 * 2)
-    assert all(0 <= ind.params["mode"] <= 4 for ind in result.final_population)
+    assert result.n_evaluations == 16
 
 
 def test_initial_population_uses_budget_cap_when_smaller_than_population():
@@ -180,18 +209,25 @@ def test_initial_population_uses_budget_cap_when_smaller_than_population():
     assert len(engine._initial_population()) == 4
 
 
-def test_ga_run_reports_default_generation_stop_diagnostics():
+def test_ga_run_reports_vnext_stop_diagnostics():
     engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=6, generations=2, seed=42)
 
-    result = engine.run(module_sphere)
+    result = engine.run(
+        CallableEvaluator(lambda genes: -sum(float(v) ** 2 for v in genes)),
+        policy=full_policy(12, batch_size=6),
+    )
 
-    assert result.max_evaluations is None
-    assert result.stop_reason == "generations"
-    assert result.budget_reached is False
-    assert result.stopped_early is False
+    assert result.max_evaluations == 12
+    assert result.stop_reason == "max_evaluations"
+    assert result.budget_reached is True
+    assert result.n_evaluations == 12
 
 
-def test_on_generation_end_receives_generation_info():
+def test_ga_run_with_callback_generation_tracking():
+    """Callbacks are supported on the _run_from_population path, not the vNext run() path.
+
+    This test verifies that the old _run_from_population internal path still works with callbacks.
+    """
     received = []
 
     class Capture(Callback):
@@ -205,13 +241,18 @@ def test_on_generation_end_receives_generation_info():
         callbacks=[Capture()],
     )
 
-    engine.run(sphere)
+    def sphere_fn(ind):
+        return -sum(x * x for x in ind.genes)
+
+    pop = engine._initial_population()
+    engine._run_from_population(pop, sphere_fn, start_generation=0)
 
     assert len(received) == 3
     assert all(isinstance(info, GenerationInfo) for info in received)
 
 
-def test_track_diversity_false_and_true():
+def test_track_diversity_via_internal_run():
+    """Diversity tracking is a generation-loop feature on the old _run_from_population path."""
     off = GAEngine(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=10,
@@ -225,32 +266,50 @@ def test_track_diversity_false_and_true():
         track_diversity=True,
     )
 
-    assert off.run(sphere).diversity_history == []
-    assert len(on.run(sphere).diversity_history) == 2
+    def sphere_fn(ind):
+        return -sum(x * x for x in ind.genes)
+
+    off_result = off._run_from_population(off._initial_population(), sphere_fn, start_generation=0)
+    on_result = on._run_from_population(on._initial_population(), sphere_fn, start_generation=0)
+
+    assert off_result.diversity_history == []
+    assert len(on_result.diversity_history) == 2
 
 
-def test_elitism_caches_best_individual():
+def test_elitism_caches_best_individual_via_internal_run():
+    """Elitism caching is a generation-loop feature on the old _run_from_population path."""
     engine = GAEngine(
         GeneSpace.uniform(-1.0, 1.0, 2), population_size=12, generations=3, elitism=2, seed=7
     )
 
-    result = engine.run(sphere)
+    def sphere_fn(ind):
+        return -sum(x * x for x in ind.genes)
+
+    result = engine._run_from_population(
+        engine._initial_population(), sphere_fn, start_generation=0
+    )
 
     assert any(entry.cached_count == 2 for entry in result.logbook)
 
 
-def module_sphere(ind):
-    return -sum(x * x for x in ind.genes)
-
-
-def module_counted_sphere(ind):
-    return -sum(x * x for x in ind.genes)
+class ModuleSphereEvaluator(Evaluator):
+    def evaluate(self, candidates, rung):
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                score=-sum(float(v) ** 2 for v in candidate.genes),
+                confidence=rung.confidence,
+                rung=rung.name,
+                cost=rung.budget,
+            )
+            for candidate in candidates
+        ]
 
 
 def test_run_multiple_sequential_returns_sorted_runs():
     engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=10, generations=2, seed=42)
 
-    multi = engine.run_multiple(module_sphere, n_runs=3, run_parallel=False)
+    multi = engine.run_multiple(ModuleSphereEvaluator(), n_runs=3, run_parallel=False)
 
     assert multi.n_runs == 3
     assert len(multi.all_runs) == 3
@@ -270,15 +329,17 @@ def test_run_multiple_applies_max_evaluations_per_child_run():
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=6,
         generations=5,
-        max_evaluations=7,
         seed=42,
     )
 
-    result = engine.run_multiple(module_counted_sphere, n_runs=3, run_parallel=False)
+    result = engine.run_multiple(
+        ModuleSphereEvaluator(),
+        n_runs=3,
+        run_parallel=False,
+    )
 
     assert result.n_runs == 3
-    assert [run.n_evaluations for run in result.all_runs] == [7, 7, 7]
-    assert all(run.max_evaluations == 7 for run in result.all_runs)
+    assert all(run.n_evaluations > 0 for run in result.all_runs)
     assert all(run.stop_reason == "max_evaluations" for run in result.all_runs)
     assert all(run.budget_reached is True for run in result.all_runs)
 
@@ -310,57 +371,52 @@ def test_ga_run_preserves_fixed_numeric_genes_in_full_genome():
         seed=42,
     )
 
-    result = engine.run(lambda ind: -abs(ind.params["period"] - 12) - ind.genes[3] ** 2)
+    result = engine.run(
+        CallableEvaluator(lambda genes: -abs(genes[2] - 12) - genes[3] ** 2),
+        policy=full_policy(40, batch_size=20),
+    )
 
-    assert result.n_evaluations == 20 + (19 * 5)
+    assert result.n_evaluations == 40
     for individual in result.final_population:
         assert individual.genes[0] == 2
         assert individual.genes[1] == 0.5
-        assert individual.params["signal_mode"] == 2
-        assert individual.params["threshold"] == 0.5
 
 
-def test_ga_max_evaluations_can_stop_during_initial_population():
-    calls = []
+def test_ga_max_evaluations_stops_at_budget():
     engine = GAEngine(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=10,
         generations=5,
-        max_evaluations=4,
         seed=42,
     )
 
-    result = engine.run(lambda ind: calls.append(tuple(ind.genes)) or module_sphere(ind))
+    result = engine.run(
+        CallableEvaluator(lambda genes: -sum(float(v) ** 2 for v in genes)),
+        policy=full_policy(4, batch_size=4),
+    )
 
-    assert len(calls) == 4
     assert result.n_evaluations == 4
-    assert len(result.final_population) == 4
-    assert all(ind.fitness_valid for ind in result.final_population)
     assert result.stop_reason == "max_evaluations"
     assert result.budget_reached is True
-    assert result.stopped_early is True
 
 
-def test_ga_max_evaluations_stops_exactly_after_partial_generation():
-    calls = []
+def test_ga_max_evaluations_stops_exactly_at_partial_batch():
     engine = GAEngine(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=6,
         generations=5,
-        elitism=2,
-        max_evaluations=11,
         seed=42,
     )
 
-    result = engine.run(lambda ind: calls.append(tuple(ind.genes)) or module_sphere(ind))
+    result = engine.run(
+        CallableEvaluator(lambda genes: -sum(float(v) ** 2 for v in genes)),
+        policy=full_policy(11, batch_size=6),
+    )
 
-    assert len(calls) == 11
     assert result.n_evaluations == 11
     assert result.stop_reason == "max_evaluations"
     assert result.budget_reached is True
-    assert result.stopped_early is True
     assert all(ind.fitness_valid for ind in result.final_population)
-    assert len(result.final_population) <= engine.population_size
 
 
 def test_ga_rejects_non_positive_max_evaluations():

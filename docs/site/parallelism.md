@@ -1,12 +1,15 @@
 # Parallelism
 
-evocore supports three evaluation modes for `GAEngine`.
+EvoCore vNext lets evaluators own expensive evaluation strategy.
 
-- `parallel="none"`: simplest mode and usually best for cheap fitness functions.
-- `parallel="thread"`: useful when the fitness function releases the GIL.
-- `parallel="process"`: useful for CPU-bound Python fitness functions that are pickle-safe.
+`GAEngine.run()` calls your `Evaluator.evaluate(candidates, rung)` method for each scheduled
+batch. Put thread pools, process pools, remote jobs, cached backtests, or exchange-specific
+rate limits inside that evaluator.
 
-Process mode requires module-level functions. Lambdas, nested functions, and closures are
-rejected because they cannot be pickled reliably.
+The legacy generation-loop helpers still support three local modes:
+
+- `parallel="none"`: simplest mode for cheap Python fitness functions.
+- `parallel="thread"`: useful when the callable releases the GIL.
+- `parallel="process"`: useful for CPU-bound module-level callables that are pickle-safe.
 
 `CMAESEngine` supports only `parallel="none"` and `parallel="thread"`.

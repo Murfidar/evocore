@@ -9,13 +9,16 @@ import os
 import pickle
 import time
 import warnings
+from collections import Counter
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from statistics import mean, stdev
 from typing import Literal
 
 from evocore import _core
+from evocore.batches import CandidateBatch, batch_id_from_seed
 from evocore.callbacks import Callback, GenerationInfo
+from evocore.evaluation import Candidate, EvaluationRecord, Evaluator, OptimizationTelemetry
 from evocore.exceptions import (
     CheckpointError,
     ConfigurationError,
@@ -27,6 +30,8 @@ from evocore.gene_space import GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ProcessParallel, ThreadParallel, ensure_picklable
+from evocore.policies import MultiFidelityPolicy
+from evocore.scheduler import EvaluationScheduler
 from evocore.stats import Logbook, LogEntry
 
 logger = logging.getLogger(__name__)
@@ -51,6 +56,7 @@ class RunResult:
     max_evaluations: int | None = None
     stop_reason: StopReason = "generations"
     budget_reached: bool = False
+    telemetry: OptimizationTelemetry = field(default_factory=OptimizationTelemetry)
 
 
 @dataclass
@@ -77,8 +83,19 @@ class MultiRunResult:
         }
 
 
-def _run_child_engine(engine: GAEngine, seed: int, fitness_fn: Callable) -> RunResult:
-    return engine._copy_with_seed(seed).run(fitness_fn)
+@dataclass(frozen=True)
+class EngineStateSummary:
+    """Summarize one vNext tell() state update."""
+
+    accepted_count: int
+    trusted_count: int
+    partial_count: int
+    surrogate_count: int
+    rejected_count: int
+
+
+def _run_child_engine(engine: GAEngine, seed: int, evaluator: Evaluator) -> RunResult:
+    return engine._copy_with_seed(seed).run(evaluator)
 
 
 class GAEngine:
@@ -192,13 +209,26 @@ class GAEngine:
         self.callbacks = list(callbacks or [])
         self.operators = OperatorSet(gene_space, crossover, mutation)
         self._fitness_warning_emitted = False
+        self._reset_vnext_state()
 
-        for gene in gene_space.genes:
+        self._warn_if_large_int_gene_without_sigma()
+
+    def _reset_vnext_state(self) -> None:
+        """Reset state used by the vNext ask/tell and run APIs."""
+        self._event_index = 0
+        self._candidates_by_id: dict[str, Candidate] = {}
+        self._batches_by_id: dict[str, CandidateBatch] = {}
+        self._trusted_population_vnext: list[Candidate] = []
+        self.vnext_telemetry = OptimizationTelemetry()
+        self.best_candidate: Candidate | None = None
+
+    def _warn_if_large_int_gene_without_sigma(self) -> None:
+        for gene in self.gene_space.genes:
             if gene.kind == "int" and gene.sigma is None and (gene.high - gene.low) > 100:
-                sigma_abs = mutation_sigma * (gene.high - gene.low)
+                sigma_abs = self.mutation_sigma * (gene.high - gene.low)
                 warnings.warn(
                     f'GeneDef("{gene.name}", "int", {gene.low}, {gene.high}) has range '
-                    f"{gene.high - gene.low} and no per-gene sigma. With mutation_sigma={mutation_sigma}, "
+                    f"{gene.high - gene.low} and no per-gene sigma. With mutation_sigma={self.mutation_sigma}, "
                     f"sigma_abs={sigma_abs:g} may prevent fine-tuning. Consider sigma=0.03.",
                     category=ConfigurationWarning,
                     stacklevel=2,
@@ -634,29 +664,288 @@ class GAEngine:
             callback.on_run_end(result)
         return result
 
-    def run(self, fitness_fn: Callable[[Individual], float | tuple[float, dict]]) -> RunResult:
-        """Run one GA optimization.
+    def _candidate_from_genes(
+        self,
+        genes: list[float | int | bool],
+        *,
+        batch_id: str,
+        origin: str,
+        event_index: int,
+        candidate_index: int,
+        parents: Sequence[str] = (),
+    ) -> Candidate:
+        candidate_id = _core.candidate_id(self.seed, event_index, candidate_index)
+        params = self.gene_space.params_for(genes)
+        return Candidate(
+            candidate_id=candidate_id,
+            genes=list(genes),
+            batch_id=batch_id,
+            params=params,
+            origin=origin,
+            parents=parents,
+            event_index=event_index,
+        )
 
-        Args:
-            fitness_fn: Callable receiving an `Individual` and returning either a fitness
-                float or `(fitness, metrics_dict)`.
+    def ask(self, n: int | None = None) -> list[Candidate]:
+        """Return vNext candidates for external evaluation."""
+        count = int(n or self.population_size)
+        if count <= 0:
+            raise ConfigurationError("ask(n) requires n > 0.")
 
-        Returns:
-            Run result containing the best individual, final population, logbook, and timing.
+        event_index = self._event_index
+        batch_id = batch_id_from_seed(self.seed, event_index)
+        if not self._trusted_population_vnext:
+            encoded = _core.init_population(
+                self.operators.gene_bounds,
+                self.operators.gene_kinds,
+                count,
+                int(_core.py_derive_seed(self.seed, event_index, 0, _core.OP_INIT)),
+            )
+            individuals = self.operators.decode_population(encoded)
+            candidates = [
+                self._candidate_from_genes(
+                    individual.genes,
+                    batch_id=batch_id,
+                    origin="random",
+                    event_index=event_index,
+                    candidate_index=index,
+                )
+                for index, individual in enumerate(individuals)
+            ]
+        else:
+            trusted_individuals = [
+                Individual(
+                    list(candidate.genes),
+                    fitness=candidate.best_observed_score(),
+                    fitness_valid=True,
+                    metadata={"params": candidate.params} if candidate.params else {},
+                )
+                for candidate in self._trusted_population_vnext
+            ]
+            fitnesses = [individual.fitness or float("-inf") for individual in trusted_individuals]
+            offspring = self._make_offspring(
+                trusted_individuals,
+                fitnesses,
+                gen=event_index,
+                offspring_count=count,
+            )
+            candidates = [
+                self._candidate_from_genes(
+                    individual.genes,
+                    batch_id=batch_id,
+                    origin="mutation",
+                    event_index=event_index,
+                    candidate_index=index,
+                )
+                for index, individual in enumerate(offspring)
+            ]
 
-        Raises:
-            FitnessError: If the fitness function raises or returns an invalid value.
-            ConfigurationError: If process mode receives a non-picklable fitness function.
-        """
-        return self._run_from_population(
-            self._initial_population(),
-            fitness_fn,
-            start_generation=0,
+        for candidate in candidates:
+            self._candidates_by_id[candidate.candidate_id] = candidate
+        self._batches_by_id[batch_id] = CandidateBatch(
+            batch_id=batch_id,
+            candidate_ids=tuple(candidate.candidate_id for candidate in candidates),
+        )
+        self._event_index += 1
+        self.vnext_telemetry.record_proposed(len(candidates))
+        return candidates
+
+    def tell(self, records: Sequence[EvaluationRecord]) -> EngineStateSummary:
+        """Update GA state from vNext evaluation records."""
+        trusted = partial = surrogate = rejected = 0
+        for record in records:
+            candidate = self._candidates_by_id.get(record.candidate_id)
+            if candidate is None:
+                raise FitnessError(
+                    f"tell() received unknown candidate_id: {record.candidate_id!r}"
+                )
+            batch = self._batches_by_id.get(candidate.batch_id)
+            if batch is None:
+                raise FitnessError(f"tell() received unknown batch_id: {candidate.batch_id!r}")
+            batch.accept_record(record)
+            candidate.apply_record(record)
+            if record.confidence == "trusted_full":
+                trusted += 1
+                self._trusted_population_vnext.append(candidate)
+                if (
+                    self.best_candidate is None
+                    or candidate.best_observed_score() > self.best_candidate.best_observed_score()
+                ):
+                    self.best_candidate = candidate
+                self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
+            elif record.confidence in ("partial", "cached"):
+                partial += 1
+                self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
+            elif record.confidence == "surrogate":
+                surrogate += 1
+                self.vnext_telemetry.record_screened(1)
+            else:
+                rejected += 1
+                self.vnext_telemetry.record_eliminated(1, rung=record.rung)
+
+        self._trusted_population_vnext.sort(
+            key=lambda candidate: candidate.best_observed_score(), reverse=True
+        )
+        self._trusted_population_vnext = self._trusted_population_vnext[: self.population_size]
+        return EngineStateSummary(
+            accepted_count=len(records),
+            trusted_count=trusted,
+            partial_count=partial,
+            surrogate_count=surrogate,
+            rejected_count=rejected,
+        )
+
+    def _validate_evaluator_records(
+        self,
+        assigned: Sequence[Candidate],
+        records: Sequence[EvaluationRecord],
+    ) -> None:
+        """Reject incomplete or mismatched synchronous evaluator results."""
+        expected_ids = [candidate.candidate_id for candidate in assigned]
+        returned_ids = [record.candidate_id for record in records]
+        expected_counts = Counter(expected_ids)
+        returned_counts = Counter(returned_ids)
+
+        missing_ids = [
+            candidate_id for candidate_id in expected_ids if returned_counts[candidate_id] == 0
+        ]
+        unexpected_ids = [
+            candidate_id for candidate_id in returned_counts if candidate_id not in expected_counts
+        ]
+        duplicate_ids = [
+            candidate_id
+            for candidate_id, count in returned_counts.items()
+            if count > expected_counts[candidate_id]
+        ]
+
+        if missing_ids:
+            raise FitnessError(
+                "Evaluator returned missing evaluation records for candidate_ids: "
+                f"{sorted(set(missing_ids))!r}."
+            )
+        if unexpected_ids:
+            raise FitnessError(
+                "Evaluator returned unknown evaluation records for candidate_ids: "
+                f"{sorted(unexpected_ids)!r}."
+            )
+        if duplicate_ids:
+            raise FitnessError(
+                "Evaluator returned duplicate evaluation records for candidate_ids: "
+                f"{sorted(duplicate_ids)!r}."
+            )
+
+        batch_ids = {candidate.batch_id for candidate in assigned}
+        if len(batch_ids) != 1:
+            raise FitnessError(
+                "Assigned candidates must belong to exactly one batch for synchronous evaluation."
+            )
+        expected_batch_id = next(iter(batch_ids))
+        for record in records:
+            if record.batch_id is not None and record.batch_id != expected_batch_id:
+                raise FitnessError(
+                    f"Evaluator returned record batch_id {record.batch_id!r} for batch "
+                    f"{expected_batch_id!r}."
+                )
+
+    def run(self, evaluator: Evaluator, policy: MultiFidelityPolicy | None = None) -> RunResult:
+        """Run vNext policy-driven GA optimization."""
+        if not isinstance(evaluator, Evaluator):
+            raise ConfigurationError(
+                "GAEngine.run now requires an Evaluator instance with evaluate(candidates, rung)."
+            )
+        self._reset_vnext_state()
+
+        resolved_policy = policy or MultiFidelityPolicy.single_full(
+            budget=max(1, self.population_size * max(1, self.generations)),
+            batch_size=self.population_size,
+        )
+        scheduler = EvaluationScheduler(resolved_policy)
+        start = time.perf_counter()
+        n_evaluations = 0
+        final_candidates: list[Candidate] = []
+
+        while (
+            self.vnext_telemetry.candidates_full_evaluated < resolved_policy.full_evaluation_budget
+        ):
+            remaining = (
+                resolved_policy.full_evaluation_budget
+                - self.vnext_telemetry.candidates_full_evaluated
+            )
+            batch_size = min(resolved_policy.batch_size or self.population_size, remaining)
+            active_candidates = self.ask(batch_size)
+
+            for rung in resolved_policy.rungs:
+                assigned = scheduler.assign_rung(active_candidates, rung_name=rung.name)
+                records = list(evaluator.evaluate(assigned, rung))
+                self._validate_evaluator_records(assigned, records)
+                self.tell(records)
+                if rung.confidence == "trusted_full":
+                    n_evaluations += len(records)
+                    final_candidates.extend(assigned)
+                    break
+                active_candidates = scheduler.promote(assigned, completed_rung=rung.name)
+
+        if self.best_candidate is None:
+            # Defensive: only possible if policy has no trusted_full rung,
+            # which MultiFidelityPolicy.__post_init__ already rejects.
+            best = Individual([0.0], fitness=float("-inf"), fitness_valid=False)
+            return RunResult(
+                best_individual=best,
+                best_fitness=float("-inf"),
+                final_population=Population([best]),
+                logbook=Logbook(),
+                wall_time_seconds=time.perf_counter() - start,
+                n_evaluations=n_evaluations,
+                elite_history=[],
+                diversity_history=[],
+                seed=self.seed,
+                stopped_early=True,
+                max_evaluations=resolved_policy.full_evaluation_budget,
+                stop_reason="max_evaluations",
+                budget_reached=True,
+                telemetry=self.vnext_telemetry,
+            )
+
+        best = Individual(
+            list(self.best_candidate.genes),
+            fitness=self.best_candidate.best_observed_score(),
+            fitness_valid=True,
+            metadata={
+                "params": self.best_candidate.params,
+                "candidate_id": self.best_candidate.candidate_id,
+            },
+        )
+        final_population = Population(
+            [
+                Individual(
+                    list(candidate.genes),
+                    fitness=candidate.best_observed_score(),
+                    fitness_valid=candidate.confidence == "trusted_full",
+                    metadata={"params": candidate.params, "candidate_id": candidate.candidate_id},
+                )
+                for candidate in final_candidates
+            ]
+        )
+        return RunResult(
+            best_individual=best,
+            best_fitness=float(best.fitness),
+            final_population=final_population,
+            logbook=Logbook(),
+            wall_time_seconds=time.perf_counter() - start,
+            n_evaluations=n_evaluations,
+            elite_history=[],
+            diversity_history=[],
+            seed=self.seed,
+            stopped_early=True,
+            max_evaluations=resolved_policy.full_evaluation_budget,
+            stop_reason="max_evaluations",
+            budget_reached=True,
+            telemetry=self.vnext_telemetry,
         )
 
     def run_multiple(
         self,
-        fitness_fn: Callable,
+        evaluator: Evaluator,
         n_runs: int = 10,
         aggregate: str = "best",
         run_parallel: bool = False,
@@ -664,7 +953,7 @@ class GAEngine:
         """Run multiple deterministic child runs from derived seeds.
 
         Args:
-            fitness_fn: Fitness callable passed to each child run.
+            evaluator: Evaluator passed to each child run.
             n_runs: Number of child runs.
             aggregate: Aggregation mode. `"best"` and `"all"` are accepted.
             run_parallel: Whether to execute child runs in spawned processes.
@@ -688,7 +977,7 @@ class GAEngine:
 
         started = time.perf_counter()
         if run_parallel:
-            ensure_picklable(fitness_fn, context="run_multiple(run_parallel=True)")
+            ensure_picklable(evaluator, context="run_multiple(run_parallel=True)")
             ensure_picklable(self, context="run_multiple(run_parallel=True) engine")
 
             import concurrent.futures
@@ -701,13 +990,13 @@ class GAEngine:
             )
             try:
                 futures = [
-                    pool.submit(_run_child_engine, self, seed, fitness_fn) for seed in child_seeds
+                    pool.submit(_run_child_engine, self, seed, evaluator) for seed in child_seeds
                 ]
                 results = [future.result() for future in concurrent.futures.as_completed(futures)]
             finally:
                 pool.shutdown(cancel_futures=True, wait=False)
         else:
-            results = [self._copy_with_seed(seed).run(fitness_fn) for seed in child_seeds]
+            results = [self._copy_with_seed(seed).run(evaluator) for seed in child_seeds]
 
         results.sort(key=lambda run: run.best_fitness, reverse=True)
         return MultiRunResult(

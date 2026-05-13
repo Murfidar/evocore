@@ -1,8 +1,18 @@
-from evocore import GAEngine, GeneDef, GeneSpace
+from evocore import EvaluationRecord, Evaluator, GAEngine, GeneDef, GeneSpace
 
 
-def onemax(ind):
-    return sum(ind.genes)
+class OneMaxEvaluator(Evaluator):
+    def evaluate(self, candidates, rung):
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                score=sum(candidate.genes),
+                confidence=rung.confidence,
+                rung=rung.name,
+                cost=rung.budget,
+            )
+            for candidate in candidates
+        ]
 
 
 space = GeneSpace([GeneDef(f"bit_{index}", "bool") for index in range(50)])
@@ -14,5 +24,5 @@ engine = GAEngine(
     mutation="bit_flip",
     seed=42,
 )
-result = engine.run(onemax)
+result = engine.run(OneMaxEvaluator())
 print(result.best_fitness, result.best_individual.genes)

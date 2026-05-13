@@ -42,8 +42,10 @@ Before editing code or project setup:
 Default branch naming:
 
 ```text
-codex/<short-kebab-description>
+<type>/<short-kebab-description>
 ```
+
+Common types: `feature`, `bugfix`, `hotfix`, `release`, `docs`, `refactor`, `test`.
 
 ## Commit Workflow
 
@@ -101,12 +103,6 @@ Property tests:
 
 ```bash
 python -m pytest tests/property/ -v
-```
-
-Docs:
-
-```bash
-python -m mkdocs build --strict
 ```
 
 Release or packaging changes:

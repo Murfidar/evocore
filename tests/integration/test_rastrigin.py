@@ -1,6 +1,7 @@
 import math
 
 from evocore import GAEngine, GeneSpace
+from tests.vnext_helpers import IndividualEvaluator
 
 
 def rastrigin(ind):
@@ -14,6 +15,6 @@ def test_ga_rastrigin_smoke():
         GeneSpace.uniform(-5.12, 5.12, 6), population_size=100, generations=120, seed=7
     )
 
-    result = engine.run(rastrigin)
+    result = engine.run(IndividualEvaluator(rastrigin))
 
     assert result.best_fitness > -40.0

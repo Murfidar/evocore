@@ -5,7 +5,7 @@ from importlib import metadata as _metadata
 try:
     __version__ = _metadata.version("evocore")
 except _metadata.PackageNotFoundError:
-    __version__ = "0.6.1"
+    __version__ = "0.7.0"
 
 from evocore._core import (
     OP_CMAES_ASK,
@@ -20,6 +20,7 @@ from evocore._core import (
     IntegerIndividual,
     py_derive_seed,
 )
+from evocore.advisors import AdvisorScore, InverseDistanceSurrogateAdvisor
 from evocore.callbacks import (
     Callback,
     CheckpointCallback,
@@ -29,6 +30,14 @@ from evocore.callbacks import (
     ProgressBar,
 )
 from evocore.cmaes import CMAESEngine
+from evocore.evaluation import (
+    Candidate,
+    CandidateScore,
+    EvaluationRecord,
+    Evaluator,
+    OptimizationTelemetry,
+    Rung,
+)
 from evocore.exceptions import (
     CheckpointError,
     ConfigurationError,
@@ -39,14 +48,18 @@ from evocore.exceptions import (
     FitnessWarning,
     ParallelError,
 )
-from evocore.ga import GAEngine, MultiRunResult, RunResult
+from evocore.ga import EngineStateSummary, GAEngine, MultiRunResult, RunResult
 from evocore.gene_space import GeneDef, GeneSpace
 from evocore.individual import Individual, Population
+from evocore.mixed_cma import CategoricalState, IntegerMargin
 from evocore.operators import OperatorSet
 from evocore.parallel import ProcessParallel, ThreadParallel
+from evocore.policies import MultiFidelityPolicy
+from evocore.scheduler import EvaluationScheduler
 from evocore.stats import Logbook, LogEntry
 
 __all__ = [
+    # 1. SCREAMING_SNAKE_CASE (Constants)
     "OP_CMAES_ASK",
     "OP_CROSSOVER",
     "OP_CROSSOVER_PROB",
@@ -54,15 +67,24 @@ __all__ = [
     "OP_MULTI_RUN",
     "OP_MUTATION",
     "OP_SELECTION",
+    # 2. CamelCase (Classes)
+    "AdvisorScore",
     "BinaryIndividual",
     "CMAESEngine",
     "Callback",
+    "Candidate",
+    "CandidateScore",
+    "CategoricalState",
     "CheckpointCallback",
     "CheckpointError",
     "ConfigurationError",
     "ConfigurationWarning",
     "ConvergenceError",
     "EarlyStopping",
+    "EngineStateSummary",
+    "EvaluationRecord",
+    "EvaluationScheduler",
+    "Evaluator",
     "EvocoreError",
     "FitnessError",
     "FitnessWarning",
@@ -73,17 +95,23 @@ __all__ = [
     "GenerationInfo",
     "Individual",
     "IntegerIndividual",
+    "IntegerMargin",
+    "InverseDistanceSurrogateAdvisor",
     "LogEntry",
     "Logbook",
     "MetricsLogger",
+    "MultiFidelityPolicy",
     "MultiRunResult",
     "OperatorSet",
+    "OptimizationTelemetry",
     "ParallelError",
     "Population",
     "ProcessParallel",
     "ProgressBar",
     "RunResult",
+    "Rung",
     "ThreadParallel",
+    # 3. snake_case / dunders
     "__version__",
     "py_derive_seed",
 ]

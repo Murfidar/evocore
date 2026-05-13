@@ -6,6 +6,37 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+### Added
+
+- Public `batch_id` fields on vNext `Candidate` and `EvaluationRecord` so async
+  evaluators can group results by ask batch.
+
+### Changed
+
+- `GAEngine` and `CMAESEngine` ask/tell flows now treat partial trusted batches as a
+  first-class API, with strict duplicate and batch-mismatch validation.
+- `GAEngine.run(...)` now fails fast when a synchronous evaluator omits assigned
+  candidates instead of stalling the policy loop.
+- `MultiFidelityPolicy` now requires exactly one `trusted_full` rung and it must be the
+  final rung.
+
+## [0.7.0] - 2026-05-09
+
+### Breaking
+
+- Reoriented EvoCore around vNext expensive black-box optimization rather than DEAP parity.
+- Replaced GA execution with ask/tell and policy-driven multi-fidelity semantics.
+- Added vNext CMA ask/tell semantics for trusted-record distribution updates.
+
+### Added
+
+- Candidate, rung, evaluation record, and optimizer telemetry APIs.
+- Multi-fidelity policy and scheduler primitives.
+- Deterministic Rust candidate ID and confidence-aware ranking helpers.
+- Baseline surrogate advisor and audit-aware promotion support.
+- Mixed-variable CMA foundation types for integer margins and categorical state.
+- vNext docs and examples for budget-aware optimization.
+
 ## [0.6.1] - 2026-05-07
 
 ### Added

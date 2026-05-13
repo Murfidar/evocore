@@ -1,5 +1,6 @@
 use pyo3::prelude::*;
 
+pub mod candidate;
 mod cmaes;
 mod gene_spec;
 mod individual;
@@ -9,6 +10,7 @@ pub mod reproduce;
 pub mod selection;
 pub mod utils;
 
+use candidate::{candidate_id as candidate_id_impl, rank_top_k as rank_top_k_impl};
 use cmaes::PyCMAESState;
 use gene_spec::GeneKind;
 use individual::{BinaryIndividual, FloatIndividual, IntegerIndividual};
@@ -343,6 +345,16 @@ fn parse_gene_kinds(kinds_str: &[String]) -> PyResult<Vec<GeneKind>> {
         .collect()
 }
 
+#[pyfunction]
+fn candidate_id(master_seed: u64, event_index: u64, candidate_index: u64) -> String {
+    candidate_id_impl(master_seed, event_index, candidate_index)
+}
+
+#[pyfunction]
+fn rank_top_k(scores: Vec<f64>, trusted_mask: Vec<bool>, k: usize) -> Vec<usize> {
+    rank_top_k_impl(&scores, &trusted_mask, k)
+}
+
 #[pymodule]
 fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
     rayon::ThreadPoolBuilder::new()
@@ -387,6 +399,9 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(evaluate_sequential, m)?)?;
     m.add_function(wrap_pyfunction!(evaluate_parallel_rayon, m)?)?;
+
+    m.add_function(wrap_pyfunction!(candidate_id, m)?)?;
+    m.add_function(wrap_pyfunction!(rank_top_k, m)?)?;
 
     Ok(())
 }

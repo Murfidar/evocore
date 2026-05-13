@@ -1,6 +1,7 @@
 import numpy as np
 
 from evocore import GAEngine, GeneSpace
+from tests.vnext_helpers import IndividualEvaluator
 
 
 def sphere(ind):
@@ -12,11 +13,13 @@ def numpy_sphere(ind):
     return float(-np.sum(arr * arr))
 
 
-def test_run_twice_same_engine_identical_results():
-    engine = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=30, generations=8, seed=42)
+def test_same_seed_engines_return_identical_results():
+    evaluator = IndividualEvaluator(sphere)
+    left = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=30, generations=8, seed=42)
+    right = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=30, generations=8, seed=42)
 
-    r1 = engine.run(sphere)
-    r2 = engine.run(sphere)
+    r1 = left.run(evaluator)
+    r2 = right.run(evaluator)
 
     assert r1.best_fitness == r2.best_fitness
     assert r1.best_individual.genes == r2.best_individual.genes
@@ -39,8 +42,9 @@ def test_sequential_and_thread_parallel_identical():
         seed=99,
     )
 
-    r_seq = seq.run(numpy_sphere)
-    r_thr = thr.run(numpy_sphere)
+    evaluator = IndividualEvaluator(numpy_sphere)
+    r_seq = seq.run(evaluator)
+    r_thr = thr.run(evaluator)
 
     assert r_seq.best_fitness == r_thr.best_fitness
     assert r_seq.best_individual.genes == r_thr.best_individual.genes
@@ -57,7 +61,7 @@ def test_n_workers_does_not_affect_results():
             n_workers=n_workers,
             seed=123,
         )
-        results.append(engine.run(numpy_sphere).best_individual.genes)
+        results.append(engine.run(IndividualEvaluator(numpy_sphere)).best_individual.genes)
 
     assert results[0] == results[1] == results[2]
 
@@ -66,12 +70,14 @@ def test_different_seeds_diverge():
     e1 = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=20, generations=4, seed=1)
     e2 = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=20, generations=4, seed=2)
 
-    assert e1.run(sphere).best_individual.genes != e2.run(sphere).best_individual.genes
+    evaluator = IndividualEvaluator(sphere)
+
+    assert e1.run(evaluator).best_individual.genes != e2.run(evaluator).best_individual.genes
 
 
 def test_multi_run_child_seeds_are_independent():
     engine = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=20, generations=4, seed=42)
 
-    multi = engine.run_multiple(sphere, n_runs=5)
+    multi = engine.run_multiple(IndividualEvaluator(sphere), n_runs=5)
 
     assert len({tuple(run.best_individual.genes) for run in multi.all_runs}) > 1
