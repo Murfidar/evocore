@@ -1,6 +1,7 @@
 import pytest
 
-from evocore.stats import Logbook, LogEntry
+from evocore.exceptions import ConfigurationError
+from evocore.stats import EventHistory, EventRecord, Logbook, LogEntry
 
 
 def test_logbook_append_len_iter_getitem():
@@ -84,3 +85,106 @@ def test_logbook_to_dict_and_json_are_stable():
         }
     ]
     assert book.to_json() == book.to_json()
+
+
+def test_event_history_to_rows_preserves_append_order():
+    history = EventHistory()
+    history.append(
+        EventRecord(
+            event_index=0,
+            event_type="ask",
+            batch_id="b-1",
+            candidate_id="c-1",
+            candidate_hash="hash-1",
+            origin="random",
+            genes=(1.0, 2),
+            params={"x": 1.0, "period": 2},
+        )
+    )
+    history.append(
+        EventRecord(
+            event_index=1,
+            event_type="tell",
+            batch_id="b-1",
+            candidate_id="c-1",
+            candidate_hash="hash-1",
+            confidence="trusted_full",
+            raw_score=4.0,
+            comparison_score=4.0,
+            cost=1.0,
+            status="trusted",
+            origin="random",
+            genes=(1.0, 2),
+            params={"x": 1.0, "period": 2},
+            metrics={"loss": 0.2},
+            metadata={"source": "unit"},
+        )
+    )
+
+    assert len(history) == 2
+    assert history[0].event_type == "ask"
+    assert [event.event_type for event in history] == ["ask", "tell"]
+    assert history.to_rows() == [
+        {
+            "event_index": 0,
+            "event_type": "ask",
+            "batch_id": "b-1",
+            "candidate_id": "c-1",
+            "candidate_hash": "hash-1",
+            "generation": None,
+            "rung": None,
+            "confidence": None,
+            "raw_score": None,
+            "comparison_score": None,
+            "cost": 0.0,
+            "status": None,
+            "origin": "random",
+            "parents": [],
+            "genes": [1.0, 2],
+            "params": {"period": 2, "x": 1.0},
+            "metrics": {},
+            "metadata": {},
+        },
+        {
+            "event_index": 1,
+            "event_type": "tell",
+            "batch_id": "b-1",
+            "candidate_id": "c-1",
+            "candidate_hash": "hash-1",
+            "generation": None,
+            "rung": None,
+            "confidence": "trusted_full",
+            "raw_score": 4.0,
+            "comparison_score": 4.0,
+            "cost": 1.0,
+            "status": "trusted",
+            "origin": "random",
+            "parents": [],
+            "genes": [1.0, 2],
+            "params": {"period": 2, "x": 1.0},
+            "metrics": {"loss": 0.2},
+            "metadata": {"source": "unit"},
+        },
+    ]
+
+
+def test_event_history_rejects_non_append_event_index():
+    history = EventHistory()
+
+    with pytest.raises(ConfigurationError, match="append-only"):
+        history.append(EventRecord(event_index=2, event_type="ask"))
+
+
+def test_event_history_to_dataframe_missing_pandas_message(monkeypatch):
+    history = EventHistory()
+    history.append(EventRecord(event_index=0, event_type="generation", generation=0))
+    real_import = __import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "pandas":
+            raise ImportError("no pandas")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", fake_import)
+    with pytest.raises(ImportError, match="pip install pandas"):
+        history.to_dataframe()
