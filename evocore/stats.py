@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from dataclasses import dataclass, field
+from typing import Any
+
+from evocore.exporting import json_safe, stable_json_dumps
 
 
 @dataclass
@@ -20,6 +23,22 @@ class LogEntry:
     cached_count: int
     diversity: list[float] = field(default_factory=list)
     custom: dict = field(default_factory=dict)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Export this generation summary as a JSON-safe dictionary."""
+        row: dict[str, Any] = {
+            "gen": self.gen,
+            "best_fitness": self.best_fitness,
+            "mean_fitness": self.mean_fitness,
+            "std_fitness": self.std_fitness,
+            "wall_time_ms": self.wall_time_ms,
+            "n_evaluations": self.n_evaluations,
+            "nan_fitness_count": self.nan_fitness_count,
+            "cached_count": self.cached_count,
+            "diversity": list(self.diversity),
+        }
+        row.update(self.custom)
+        return json_safe(row)
 
 
 class Logbook:
@@ -49,23 +68,17 @@ class Logbook:
         """Return the number of non-finite fitness values per generation."""
         return [entry.nan_fitness_count for entry in self._entries]
 
-    def to_rows(self) -> list[dict]:
+    def to_rows(self) -> list[dict[str, Any]]:
         """Convert log entries into JSON-serializable row dictionaries."""
-        rows: list[dict] = []
-        for entry in self._entries:
-            row = {
-                "gen": entry.gen,
-                "best_fitness": entry.best_fitness,
-                "mean_fitness": entry.mean_fitness,
-                "std_fitness": entry.std_fitness,
-                "wall_time_ms": entry.wall_time_ms,
-                "n_evaluations": entry.n_evaluations,
-                "nan_fitness_count": entry.nan_fitness_count,
-                "cached_count": entry.cached_count,
-            }
-            row.update(entry.custom)
-            rows.append(row)
-        return rows
+        return [entry.to_dict() for entry in self._entries]
+
+    def to_dict(self) -> list[dict[str, Any]]:
+        """Export stable generation-summary dictionaries."""
+        return self.to_rows()
+
+    def to_json(self, *, indent: int | None = None) -> str:
+        """Export generation summaries as deterministic JSON."""
+        return stable_json_dumps(self.to_dict(), indent=indent)
 
     def print(self) -> None:
         """Print row dictionaries for quick inspection."""

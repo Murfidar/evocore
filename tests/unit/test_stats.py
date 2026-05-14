@@ -33,3 +33,54 @@ def test_to_dataframe_missing_pandas_message(monkeypatch):
     monkeypatch.setattr("builtins.__import__", fake_import)
     with pytest.raises(ImportError, match="pip install pandas"):
         book.to_dataframe()
+
+
+def test_log_entry_to_dict_is_json_safe_and_preserves_custom_metrics():
+    entry = LogEntry(
+        gen=2,
+        best_fitness=1.5,
+        mean_fitness=1.0,
+        std_fitness=0.25,
+        wall_time_ms=12.0,
+        n_evaluations=8,
+        nan_fitness_count=0,
+        cached_count=1,
+        diversity=[0.1, 0.2],
+        custom={"loss": 0.4, "tags": {"b", "a"}},
+    )
+
+    assert entry.to_dict() == {
+        "gen": 2,
+        "best_fitness": 1.5,
+        "mean_fitness": 1.0,
+        "std_fitness": 0.25,
+        "wall_time_ms": 12.0,
+        "n_evaluations": 8,
+        "nan_fitness_count": 0,
+        "cached_count": 1,
+        "diversity": [0.1, 0.2],
+        "loss": 0.4,
+        "tags": ["a", "b"],
+    }
+
+
+def test_logbook_to_dict_and_json_are_stable():
+    book = Logbook()
+    book.append(LogEntry(0, 1.0, 0.5, 0.1, 12.0, 10, 0, 0, [], {"z": 2, "a": 1}))
+
+    assert book.to_dict() == [
+        {
+            "gen": 0,
+            "best_fitness": 1.0,
+            "mean_fitness": 0.5,
+            "std_fitness": 0.1,
+            "wall_time_ms": 12.0,
+            "n_evaluations": 10,
+            "nan_fitness_count": 0,
+            "cached_count": 0,
+            "diversity": [],
+            "a": 1,
+            "z": 2,
+        }
+    ]
+    assert book.to_json() == book.to_json()

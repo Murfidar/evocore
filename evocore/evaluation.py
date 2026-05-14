@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 
 from evocore.exceptions import ConfigurationError, FitnessError
+from evocore.exporting import stable_json_dumps
 from evocore.individual import GeneValue
 
 Direction = Literal["maximize", "minimize"]
@@ -286,6 +287,28 @@ class OptimizationTelemetry:
     def record_eliminated(self, count: int, *, rung: str) -> None:
         """Record candidates eliminated at a rung."""
         self.eliminated_by_rung[rung] = self.eliminated_by_rung.get(rung, 0) + int(count)
+
+    def to_dict(self) -> dict[str, Any]:
+        """Export stable JSON-safe telemetry fields."""
+        return {
+            "total_candidates_proposed": self.total_candidates_proposed,
+            "unique_candidate_hashes": sorted(self.unique_candidate_hashes),
+            "unique_candidate_count": len(self.unique_candidate_hashes),
+            "candidates_screened": self.candidates_screened,
+            "candidates_partial_evaluated": self.candidates_partial_evaluated,
+            "candidates_full_evaluated": self.candidates_full_evaluated,
+            "promoted_by_rung": {
+                key: self.promoted_by_rung[key] for key in sorted(self.promoted_by_rung)
+            },
+            "eliminated_by_rung": {
+                key: self.eliminated_by_rung[key] for key in sorted(self.eliminated_by_rung)
+            },
+            "cost_by_rung": {key: self.cost_by_rung[key] for key in sorted(self.cost_by_rung)},
+        }
+
+    def to_json(self, *, indent: int | None = None) -> str:
+        """Export telemetry as deterministic JSON."""
+        return stable_json_dumps(self.to_dict(), indent=indent)
 
 
 @dataclass(frozen=True)

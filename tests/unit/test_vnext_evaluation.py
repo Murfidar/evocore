@@ -187,6 +187,42 @@ def test_telemetry_records_unique_candidate_hashes_for_proposals() -> None:
     assert len(telemetry.unique_candidate_hashes) == 2
 
 
+def test_telemetry_to_dict_exports_sorted_hashes_and_unique_count() -> None:
+    telemetry = OptimizationTelemetry()
+    telemetry.total_candidates_proposed = 3
+    telemetry.unique_candidate_hashes.update({"hash-b", "hash-a"})
+    telemetry.candidates_screened = 1
+    telemetry.candidates_partial_evaluated = 2
+    telemetry.candidates_full_evaluated = 3
+    telemetry.promoted_by_rung = {"cheap": 2}
+    telemetry.eliminated_by_rung = {"cheap": 1}
+    telemetry.cost_by_rung = {"full": 2.0, "cheap": 0.5}
+
+    assert telemetry.to_dict() == {
+        "total_candidates_proposed": 3,
+        "unique_candidate_hashes": ["hash-a", "hash-b"],
+        "unique_candidate_count": 2,
+        "candidates_screened": 1,
+        "candidates_partial_evaluated": 2,
+        "candidates_full_evaluated": 3,
+        "promoted_by_rung": {"cheap": 2},
+        "eliminated_by_rung": {"cheap": 1},
+        "cost_by_rung": {"cheap": 0.5, "full": 2.0},
+    }
+
+
+def test_telemetry_to_json_is_deterministic() -> None:
+    telemetry = OptimizationTelemetry()
+    telemetry.unique_candidate_hashes.update({"z", "a"})
+    telemetry.cost_by_rung = {"full": 1.0, "cheap": 0.25}
+
+    first = telemetry.to_json()
+    second = telemetry.to_json()
+
+    assert first == second
+    assert '"unique_candidate_hashes": ["a", "z"]' in first
+
+
 def test_evaluation_record_preserves_metadata() -> None:
     record = EvaluationRecord(
         candidate_id="c-1",
