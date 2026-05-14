@@ -59,7 +59,7 @@ from evocore.parallel import ProcessParallel, ThreadParallel
 from evocore.policies import MultiFidelityPolicy
 from evocore.protocols import Evaluator, Optimizer
 from evocore.scheduler import EvaluationScheduler
-from evocore.stats import Logbook, LogEntry
+from evocore.stats import EventHistory, EventRecord, Logbook, LogEntry, ReproducibilityMetadata
 
 __all__ = [
     # 1. SCREAMING_SNAKE_CASE (Constants)
@@ -89,6 +89,8 @@ __all__ = [
     "EvaluationRecord",
     "EvaluationScheduler",
     "Evaluator",
+    "EventHistory",
+    "EventRecord",
     "EvocoreError",
     "FitnessError",
     "FitnessWarning",
@@ -113,6 +115,7 @@ __all__ = [
     "Population",
     "ProcessParallel",
     "ProgressBar",
+    "ReproducibilityMetadata",
     "RunResult",
     "Rung",
     "TellResult",

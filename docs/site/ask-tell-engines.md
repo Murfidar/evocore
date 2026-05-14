@@ -40,3 +40,32 @@ state-eligible records.
 Invalid records raise `FitnessError`: unknown candidates, unknown explicit batch IDs,
 batch mismatches, duplicate candidate/rung records, and non-finite non-rejected scores
 are rejected.
+
+## Event History
+
+Ask/tell engines record append-only lifecycle events. Every proposed candidate receives
+an `ask` event with its batch ID, candidate ID, genome hash, origin, genes, params, and
+metadata. Every accepted evaluation record receives a `tell` event with the raw score,
+direction-aware comparison score, confidence, rung, cost, resulting status, metrics, and
+record metadata.
+
+```python
+candidates = engine.ask(4)
+records = [
+    EvaluationRecord(
+        candidate_id=candidate.candidate_id,
+        batch_id=candidate.batch_id,
+        score=score_candidate(candidate),
+        confidence="trusted_full",
+        rung="full",
+        cost=1.0,
+    )
+    for candidate in candidates
+]
+engine.tell(records)
+
+rows = engine.history.to_rows()
+```
+
+Raw user scores are stored under `raw_score`. EvoCore stores the value used for
+direction-aware comparisons separately under `comparison_score`.

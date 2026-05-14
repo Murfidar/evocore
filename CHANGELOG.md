@@ -14,6 +14,12 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   evaluator calls, `tell(...)` summaries, and stable state inspection.
 - Public `batch_id` fields on vNext `Candidate` and `EvaluationRecord` so async
   evaluators can group results by ask batch.
+- Stable `RunResult`, `MultiRunResult`, `Logbook`, and `OptimizationTelemetry` export
+  helpers with deterministic JSON output by default.
+- Append-only `EventRecord` and `EventHistory` APIs for ask/tell audit rows and
+  generation-level observations.
+- `ReproducibilityMetadata` on run results with version, engine, seed, direction,
+  gene-space signature/hash, and serializable optimizer configuration.
 
 ### Changed
 
@@ -30,6 +36,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   calls until closed.
 - Cached evaluation records are now eligible for optimizer state updates and full-budget
   accounting while remaining separately counted in `TellResult.cached_count`.
+- Runtime timing in result exports now lives under `runtime` and is included only when
+  callers pass `include_runtime=True`.
 
 ### Fixed
 

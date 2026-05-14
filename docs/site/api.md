@@ -35,6 +35,12 @@ shape, without subclassing.
 
 ::: evocore.evaluation.OptimizationTelemetry
 
+::: evocore.stats.EventRecord
+
+::: evocore.stats.EventHistory
+
+::: evocore.stats.ReproducibilityMetadata
+
 ::: evocore.policies.MultiFidelityPolicy
 
 ::: evocore.scheduler.EvaluationScheduler

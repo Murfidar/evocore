@@ -33,6 +33,20 @@ class Objective:
         ]
 ```
 
+## Result Export
+
+`RunResult` is the stable envelope for a completed run:
+
+```python
+result = engine.run(Objective())
+payload = result.to_dict()
+json_text = result.to_json(indent=2)
+events = result.history.to_rows()
+```
+
+Runtime timing is excluded from deterministic exports by default. Pass
+`include_runtime=True` to include `wall_time_seconds` under the `runtime` key.
+
 ::: evocore.ga.GAEngine
     options:
       members:

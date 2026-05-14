@@ -90,3 +90,6 @@ def test_vnext_public_exports_are_available() -> None:
     assert evocore.EvaluationRecord.__name__ == "EvaluationRecord"
     assert evocore.Rung.__name__ == "Rung"
     assert evocore.OptimizationTelemetry.__name__ == "OptimizationTelemetry"
+    assert evocore.EventRecord.__name__ == "EventRecord"
+    assert evocore.EventHistory.__name__ == "EventHistory"
+    assert evocore.ReproducibilityMetadata.__name__ == "ReproducibilityMetadata"
