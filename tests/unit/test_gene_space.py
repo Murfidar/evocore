@@ -1,7 +1,10 @@
+import json
+
 import pytest
 
 from evocore.exceptions import ConfigurationError
 from evocore.gene_space import GeneDef, GeneSpace
+from evocore.stats import gene_space_hash, gene_space_signature
 
 
 def test_gene_def_float_requires_bounds():
@@ -110,3 +113,131 @@ def test_bool_genes_are_not_fixed_in_this_iteration():
     gene = GeneDef("flag", "bool")
 
     assert gene.is_fixed is False
+
+
+def test_gene_space_signature_to_dict_hash_and_json_are_canonical():
+    space = GeneSpace(
+        [
+            GeneDef("x", "float", -1.0, 1.0, sigma=0.2),
+            GeneDef("period", "int", 2, 20),
+            GeneDef("enabled", "bool"),
+            GeneDef("fixed_threshold", "float", 0.5, 0.5),
+        ]
+    )
+
+    expected = {
+        "schema_version": 1,
+        "genes": [
+            {
+                "name": "x",
+                "kind": "float",
+                "low": -1.0,
+                "high": 1.0,
+                "sigma": 0.2,
+                "is_fixed": False,
+            },
+            {
+                "name": "period",
+                "kind": "int",
+                "low": 2,
+                "high": 20,
+                "sigma": None,
+                "is_fixed": False,
+            },
+            {
+                "name": "enabled",
+                "kind": "bool",
+                "low": None,
+                "high": None,
+                "sigma": None,
+                "is_fixed": False,
+            },
+            {
+                "name": "fixed_threshold",
+                "kind": "float",
+                "low": 0.5,
+                "high": 0.5,
+                "sigma": None,
+                "is_fixed": True,
+            },
+        ],
+        "has_names": True,
+        "length": 4,
+    }
+
+    assert space.signature() == expected
+    assert space.to_dict() == expected
+    assert gene_space_signature(space) == expected
+    assert space.hash() == gene_space_hash(expected)
+    assert json.loads(space.to_json()) == expected
+    assert space.to_json() == space.to_json()
+
+
+def test_uniform_gene_space_signature_preserves_unnamed_contract():
+    space = GeneSpace.uniform(-5.0, 5.0, 2)
+
+    assert space.signature() == {
+        "schema_version": 1,
+        "genes": [
+            {
+                "name": "gene_0",
+                "kind": "float",
+                "low": -5.0,
+                "high": 5.0,
+                "sigma": None,
+                "is_fixed": False,
+            },
+            {
+                "name": "gene_1",
+                "kind": "float",
+                "low": -5.0,
+                "high": 5.0,
+                "sigma": None,
+                "is_fixed": False,
+            },
+        ],
+        "has_names": False,
+        "length": 2,
+    }
+
+
+def test_validate_genes_accepts_valid_decoded_values():
+    space = GeneSpace(
+        [
+            GeneDef("x", "float", -1.0, 1.0),
+            GeneDef("period", "int", 2, 20),
+            GeneDef("enabled", "bool"),
+            GeneDef("fixed_threshold", "float", 0.5, 0.5),
+        ]
+    )
+
+    assert space.validate_genes([0.25, 10, True, 0.5]) is None
+    assert space.validate_genes([0, 2, False, 0.5]) is None
+
+
+@pytest.mark.parametrize(
+    ("values", "message"),
+    [
+        ([0.25], "GeneSpace expected 4 genes, got 1."),
+        ([True, 10, True, 0.5], "Gene 'x' at index 0 expects float"),
+        ([float("nan"), 10, True, 0.5], "Gene 'x' at index 0 must be finite"),
+        ([2.0, 10, True, 0.5], "Gene 'x' at index 0 must be within"),
+        ([0.25, True, True, 0.5], "Gene 'period' at index 1 expects int"),
+        ([0.25, 10.0, True, 0.5], "Gene 'period' at index 1 expects int"),
+        ([0.25, 21, True, 0.5], "Gene 'period' at index 1 must be within"),
+        ([0.25, 10, 1, 0.5], "Gene 'enabled' at index 2 expects bool"),
+        ([0.25, 10, True, 0.6], "Gene 'fixed_threshold' at index 3 must be within"),
+    ],
+)
+def test_validate_genes_rejects_invalid_decoded_values(values, message):
+    space = GeneSpace(
+        [
+            GeneDef("x", "float", -1.0, 1.0),
+            GeneDef("period", "int", 2, 20),
+            GeneDef("enabled", "bool"),
+            GeneDef("fixed_threshold", "float", 0.5, 0.5),
+        ]
+    )
+
+    with pytest.raises(ConfigurationError, match=message):
+        space.validate_genes(values)

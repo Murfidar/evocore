@@ -50,9 +50,8 @@ def test_cmaes_run_returns_result():
 
 
 def test_cma_generation_loop_result_attaches_history_and_reproducibility():
-    engine = CMAESEngine(
-        GeneSpace.uniform(-2.0, 2.0, 3), population_size=6, generations=2, seed=42
-    )
+    space = GeneSpace.uniform(-2.0, 2.0, 3)
+    engine = CMAESEngine(space, population_size=6, generations=2, seed=42)
 
     result = engine.run(lambda ind: -sum(float(v) ** 2 for v in ind.genes))
 
@@ -62,6 +61,8 @@ def test_cma_generation_loop_result_attaches_history_and_reproducibility():
     assert [event.event_type for event in result.history] == ["generation", "generation"]
     assert result.reproducibility is not None
     assert result.reproducibility.engine_type == "CMAESEngine"
+    assert result.reproducibility.gene_space_signature == space.signature()
+    assert result.reproducibility.gene_space_hash == space.hash()
     assert result.reproducibility.optimizer_config["population_size"] == 6
 
 

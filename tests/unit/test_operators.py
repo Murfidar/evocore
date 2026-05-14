@@ -89,3 +89,19 @@ def test_decode_individual_preserves_fixed_numeric_params():
         "threshold": 0.5,
         "period": 12,
     }
+
+
+def test_encode_genes_uses_gene_space_validator_for_invalid_decoded_values():
+    space = GeneSpace(
+        [
+            GeneDef("x", "float", -1.0, 1.0),
+            GeneDef("period", "int", 2, 20),
+        ]
+    )
+    ops = OperatorSet(space, "sbx", "gaussian")
+
+    with pytest.raises(ConfigurationError, match="Gene 'x' at index 0 expects float"):
+        ops.encode_genes([True, 10])
+
+    with pytest.raises(ConfigurationError, match="Gene 'period' at index 1 expects int"):
+        ops.encode_genes([0.5, 10.0])

@@ -343,7 +343,8 @@ def test_ga_run_reports_vnext_stop_diagnostics():
 
 
 def test_ga_vnext_run_attaches_history_and_reproducibility_metadata():
-    engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, generations=2, seed=42)
+    space = GeneSpace.uniform(-1.0, 1.0, 2)
+    engine = GAEngine(space, population_size=4, generations=2, seed=42)
 
     result = engine.run(
         CallableEvaluator(lambda genes: -sum(float(v) ** 2 for v in genes)),
@@ -359,8 +360,8 @@ def test_ga_vnext_run_attaches_history_and_reproducibility_metadata():
     assert result.reproducibility.engine_type == "GAEngine"
     assert result.reproducibility.seed == 42
     assert result.reproducibility.direction == "maximize"
-    assert result.reproducibility.gene_space_signature["length"] == 2
-    assert result.reproducibility.gene_space_hash
+    assert result.reproducibility.gene_space_signature == space.signature()
+    assert result.reproducibility.gene_space_hash == space.hash()
     assert result.reproducibility.optimizer_config["population_size"] == 4
 
 

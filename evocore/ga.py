@@ -50,8 +50,6 @@ from evocore.stats import (
     Logbook,
     LogEntry,
     ReproducibilityMetadata,
-    gene_space_hash,
-    gene_space_signature,
 )
 
 logger = logging.getLogger(__name__)
@@ -1117,14 +1115,14 @@ class GAEngine:
 
     def _reproducibility_metadata(self) -> ReproducibilityMetadata:
         """Return deterministic reproducibility metadata for this engine."""
-        signature = gene_space_signature(self.gene_space)
+        signature = self.gene_space.signature()
         return ReproducibilityMetadata(
             evocore_version=package_version(),
             engine_type="GAEngine",
             seed=self.seed,
             direction=self.direction,
             gene_space_signature=signature,
-            gene_space_hash=gene_space_hash(signature),
+            gene_space_hash=self.gene_space.hash(),
             optimizer_config=self._optimizer_config(),
         )
 

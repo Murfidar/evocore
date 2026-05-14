@@ -5,9 +5,10 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal
 
 from evocore.exceptions import ConfigurationError
+from evocore.exporting import canonical_json_hash, stable_json_dumps
 
 GeneKind = Literal["float", "int", "bool"]
 
@@ -173,6 +174,72 @@ class GeneSpace:
     def has_names(self) -> bool:
         """Return whether the gene space exposes named parameters."""
         return self._has_names
+
+    def signature(self) -> dict[str, Any]:
+        """Return the stable canonical signature for this gene space."""
+        return {
+            "schema_version": 1,
+            "genes": [
+                {
+                    "name": gene.name,
+                    "kind": gene.kind,
+                    "low": gene.low,
+                    "high": gene.high,
+                    "sigma": gene.sigma,
+                    "is_fixed": gene.is_fixed,
+                }
+                for gene in self._genes
+            ],
+            "has_names": self._has_names,
+            "length": self.length,
+        }
+
+    def to_dict(self) -> dict[str, Any]:
+        """Export this gene space as its stable canonical signature."""
+        return self.signature()
+
+    def hash(self) -> str:
+        """Return a stable SHA-256 hash for this gene-space signature."""
+        return canonical_json_hash(self.signature())
+
+    def to_json(self, *, indent: int | None = None) -> str:
+        """Export this gene space as deterministic JSON."""
+        return stable_json_dumps(self.to_dict(), indent=indent)
+
+    def validate_genes(self, values: Sequence[float | int | bool]) -> None:
+        """Validate decoded Python gene values against this gene space."""
+        if len(values) != self.length:
+            raise ConfigurationError(f"GeneSpace expected {self.length} genes, got {len(values)}.")
+
+        for index, (value, gene) in enumerate(zip(values, self._genes, strict=False)):
+            label = f"Gene {gene.name!r} at index {index}"
+
+            if gene.kind == "bool":
+                if type(value) is not bool:
+                    raise ConfigurationError(
+                        f"{label} expects bool, got {type(value).__name__}."
+                    )
+                continue
+
+            if gene.kind == "int":
+                if type(value) is not int:
+                    raise ConfigurationError(f"{label} expects int, got {type(value).__name__}.")
+                if value < gene.low or value > gene.high:
+                    raise ConfigurationError(
+                        f"{label} must be within [{gene.low}, {gene.high}], got {value}."
+                    )
+                continue
+
+            if type(value) not in (int, float):
+                raise ConfigurationError(f"{label} expects float, got {type(value).__name__}.")
+
+            numeric_value = float(value)
+            if not math.isfinite(numeric_value):
+                raise ConfigurationError(f"{label} must be finite, got {value}.")
+            if numeric_value < float(gene.low) or numeric_value > float(gene.high):
+                raise ConfigurationError(
+                    f"{label} must be within [{gene.low}, {gene.high}], got {value}."
+                )
 
     def params_for(
         self, genes: Sequence[float | int | bool]

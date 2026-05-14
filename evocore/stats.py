@@ -242,21 +242,8 @@ class ReproducibilityMetadata:
 
 
 def gene_space_signature(gene_space: GeneSpace) -> dict[str, Any]:
-    """Return a deterministic JSON-safe signature for a gene space."""
-    return {
-        "genes": [
-            {
-                "name": gene.name,
-                "kind": gene.kind,
-                "low": gene.low,
-                "high": gene.high,
-                "sigma": gene.sigma,
-            }
-            for gene in gene_space.genes
-        ],
-        "has_names": gene_space.has_names,
-        "length": gene_space.length,
-    }
+    """Return the canonical signature for a gene space."""
+    return gene_space.signature()
 
 
 def gene_space_hash(signature: dict[str, Any]) -> str:

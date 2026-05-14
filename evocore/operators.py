@@ -60,8 +60,7 @@ class OperatorSet:
 
     def encode_genes(self, genes: Sequence[float | int | bool]) -> list[float]:
         """Encode Python gene values into the float vector used by Rust."""
-        if len(genes) != self.gene_space.length:
-            raise ConfigurationError(f"Expected {self.gene_space.length} genes, got {len(genes)}.")
+        self.gene_space.validate_genes(genes)
 
         encoded: list[float] = []
         for value, gene in zip(genes, self.gene_space.genes):

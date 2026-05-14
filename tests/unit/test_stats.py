@@ -208,15 +208,40 @@ def test_gene_space_signature_preserves_gene_order_and_fields():
         ]
     )
 
-    assert gene_space_signature(space) == {
+    expected = {
+        "schema_version": 1,
         "genes": [
-            {"name": "x", "kind": "float", "low": -1.0, "high": 1.0, "sigma": 0.2},
-            {"name": "period", "kind": "int", "low": 2, "high": 20, "sigma": None},
-            {"name": "enabled", "kind": "bool", "low": None, "high": None, "sigma": None},
+            {
+                "name": "x",
+                "kind": "float",
+                "low": -1.0,
+                "high": 1.0,
+                "sigma": 0.2,
+                "is_fixed": False,
+            },
+            {
+                "name": "period",
+                "kind": "int",
+                "low": 2,
+                "high": 20,
+                "sigma": None,
+                "is_fixed": False,
+            },
+            {
+                "name": "enabled",
+                "kind": "bool",
+                "low": None,
+                "high": None,
+                "sigma": None,
+                "is_fixed": False,
+            },
         ],
         "has_names": True,
         "length": 3,
     }
+
+    assert gene_space_signature(space) == expected
+    assert gene_space_signature(space) == space.signature()
 
 
 def test_gene_space_hash_is_stable_for_equivalent_spaces():
