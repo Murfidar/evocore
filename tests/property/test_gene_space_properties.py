@@ -1,3 +1,5 @@
+import json
+
 from hypothesis import given
 from hypothesis import strategies as st
 
@@ -119,3 +121,58 @@ def test_operator_decode_restores_named_params(period, threshold):
 
     assert ind.genes == [period, threshold]
     assert ind.params == {"period": period, "threshold": threshold}
+
+
+@st.composite
+def valid_flat_gene_spaces(draw):
+    kinds = draw(st.lists(st.sampled_from(["float", "int", "bool"]), min_size=1, max_size=8))
+    genes = []
+    for index, kind in enumerate(kinds):
+        name = f"gene_{index}"
+        if kind == "float":
+            low = draw(
+                st.floats(
+                    min_value=-1000.0,
+                    max_value=999.0,
+                    allow_nan=False,
+                    allow_infinity=False,
+                )
+            )
+            fixed = draw(st.booleans())
+            if fixed:
+                high = low
+            else:
+                span = draw(
+                    st.floats(
+                        min_value=1e-6,
+                        max_value=1000.0,
+                        allow_nan=False,
+                        allow_infinity=False,
+                    )
+                )
+                high = low + span
+            genes.append(GeneDef(name, "float", low, high))
+        elif kind == "int":
+            low = draw(st.integers(min_value=-1000, max_value=999))
+            fixed = draw(st.booleans())
+            high = low if fixed else draw(st.integers(min_value=low + 1, max_value=low + 1000))
+            genes.append(GeneDef(name, "int", low, high))
+        else:
+            genes.append(GeneDef(name, "bool"))
+    return GeneSpace(genes)
+
+
+@given(valid_flat_gene_spaces())
+def test_gene_space_signature_json_round_trips(space):
+    signature = space.signature()
+
+    assert json.loads(space.to_json()) == signature
+    assert space.to_dict() == signature
+
+
+@given(valid_flat_gene_spaces())
+def test_gene_space_hash_is_stable_for_equivalent_flat_spaces(space):
+    equivalent = GeneSpace(list(space.genes), has_names=space.has_names)
+
+    assert equivalent.signature() == space.signature()
+    assert equivalent.hash() == space.hash()
