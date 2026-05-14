@@ -36,7 +36,7 @@ from evocore.exceptions import (
     FitnessError,
     FitnessWarning,
 )
-from evocore.exporting import json_safe, stable_json_dumps
+from evocore.exporting import json_safe, package_version, stable_json_dumps
 from evocore.gene_space import GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
@@ -44,7 +44,15 @@ from evocore.parallel import ProcessParallel, ThreadParallel, ensure_picklable
 from evocore.policies import MultiFidelityPolicy
 from evocore.protocols import Evaluator
 from evocore.scheduler import EvaluationScheduler
-from evocore.stats import EventHistory, Logbook, LogEntry, ReproducibilityMetadata
+from evocore.stats import (
+    EventHistory,
+    EventRecord,
+    Logbook,
+    LogEntry,
+    ReproducibilityMetadata,
+    gene_space_hash,
+    gene_space_signature,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -321,6 +329,7 @@ class GAEngine:
         self._trusted_population_vnext: list[Candidate] = []
         self.vnext_telemetry = OptimizationTelemetry()
         self.best_candidate: Candidate | None = None
+        self.history = EventHistory()
 
     def _pending_batch_ids(self) -> tuple[str, ...]:
         return tuple(
@@ -799,6 +808,11 @@ class GAEngine:
             budget_reached=(
                 self.max_evaluations is not None and n_evaluations >= self.max_evaluations
             ),
+            direction=self.direction,
+            engine_type="GAEngine",
+            best_score=float(best.fitness),
+            history=self._generation_history(logbook),
+            reproducibility=self._reproducibility_metadata(),
         )
         for callback in self.callbacks:
             callback.on_run_end(result)
@@ -888,6 +902,7 @@ class GAEngine:
         )
         self._event_index += 1
         self.vnext_telemetry.record_proposed_candidates(candidates)
+        self._append_ask_events(candidates)
         return candidates
 
     def tell(self, records: Sequence[EvaluationRecord]) -> TellResult:
@@ -908,6 +923,7 @@ class GAEngine:
             batch.accept_record(record)
             touched_batch_ids.add(batch.batch_id)
             candidate.apply_record(record)
+            self._append_tell_event(candidate, record)
             if is_state_update_confidence(record.confidence):
                 self._record_state_candidate(candidate)
             if record.confidence == "trusted_full":
@@ -1023,6 +1039,111 @@ class GAEngine:
                     f"{expected_batch_id!r}."
                 )
 
+    def _append_ask_events(self, candidates: Sequence[Candidate]) -> None:
+        """Record ask events for proposed candidates."""
+        for candidate in candidates:
+            self.history.append(
+                EventRecord(
+                    event_index=len(self.history),
+                    event_type="ask",
+                    batch_id=candidate.batch_id,
+                    candidate_id=candidate.candidate_id,
+                    candidate_hash=candidate.candidate_hash(),
+                    generation=candidate.generation,
+                    origin=candidate.origin,
+                    parents=tuple(candidate.parents),
+                    genes=tuple(candidate.genes),
+                    params=dict(candidate.params) if candidate.params is not None else None,
+                    metadata=dict(candidate.metadata),
+                )
+            )
+
+    def _append_tell_event(self, candidate: Candidate, record: EvaluationRecord) -> None:
+        """Record a tell event after candidate state has been updated."""
+        raw_score = float(record.score) if record.score is not None else None
+        comparison_score = (
+            score_for_direction(raw_score, self.direction)
+            if raw_score is not None and math.isfinite(raw_score)
+            else None
+        )
+        self.history.append(
+            EventRecord(
+                event_index=len(self.history),
+                event_type="tell",
+                batch_id=candidate.batch_id,
+                candidate_id=candidate.candidate_id,
+                candidate_hash=candidate.candidate_hash(),
+                generation=candidate.generation,
+                rung=record.rung,
+                confidence=record.confidence,
+                raw_score=raw_score,
+                comparison_score=comparison_score,
+                cost=record.cost,
+                status=candidate.status,
+                origin=candidate.origin,
+                parents=tuple(candidate.parents),
+                genes=tuple(candidate.genes),
+                params=dict(candidate.params) if candidate.params is not None else None,
+                metrics=dict(record.metrics),
+                metadata=dict(record.metadata),
+            )
+        )
+
+    def _optimizer_config(self) -> dict[str, Any]:
+        """Return public serializable GA constructor configuration."""
+        return json_safe(
+            {
+                "population_size": self.population_size,
+                "generations": self.generations,
+                "crossover": self.crossover,
+                "crossover_prob": self.crossover_prob,
+                "crossover_eta": self.crossover_eta,
+                "crossover_alpha": self.crossover_alpha,
+                "mutation": self.mutation,
+                "mutation_prob": self.mutation_prob,
+                "mutation_individual_prob": self.mutation_individual_prob,
+                "mutation_sigma": self.mutation_sigma,
+                "mutation_sigma_schedule": self.mutation_sigma_schedule,
+                "mutation_sigma_end": self.mutation_sigma_end,
+                "selection": self.selection,
+                "tournament_size": self.tournament_size,
+                "elitism": self.elitism,
+                "parallel": self.parallel,
+                "n_workers": self.n_workers,
+                "max_evaluations": self.max_evaluations,
+                "track_diversity": self.track_diversity,
+            }
+        )
+
+    def _reproducibility_metadata(self) -> ReproducibilityMetadata:
+        """Return deterministic reproducibility metadata for this engine."""
+        signature = gene_space_signature(self.gene_space)
+        return ReproducibilityMetadata(
+            evocore_version=package_version(),
+            engine_type="GAEngine",
+            seed=self.seed,
+            direction=self.direction,
+            gene_space_signature=signature,
+            gene_space_hash=gene_space_hash(signature),
+            optimizer_config=self._optimizer_config(),
+        )
+
+    def _generation_history(self, logbook: Logbook) -> EventHistory:
+        """Convert generation logbook entries into generation events."""
+        history = EventHistory()
+        for entry in logbook:
+            history.append(
+                EventRecord(
+                    event_index=len(history),
+                    event_type="generation",
+                    generation=entry.gen,
+                    raw_score=entry.best_fitness,
+                    comparison_score=score_for_direction(entry.best_fitness, self.direction),
+                    metrics=entry.to_dict(),
+                )
+            )
+        return history
+
     def run(self, evaluator: Evaluator, policy: MultiFidelityPolicy | None = None) -> RunResult:
         """Run vNext policy-driven GA optimization."""
         if not isinstance(evaluator, Evaluator):
@@ -1081,6 +1202,11 @@ class GAEngine:
                 stop_reason="max_evaluations",
                 budget_reached=True,
                 telemetry=self.vnext_telemetry,
+                direction=self.direction,
+                engine_type="GAEngine",
+                best_score=float("-inf"),
+                history=self.history,
+                reproducibility=self._reproducibility_metadata(),
             )
 
         best = Individual(
@@ -1119,6 +1245,12 @@ class GAEngine:
             stop_reason="max_evaluations",
             budget_reached=True,
             telemetry=self.vnext_telemetry,
+            direction=self.direction,
+            engine_type="GAEngine",
+            best_candidate_id=self.best_candidate.candidate_id,
+            best_score=float(best.fitness),
+            history=self.history,
+            reproducibility=self._reproducibility_metadata(),
         )
 
     def run_multiple(

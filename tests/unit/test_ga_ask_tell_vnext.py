@@ -88,6 +88,22 @@ def test_ga_ask_populates_unique_candidate_hash_telemetry() -> None:
     )
 
 
+def test_ga_ask_records_append_only_ask_events() -> None:
+    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+
+    candidates = engine.ask(2)
+
+    assert len(engine.history) == 2
+    rows = engine.history.to_rows()
+    assert [row["event_index"] for row in rows] == [0, 1]
+    assert all(row["event_type"] == "ask" for row in rows)
+    assert rows[0]["batch_id"] == candidates[0].batch_id
+    assert rows[0]["candidate_id"] == candidates[0].candidate_id
+    assert rows[0]["candidate_hash"] == candidates[0].candidate_hash()
+    assert rows[0]["genes"] == list(candidates[0].genes)
+    assert rows[0]["params"] == candidates[0].params
+
+
 def test_ga_tell_trusted_records_builds_trusted_population() -> None:
     engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
     candidates = engine.ask(4)
@@ -107,6 +123,34 @@ def test_ga_tell_trusted_records_builds_trusted_population() -> None:
     assert summary.trusted_count == 4
     assert engine.vnext_telemetry.candidates_full_evaluated == 4
     assert engine.best_candidate.candidate_id == candidates[-1].candidate_id
+
+
+def test_ga_tell_records_raw_and_comparison_scores_for_minimize() -> None:
+    engine = GAEngine(_space(), population_size=4, generations=5, seed=123, direction="minimize")
+    candidates = engine.ask(1)
+
+    engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidates[0].candidate_id,
+                batch_id=candidates[0].batch_id,
+                score=2.5,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+                metrics={"loss": 0.25},
+                metadata={"source": "unit"},
+            )
+        ]
+    )
+
+    row = engine.history.to_rows()[-1]
+    assert row["event_type"] == "tell"
+    assert row["raw_score"] == pytest.approx(2.5)
+    assert row["comparison_score"] == pytest.approx(-2.5)
+    assert row["status"] == "trusted"
+    assert row["metrics"] == {"loss": 0.25}
+    assert row["metadata"] == {"source": "unit"}
 
 
 def test_ga_tell_accepts_partial_records_for_one_batch() -> None:

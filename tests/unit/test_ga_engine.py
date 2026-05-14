@@ -342,6 +342,43 @@ def test_ga_run_reports_vnext_stop_diagnostics():
     assert result.n_evaluations == 12
 
 
+def test_ga_vnext_run_attaches_history_and_reproducibility_metadata():
+    engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, generations=2, seed=42)
+
+    result = engine.run(
+        CallableEvaluator(lambda genes: -sum(float(v) ** 2 for v in genes)),
+        policy=full_policy(4, batch_size=4),
+    )
+
+    assert result.engine_type == "GAEngine"
+    assert result.direction == "maximize"
+    assert result.best_candidate_id is not None
+    assert result.best_score == pytest.approx(result.best_fitness)
+    assert len(result.history) >= 8
+    assert result.reproducibility is not None
+    assert result.reproducibility.engine_type == "GAEngine"
+    assert result.reproducibility.seed == 42
+    assert result.reproducibility.direction == "maximize"
+    assert result.reproducibility.gene_space_signature["length"] == 2
+    assert result.reproducibility.gene_space_hash
+    assert result.reproducibility.optimizer_config["population_size"] == 4
+
+
+def test_ga_generation_loop_result_includes_generation_history():
+    engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=6, generations=2, seed=42)
+
+    result = engine._run_from_population(
+        engine._initial_population(),
+        lambda ind: -sum(float(v) ** 2 for v in ind.genes),
+        start_generation=0,
+    )
+
+    assert result.engine_type == "GAEngine"
+    assert result.best_score == pytest.approx(result.best_fitness)
+    assert [event.event_type for event in result.history] == ["generation", "generation"]
+    assert result.history.to_rows()[0]["generation"] == 0
+
+
 def test_ga_run_with_callback_generation_tracking():
     """Callbacks are supported on the _run_from_population path, not the vNext run() path.
 
