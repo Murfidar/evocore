@@ -1,7 +1,16 @@
 import pytest
 
+from evocore import GeneDef, GeneSpace
 from evocore.exceptions import ConfigurationError
-from evocore.stats import EventHistory, EventRecord, Logbook, LogEntry
+from evocore.stats import (
+    EventHistory,
+    EventRecord,
+    Logbook,
+    LogEntry,
+    ReproducibilityMetadata,
+    gene_space_hash,
+    gene_space_signature,
+)
 
 
 def test_logbook_append_len_iter_getitem():
@@ -188,3 +197,55 @@ def test_event_history_to_dataframe_missing_pandas_message(monkeypatch):
     monkeypatch.setattr("builtins.__import__", fake_import)
     with pytest.raises(ImportError, match="pip install pandas"):
         history.to_dataframe()
+
+
+def test_gene_space_signature_preserves_gene_order_and_fields():
+    space = GeneSpace(
+        [
+            GeneDef("x", "float", -1.0, 1.0, sigma=0.2),
+            GeneDef("period", "int", 2, 20),
+            GeneDef("enabled", "bool"),
+        ]
+    )
+
+    assert gene_space_signature(space) == {
+        "genes": [
+            {"name": "x", "kind": "float", "low": -1.0, "high": 1.0, "sigma": 0.2},
+            {"name": "period", "kind": "int", "low": 2, "high": 20, "sigma": None},
+            {"name": "enabled", "kind": "bool", "low": None, "high": None, "sigma": None},
+        ],
+        "has_names": True,
+        "length": 3,
+    }
+
+
+def test_gene_space_hash_is_stable_for_equivalent_spaces():
+    left = GeneSpace([GeneDef("x", "float", -1.0, 1.0)])
+    right = GeneSpace([GeneDef("x", "float", -1.0, 1.0)])
+
+    assert gene_space_hash(gene_space_signature(left)) == gene_space_hash(
+        gene_space_signature(right)
+    )
+
+
+def test_reproducibility_metadata_to_dict_is_json_safe():
+    metadata = ReproducibilityMetadata(
+        evocore_version="0.7.0",
+        engine_type="GAEngine",
+        seed=42,
+        direction="maximize",
+        gene_space_signature={"genes": [{"name": "x", "kind": "float"}]},
+        gene_space_hash="abc123",
+        optimizer_config={"population_size": 8, "callbacks": {"not", "serialized"}},
+    )
+
+    assert metadata.to_dict() == {
+        "evocore_version": "0.7.0",
+        "engine_type": "GAEngine",
+        "seed": 42,
+        "direction": "maximize",
+        "gene_space_signature": {"genes": [{"kind": "float", "name": "x"}]},
+        "gene_space_hash": "abc123",
+        "optimizer_config": {"callbacks": ["not", "serialized"], "population_size": 8},
+        "extension": {},
+    }
