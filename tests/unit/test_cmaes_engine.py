@@ -49,6 +49,22 @@ def test_cmaes_run_returns_result():
     assert result.seed == 42
 
 
+def test_cma_generation_loop_result_attaches_history_and_reproducibility():
+    engine = CMAESEngine(
+        GeneSpace.uniform(-2.0, 2.0, 3), population_size=6, generations=2, seed=42
+    )
+
+    result = engine.run(lambda ind: -sum(float(v) ** 2 for v in ind.genes))
+
+    assert result.engine_type == "CMAESEngine"
+    assert result.direction == "maximize"
+    assert result.best_score == pytest.approx(result.best_fitness)
+    assert [event.event_type for event in result.history] == ["generation", "generation"]
+    assert result.reproducibility is not None
+    assert result.reproducibility.engine_type == "CMAESEngine"
+    assert result.reproducibility.optimizer_config["population_size"] == 6
+
+
 def test_cmaes_run_minimize_direction_returns_lowest_raw_fitness():
     engine = CMAESEngine(
         GeneSpace.uniform(-5.0, 5.0, 2),

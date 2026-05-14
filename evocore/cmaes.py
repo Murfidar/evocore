@@ -7,6 +7,7 @@ import math
 import time
 import warnings
 from collections.abc import Callable, Sequence
+from typing import Any
 
 from evocore import _core
 from evocore.batches import CandidateBatch, batch_id_from_seed
@@ -22,12 +23,21 @@ from evocore.evaluation import (
     score_for_direction,
 )
 from evocore.exceptions import ConfigurationError, FitnessError, FitnessWarning
+from evocore.exporting import json_safe, package_version
 from evocore.ga import RunResult
 from evocore.gene_space import GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
 from evocore.parallel import ThreadParallel
-from evocore.stats import Logbook, LogEntry
+from evocore.stats import (
+    EventHistory,
+    EventRecord,
+    Logbook,
+    LogEntry,
+    ReproducibilityMetadata,
+    gene_space_hash,
+    gene_space_signature,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -115,6 +125,7 @@ class CMAESEngine:
         self._event_index = 0
         self._batches_by_id: dict[str, CandidateBatch] = {}
         self._candidates_by_id: dict[str, Candidate] = {}
+        self.history = EventHistory()
         self.vnext_telemetry = OptimizationTelemetry()
         self.best_candidate: Candidate | None = None
 
@@ -373,6 +384,56 @@ class CMAESEngine:
         batch.consumed = True
         return True
 
+    def _append_ask_events(self, candidates: Sequence[Candidate]) -> None:
+        """Record ask events for proposed CMA candidates."""
+        for candidate in candidates:
+            self.history.append(
+                EventRecord(
+                    event_index=len(self.history),
+                    event_type="ask",
+                    batch_id=candidate.batch_id,
+                    candidate_id=candidate.candidate_id,
+                    candidate_hash=candidate.candidate_hash(),
+                    generation=candidate.generation,
+                    origin=candidate.origin,
+                    parents=tuple(candidate.parents),
+                    genes=tuple(candidate.genes),
+                    params=dict(candidate.params) if candidate.params is not None else None,
+                    metadata=dict(candidate.metadata),
+                )
+            )
+
+    def _append_tell_event(self, candidate: Candidate, record: EvaluationRecord) -> None:
+        """Record a tell event after candidate state has been updated."""
+        raw_score = float(record.score) if record.score is not None else None
+        comparison_score = (
+            score_for_direction(raw_score, self.direction)
+            if raw_score is not None and math.isfinite(raw_score)
+            else None
+        )
+        self.history.append(
+            EventRecord(
+                event_index=len(self.history),
+                event_type="tell",
+                batch_id=candidate.batch_id,
+                candidate_id=candidate.candidate_id,
+                candidate_hash=candidate.candidate_hash(),
+                generation=candidate.generation,
+                rung=record.rung,
+                confidence=record.confidence,
+                raw_score=raw_score,
+                comparison_score=comparison_score,
+                cost=record.cost,
+                status=candidate.status,
+                origin=candidate.origin,
+                parents=tuple(candidate.parents),
+                genes=tuple(candidate.genes),
+                params=dict(candidate.params) if candidate.params is not None else None,
+                metrics=dict(record.metrics),
+                metadata=dict(record.metadata),
+            )
+        )
+
     def ask(self, n: int | None = None) -> list[Candidate]:
         """Return a CMA candidate batch."""
         if n is not None and int(n) != self.population_size:
@@ -407,6 +468,7 @@ class CMAESEngine:
         )
         self._event_index += 1
         self.vnext_telemetry.record_proposed_candidates(candidates)
+        self._append_ask_events(candidates)
         return candidates
 
     def tell(self, records: Sequence[EvaluationRecord]) -> TellResult:
@@ -420,6 +482,7 @@ class CMAESEngine:
             batch.accept_record(record, reject_consumed_state_record=True)
             touched_batch_ids.add(batch.batch_id)
             candidate.apply_record(record)
+            self._append_tell_event(candidate, record)
             confidence = self._apply_record_confidence(candidate, record, trusted_records)
             if confidence in counts:
                 counts[confidence] += 1
@@ -443,6 +506,49 @@ class CMAESEngine:
             pending_batch_ids=self._pending_batch_ids(),
             telemetry=self.vnext_telemetry,
         )
+
+    def _optimizer_config(self) -> dict[str, Any]:
+        """Return public serializable CMA constructor configuration."""
+        return json_safe(
+            {
+                "population_size": self.population_size,
+                "initial_mean": self.initial_mean,
+                "initial_sigma": self.initial_sigma,
+                "generations": self.generations,
+                "parallel": self.parallel,
+                "n_workers": self.n_workers,
+                "track_diversity": self.track_diversity,
+            }
+        )
+
+    def _reproducibility_metadata(self) -> ReproducibilityMetadata:
+        """Return deterministic reproducibility metadata for this engine."""
+        signature = gene_space_signature(self.gene_space)
+        return ReproducibilityMetadata(
+            evocore_version=package_version(),
+            engine_type="CMAESEngine",
+            seed=self.seed,
+            direction=self.direction,
+            gene_space_signature=signature,
+            gene_space_hash=gene_space_hash(signature),
+            optimizer_config=self._optimizer_config(),
+        )
+
+    def _generation_history(self, logbook: Logbook) -> EventHistory:
+        """Convert generation logbook entries into generation events."""
+        history = EventHistory()
+        for entry in logbook:
+            history.append(
+                EventRecord(
+                    event_index=len(history),
+                    event_type="generation",
+                    generation=entry.gen,
+                    raw_score=entry.best_fitness,
+                    comparison_score=score_for_direction(entry.best_fitness, self.direction),
+                    metrics=entry.to_dict(),
+                )
+            )
+        return history
 
     def run(self, fitness_fn: Callable[[Individual], float | tuple[float, dict]]) -> RunResult:
         """Run one CMA-ES optimization.
@@ -550,6 +656,11 @@ class CMAESEngine:
             diversity_history=diversity_history,
             seed=self.seed,
             stopped_early=stopped_early,
+            direction=self.direction,
+            engine_type="CMAESEngine",
+            best_score=best_fitness,
+            history=self._generation_history(logbook),
+            reproducibility=self._reproducibility_metadata(),
         )
         for callback in self.callbacks:
             callback.on_run_end(result)

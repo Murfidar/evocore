@@ -24,6 +24,20 @@ def test_cma_ask_returns_candidate_batch() -> None:
     assert all(candidate.params is not None for candidate in candidates)
 
 
+def test_cma_ask_records_append_only_ask_events() -> None:
+    engine = CMAESEngine(_space(), population_size=4, seed=7)
+
+    candidates = engine.ask()
+
+    assert len(engine.history) == 4
+    rows = engine.history.to_rows()
+    assert [row["event_index"] for row in rows] == [0, 1, 2, 3]
+    assert all(row["event_type"] == "ask" for row in rows)
+    assert rows[0]["batch_id"] == candidates[0].batch_id
+    assert rows[0]["candidate_id"] == candidates[0].candidate_id
+    assert rows[0]["candidate_hash"] == candidates[0].candidate_hash()
+
+
 def test_cma_tell_ignores_partial_records_for_state_update() -> None:
     engine = CMAESEngine(_space(), population_size=4, seed=7)
     candidates = engine.ask()
@@ -65,6 +79,30 @@ def test_cma_tell_trusted_records_updates_state() -> None:
 
     assert summary.trusted_count == 4
     assert engine.generation == 1
+
+
+def test_cma_tell_records_raw_and_comparison_scores_for_minimize() -> None:
+    engine = CMAESEngine(_space(), population_size=4, seed=7, direction="minimize")
+    candidates = engine.ask()
+
+    engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidates[0].candidate_id,
+                batch_id=candidates[0].batch_id,
+                score=3.0,
+                confidence="trusted_full",
+                rung="full",
+                cost=1.0,
+            )
+        ]
+    )
+
+    row = engine.history.to_rows()[-1]
+    assert row["event_type"] == "tell"
+    assert row["raw_score"] == pytest.approx(3.0)
+    assert row["comparison_score"] == pytest.approx(-3.0)
+    assert row["status"] == "trusted"
 
 
 def test_cma_tell_accumulates_trusted_records_across_partial_calls() -> None:
