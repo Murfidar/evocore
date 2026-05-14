@@ -1,0 +1,8 @@
+colorama>=0.4.6
+iniconfig>=2.3.0
+maturin>=1.13.1
+numpy>=2.4.4
+packaging>=26.2
+pluggy>=1.6.0
+pygments>=2.20.0
+pytest>=9.0.3
