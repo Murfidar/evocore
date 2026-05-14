@@ -20,6 +20,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   generation-level observations.
 - `ReproducibilityMetadata` on run results with version, engine, seed, direction,
   gene-space signature/hash, and serializable optimizer configuration.
+- `GeneSpace` now owns stable `signature()`, `hash()`, `to_dict()`, `to_json()`,
+  and `validate_genes(...)` helpers for the flat search-space contract.
 
 ### Changed
 
@@ -38,6 +40,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   accounting while remaining separately counted in `TellResult.cached_count`.
 - Runtime timing in result exports now lives under `runtime` and is included only when
   callers pass `include_runtime=True`.
+- Run reproducibility metadata now uses the canonical `GeneSpace` signature and hash,
+  including `schema_version` and per-gene `is_fixed` metadata.
 
 ### Fixed
 

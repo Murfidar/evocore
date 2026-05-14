@@ -216,9 +216,7 @@ class GeneSpace:
 
             if gene.kind == "bool":
                 if type(value) is not bool:
-                    raise ConfigurationError(
-                        f"{label} expects bool, got {type(value).__name__}."
-                    )
+                    raise ConfigurationError(f"{label} expects bool, got {type(value).__name__}.")
                 continue
 
             if gene.kind == "int":
