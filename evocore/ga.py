@@ -13,7 +13,7 @@ from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from statistics import mean, stdev
-from typing import Literal
+from typing import Any, Literal
 
 from evocore import _core
 from evocore.batches import CandidateBatch, batch_id_from_seed
@@ -36,6 +36,7 @@ from evocore.exceptions import (
     FitnessError,
     FitnessWarning,
 )
+from evocore.exporting import json_safe, stable_json_dumps
 from evocore.gene_space import GeneSpace
 from evocore.individual import Individual, Population
 from evocore.operators import OperatorSet
@@ -43,7 +44,7 @@ from evocore.parallel import ProcessParallel, ThreadParallel, ensure_picklable
 from evocore.policies import MultiFidelityPolicy
 from evocore.protocols import Evaluator
 from evocore.scheduler import EvaluationScheduler
-from evocore.stats import Logbook, LogEntry
+from evocore.stats import EventHistory, Logbook, LogEntry, ReproducibilityMetadata
 
 logger = logging.getLogger(__name__)
 
@@ -68,6 +69,59 @@ class RunResult:
     stop_reason: StopReason = "generations"
     budget_reached: bool = False
     telemetry: OptimizationTelemetry = field(default_factory=OptimizationTelemetry)
+    direction: Direction = "maximize"
+    engine_type: str = ""
+    best_candidate_id: str | None = None
+    best_score: float | None = None
+    history: EventHistory = field(default_factory=EventHistory)
+    reproducibility: ReproducibilityMetadata | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self, *, include_runtime: bool = False) -> dict[str, Any]:
+        """Export this run result as a stable JSON-safe dictionary."""
+        best_score = self.best_score if self.best_score is not None else self.best_fitness
+        payload: dict[str, Any] = {
+            "schema_version": 1,
+            "engine_type": self.engine_type,
+            "direction": self.direction,
+            "seed": self.seed,
+            "best": {
+                "fitness": self.best_fitness,
+                "score": best_score,
+                "candidate_id": self.best_candidate_id,
+                "genes": list(self.best_individual.genes),
+                "params": self.best_individual.metadata.get("params"),
+            },
+            "stop": {
+                "stopped_early": self.stopped_early,
+                "reason": self.stop_reason,
+            },
+            "budget": {
+                "max_evaluations": self.max_evaluations,
+                "budget_reached": self.budget_reached,
+            },
+            "n_evaluations": self.n_evaluations,
+            "reproducibility": (
+                self.reproducibility.to_dict() if self.reproducibility is not None else None
+            ),
+            "telemetry": self.telemetry.to_dict(),
+            "history": self.history.to_dict(),
+            "logbook": self.logbook.to_dict(),
+            "metadata": self.metadata,
+        }
+        if include_runtime:
+            payload["runtime"] = {"wall_time_seconds": self.wall_time_seconds}
+        return json_safe(payload)
+
+    def to_json(self, *, include_runtime: bool = False, indent: int | None = None) -> str:
+        """Export this run result as deterministic JSON."""
+        return stable_json_dumps(self.to_dict(include_runtime=include_runtime), indent=indent)
+
+    def to_dataframe(self):
+        """Return event history as a DataFrame, falling back to generation logbook rows."""
+        if len(self.history):
+            return self.history.to_dataframe()
+        return self.logbook.to_dataframe()
 
 
 @dataclass
@@ -78,6 +132,8 @@ class MultiRunResult:
     all_runs: list[RunResult]
     n_runs: int
     wall_time_seconds: float
+    direction: Direction = "maximize"
+    metadata: dict[str, Any] = field(default_factory=dict)
 
     def best_n(self, n: int) -> list[RunResult]:
         """Return the top `n` runs sorted by best fitness."""
@@ -92,6 +148,46 @@ class MultiRunResult:
             "min": min(values) if values else float("nan"),
             "max": max(values) if values else float("nan"),
         }
+
+    def to_dict(self, *, include_runtime: bool = False) -> dict[str, Any]:
+        """Export aggregate run results as a stable JSON-safe dictionary."""
+        payload: dict[str, Any] = {
+            "schema_version": 1,
+            "direction": self.direction,
+            "n_runs": self.n_runs,
+            "best": self.best.to_dict(include_runtime=include_runtime),
+            "runs": [run.to_dict(include_runtime=include_runtime) for run in self.all_runs],
+            "fitness_summary": self.fitness_summary(),
+            "metadata": self.metadata,
+        }
+        if include_runtime:
+            payload["runtime"] = {"wall_time_seconds": self.wall_time_seconds}
+        return json_safe(payload)
+
+    def to_json(self, *, include_runtime: bool = False, indent: int | None = None) -> str:
+        """Export aggregate run results as deterministic JSON."""
+        return stable_json_dumps(self.to_dict(include_runtime=include_runtime), indent=indent)
+
+    def to_dataframe(self):
+        """Return one pandas DataFrame row per child run."""
+        try:
+            import pandas as pd
+        except ImportError as exc:
+            raise ImportError(
+                "MultiRunResult.to_dataframe() requires pandas. Install with: pip install pandas"
+            ) from exc
+
+        rows = [
+            {
+                "run_index": index,
+                "seed": run.seed,
+                "best_fitness": run.best_fitness,
+                "best_score": run.best_score if run.best_score is not None else run.best_fitness,
+                "n_evaluations": run.n_evaluations,
+            }
+            for index, run in enumerate(self.all_runs)
+        ]
+        return pd.DataFrame(rows)
 
 
 def _run_child_engine(engine: GAEngine, seed: int, evaluator: Evaluator) -> RunResult:
@@ -1089,6 +1185,7 @@ class GAEngine:
             all_runs=results,
             n_runs=n_runs,
             wall_time_seconds=time.perf_counter() - started,
+            direction=self.direction,
         )
 
     def resume(self, fitness_fn: Callable, checkpoint: str) -> RunResult:

@@ -20,7 +20,7 @@ from evocore import (
 )
 from evocore.ga import MultiRunResult, RunResult
 from evocore.individual import Individual, Population
-from evocore.stats import Logbook
+from evocore.stats import EventRecord, Logbook
 
 
 class CallableEvaluator:
@@ -76,6 +76,122 @@ def test_multi_run_best_n_and_summary():
 
     assert multi.best_n(2) == [r2, r3]
     assert multi.fitness_summary() == {"mean": 2.0, "std": 1.0, "min": 1.0, "max": 3.0}
+
+
+def test_run_result_preserves_existing_positional_construction():
+    result = make_result(7, 1.25)
+
+    assert result.best_fitness == pytest.approx(1.25)
+    assert result.direction == "maximize"
+    assert result.engine_type == ""
+    assert result.best_candidate_id is None
+    assert result.best_score is None
+    assert len(result.history) == 0
+    assert result.metadata == {}
+
+
+def test_run_result_to_dict_excludes_runtime_by_default():
+    result = make_result(7, 1.25)
+
+    payload = result.to_dict()
+
+    assert payload["schema_version"] == 1
+    assert payload["seed"] == 7
+    assert payload["best"]["fitness"] == pytest.approx(1.25)
+    assert payload["best"]["score"] == pytest.approx(1.25)
+    assert payload["n_evaluations"] == 1
+    assert "runtime" not in payload
+
+
+def test_run_result_to_dict_includes_runtime_when_requested():
+    result = make_result(7, 1.25)
+
+    payload = result.to_dict(include_runtime=True)
+
+    assert payload["runtime"]["wall_time_seconds"] == pytest.approx(0.01)
+
+
+def test_run_result_to_json_is_deterministic():
+    result = make_result(7, 1.25)
+
+    assert result.to_json() == result.to_json()
+
+
+def test_run_result_to_dataframe_uses_history_when_present(monkeypatch):
+    result = make_result(7, 1.25)
+    result.history.append(EventRecord(event_index=0, event_type="generation", generation=0))
+    captured_rows = {}
+
+    class FakeDataFrame:
+        def __init__(self, rows):
+            captured_rows["rows"] = rows
+
+    class FakePandas:
+        DataFrame = FakeDataFrame
+
+    real_import = __import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "pandas":
+            return FakePandas
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", fake_import)
+
+    result.to_dataframe()
+
+    assert captured_rows["rows"][0]["event_type"] == "generation"
+
+
+def test_multi_run_result_to_dict_preserves_run_order_and_excludes_runtime_by_default():
+    r1 = make_result(1, 1.0)
+    r2 = make_result(2, 3.0)
+    multi = MultiRunResult(
+        best=r2,
+        all_runs=[r2, r1],
+        n_runs=2,
+        wall_time_seconds=0.05,
+        direction="maximize",
+    )
+
+    payload = multi.to_dict()
+
+    assert payload["schema_version"] == 1
+    assert payload["direction"] == "maximize"
+    assert [run["seed"] for run in payload["runs"]] == [2, 1]
+    assert payload["best"]["seed"] == 2
+    assert "runtime" not in payload
+
+
+def test_multi_run_result_to_json_and_dataframe_are_stable(monkeypatch):
+    r1 = make_result(1, 1.0)
+    r2 = make_result(2, 3.0)
+    multi = MultiRunResult(best=r2, all_runs=[r2, r1], n_runs=2, wall_time_seconds=0.05)
+    captured_rows = {}
+
+    class FakeDataFrame:
+        def __init__(self, rows):
+            captured_rows["rows"] = rows
+
+    class FakePandas:
+        DataFrame = FakeDataFrame
+
+    real_import = __import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "pandas":
+            return FakePandas
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", fake_import)
+
+    assert multi.to_json() == multi.to_json()
+    multi.to_dataframe()
+
+    assert captured_rows["rows"] == [
+        {"run_index": 0, "seed": 2, "best_fitness": 3.0, "best_score": 3.0, "n_evaluations": 1},
+        {"run_index": 1, "seed": 1, "best_fitness": 1.0, "best_score": 1.0, "n_evaluations": 1},
+    ]
 
 
 def test_ga_engine_requires_gene_space():
