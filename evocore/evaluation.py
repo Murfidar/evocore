@@ -132,6 +132,12 @@ class EvaluationRecord:
             raise FitnessError("EvaluationRecord requires a finite score unless rejected.")
         if not math.isfinite(float(self.cost)) or self.cost < 0.0:
             raise FitnessError("EvaluationRecord cost must be finite and >= 0.")
+        if self.confidence == "rejected":
+            if self.score is not None:
+                raise FitnessError("EvaluationRecord with confidence='rejected' requires score=None.")
+        elif self.score is None or not math.isfinite(float(self.score)):
+            raise FitnessError("EvaluationRecord requires a finite score unless rejected.")
+
 
 
 @dataclass
@@ -252,6 +258,7 @@ class OptimizationTelemetry:
     candidates_screened: int = 0
     candidates_partial_evaluated: int = 0
     candidates_full_evaluated: int = 0
+    candidates_cached: int = 0
     promoted_by_rung: dict[str, int] = field(default_factory=dict)
     eliminated_by_rung: dict[str, int] = field(default_factory=dict)
     cost_by_rung: dict[str, float] = field(default_factory=dict)
@@ -280,6 +287,11 @@ class OptimizationTelemetry:
         self.candidates_full_evaluated += int(count)
         self.cost_by_rung[rung] = self.cost_by_rung.get(rung, 0.0) + float(cost)
 
+    def record_cached(self, count: int, *, rung: str, cost: float) -> None:
+        """Record cached trusted observations without spending fresh full-evaluation budget."""
+        self.candidates_cached += int(count)
+        self.cost_by_rung[rung] = self.cost_by_rung.get(rung, 0.0) + float(cost)
+
     def record_promoted(self, count: int, *, rung: str) -> None:
         """Record candidates promoted from a rung."""
         self.promoted_by_rung[rung] = self.promoted_by_rung.get(rung, 0) + int(count)
@@ -297,6 +309,7 @@ class OptimizationTelemetry:
             "candidates_screened": self.candidates_screened,
             "candidates_partial_evaluated": self.candidates_partial_evaluated,
             "candidates_full_evaluated": self.candidates_full_evaluated,
+            "candidates_cached": self.candidates_cached,
             "promoted_by_rung": {
                 key: self.promoted_by_rung[key] for key in sorted(self.promoted_by_rung)
             },

@@ -194,6 +194,7 @@ def test_telemetry_to_dict_exports_sorted_hashes_and_unique_count() -> None:
     telemetry.candidates_screened = 1
     telemetry.candidates_partial_evaluated = 2
     telemetry.candidates_full_evaluated = 3
+    telemetry.candidates_cached = 1
     telemetry.promoted_by_rung = {"cheap": 2}
     telemetry.eliminated_by_rung = {"cheap": 1}
     telemetry.cost_by_rung = {"full": 2.0, "cheap": 0.5}
@@ -205,6 +206,7 @@ def test_telemetry_to_dict_exports_sorted_hashes_and_unique_count() -> None:
         "candidates_screened": 1,
         "candidates_partial_evaluated": 2,
         "candidates_full_evaluated": 3,
+        "candidates_cached": 1,
         "promoted_by_rung": {"cheap": 2},
         "eliminated_by_rung": {"cheap": 1},
         "cost_by_rung": {"cheap": 0.5, "full": 2.0},
@@ -339,3 +341,25 @@ def test_score_for_direction_rejects_invalid_direction() -> None:
 
     with pytest.raises(ConfigurationError, match="direction"):
         score_for_direction(3.0, "lowest")  # type: ignore[arg-type]
+
+
+def test_rejected_record_rejects_score() -> None:
+    with pytest.raises(FitnessError, match="rejected"):
+        EvaluationRecord(
+            candidate_id="bad",
+            score=0.0,
+            confidence="rejected",
+            rung="full",
+            cost=0.0,
+            metadata={"reason": "constraint_violation"},
+        )
+
+
+def test_telemetry_records_cached_without_full_evaluation_count() -> None:
+    telemetry = OptimizationTelemetry()
+
+    telemetry.record_cached(2, rung="full", cost=0.0)
+
+    assert telemetry.candidates_cached == 2
+    assert telemetry.candidates_full_evaluated == 0
+    assert telemetry.to_dict()["candidates_cached"] == 2
