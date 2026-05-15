@@ -45,6 +45,41 @@ class DroppingEvaluator:
         ]
 
 
+class OneCachedThenFreshEvaluator:
+    def __init__(self) -> None:
+        self._returned_cached = False
+
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.rung is not None
+        records = []
+        for candidate in candidates:
+            if not self._returned_cached:
+                self._returned_cached = True
+                records.append(
+                    EvaluationRecord(
+                        candidate_id=candidate.candidate_id,
+                        batch_id=candidate.batch_id,
+                        score=100.0,
+                        confidence="cached",
+                        rung=context.rung.name,
+                        cost=0.0,
+                    )
+                )
+            else:
+                records.append(
+                    EvaluationRecord(
+                        candidate_id=candidate.candidate_id,
+                        batch_id=candidate.batch_id,
+                        score=-sum(float(value) ** 2 for value in candidate.genes),
+                        confidence="trusted_full",
+                        rung=context.rung.name,
+                        cost=context.rung.budget,
+                    )
+                )
+        return records
+
+
 def _space() -> GeneSpace:
     return GeneSpace(
         [
@@ -395,6 +430,9 @@ def test_ga_cached_records_are_eligible_for_best_state() -> None:
     )
 
     assert result.cached_count == 1
+    assert result.trusted_count == 1
+    assert engine.vnext_telemetry.candidates_cached == 1
+    assert engine.vnext_telemetry.candidates_full_evaluated == 1
     assert result.best_candidate_id == candidates[0].candidate_id
     assert result.best_score == pytest.approx(12.0)
 
@@ -427,3 +465,15 @@ def test_ga_minimize_direction_selects_lowest_trusted_score() -> None:
     assert engine.best_candidate is not None
     assert engine.best_candidate.candidate_id == candidates[1].candidate_id
     assert result.best_score == pytest.approx(2.0)
+
+
+def test_ga_run_cached_records_do_not_consume_full_evaluation_budget() -> None:
+    engine = GAEngine(_space(), population_size=4, generations=20, seed=123)
+    policy = MultiFidelityPolicy.single_full(budget=4, batch_size=4)
+
+    result = engine.run(OneCachedThenFreshEvaluator(), policy=policy)
+
+    assert result.n_evaluations == 4
+    assert result.telemetry.candidates_full_evaluated == 4
+    assert result.telemetry.candidates_cached == 1
+    assert result.best_score == pytest.approx(100.0)

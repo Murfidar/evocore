@@ -929,7 +929,7 @@ class GAEngine:
                 self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
             elif record.confidence == "cached":
                 cached += 1
-                self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
+                self.vnext_telemetry.record_cached(1, rung=record.rung, cost=record.cost)
             elif record.confidence == "partial":
                 partial += 1
                 self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
@@ -1176,8 +1176,16 @@ class GAEngine:
                 self._validate_evaluator_records(assigned, records)
                 self.tell(records)
                 if rung.confidence == "trusted_full":
-                    n_evaluations += len(records)
+                    fresh_count = sum(
+                        1 for record in records if record.confidence == "trusted_full"
+                    )
+                    n_evaluations += fresh_count
                     final_candidates.extend(assigned)
+                    if fresh_count == 0:
+                        raise FitnessError(
+                            "Evaluator returned no fresh trusted_full records for the final rung; "
+                            "cached records do not consume full-evaluation budget."
+                        )
                     break
                 active_candidates = scheduler.promote(assigned, completed_rung=rung.name)
 
