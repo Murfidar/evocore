@@ -134,10 +134,11 @@ class EvaluationRecord:
             raise FitnessError("EvaluationRecord cost must be finite and >= 0.")
         if self.confidence == "rejected":
             if self.score is not None:
-                raise FitnessError("EvaluationRecord with confidence='rejected' requires score=None.")
+                raise FitnessError(
+                    "EvaluationRecord with confidence='rejected' requires score=None."
+                )
         elif self.score is None or not math.isfinite(float(self.score)):
             raise FitnessError("EvaluationRecord requires a finite score unless rejected.")
-
 
 
 @dataclass
