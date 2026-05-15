@@ -24,11 +24,14 @@ valid no-op for queue polling integrations.
 
 Confidence values are explicit:
 
-- `trusted_full` updates optimizer state by default.
-- `partial` and `surrogate` can inform scheduling and telemetry.
-- `cached` records are eligible for optimizer state updates and full-budget accounting,
-  while still being reported separately in `TellResult.cached_count`.
-- `rejected` records may omit score.
+- `trusted_full` records carry finite raw scores from fresh full objective work. They
+  update optimizer state and consume full-evaluation budget.
+- `cached` records carry finite raw scores from trusted previous full evaluations. They
+  update optimizer state but do not consume fresh full-evaluation budget.
+- `partial` and `surrogate` records carry finite scores for scheduling, telemetry, and
+  history, but they cannot become optimizer best state.
+- `rejected` records represent recoverable candidate-level failures. They must use
+  `score=None` and carry diagnostics in `metrics` or `metadata`.
 
 Raw user scores are preserved. Optimizers use `direction="maximize"` or
 `direction="minimize"` to compare candidates without rewriting the score stored in
@@ -38,8 +41,8 @@ reported optimizer best. `EngineStateSummary.trusted_count` counts candidates wi
 state-eligible records.
 
 Invalid records raise `FitnessError`: unknown candidates, unknown explicit batch IDs,
-batch mismatches, duplicate candidate/rung records, and non-finite non-rejected scores
-are rejected.
+batch mismatches, duplicate candidate/rung records, non-finite non-rejected scores, and
+scored `rejected` records are rejected.
 
 ## Event History
 

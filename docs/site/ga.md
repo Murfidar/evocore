@@ -5,6 +5,9 @@ state-eligible `EvaluationRecord` values. `trusted_full` and `cached` records ca
 best-candidate state; `partial` and `surrogate` records remain available for scheduling and
 telemetry.
 
+Full-evaluation budget accounting counts fresh `trusted_full` records only. Cached records
+can update best-candidate state, but they do not spend fresh objective budget.
+
 Use `ask()` and `tell()` directly when an external system owns evaluation. Use `run()` with an
 an evaluator object and optional `MultiFidelityPolicy` when EvoCore should drive the budget loop.
 

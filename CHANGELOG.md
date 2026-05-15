@@ -36,8 +36,11 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   final rung.
 - `ProcessParallel` now reuses a persistent process pool across repeated `evaluate(...)`
   calls until closed.
-- Cached evaluation records are now eligible for optimizer state updates and full-budget
-  accounting while remaining separately counted in `TellResult.cached_count`.
+- Cached evaluation records remain eligible for optimizer state updates but no longer
+  consume fresh full-evaluation budget; they are counted through
+  `OptimizationTelemetry.candidates_cached` and `TellResult.cached_count`.
+- Objective records now reject non-finite scores uniformly, and `rejected` records must
+  use `score=None` with diagnostics in metrics or metadata.
 - Runtime timing in result exports now lives under `runtime` and is included only when
   callers pass `include_runtime=True`.
 - Run reproducibility metadata now uses the canonical `GeneSpace` signature and hash,

@@ -7,7 +7,9 @@ because the Rust covariance state is not picklable.
 
 `direction="maximize"` and `direction="minimize"` preserve raw user fitness values in
 results while using direction-aware comparison internally. In ask/tell mode, complete
-batches of `trusted_full` or `cached` records update the covariance state.
+batches of `trusted_full` or `cached` records update the covariance state. Cached records
+reuse trusted previous full observations and do not spend fresh full-evaluation budget.
+
 
 ## Result Export
 
