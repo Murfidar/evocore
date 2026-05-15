@@ -11,3 +11,4 @@ pandas>=3.0.3
 pluggy>=1.6.0
 pygments>=2.20.0
 pytest>=9.0.3
+ruff>=0.15.13
