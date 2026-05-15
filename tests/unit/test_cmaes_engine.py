@@ -1,6 +1,6 @@
 import pytest
 
-from evocore import ConfigurationError, GeneDef, GeneSpace
+from evocore import ConfigurationError, FitnessError, GeneDef, GeneSpace
 from evocore.cmaes import CMAESEngine
 
 
@@ -115,3 +115,10 @@ def test_cmaes_rejects_fixed_numeric_genes_until_reconstruction_is_supported():
     message = str(exc.value)
     assert "fixed numeric genes" in message
     assert "GAEngine" in message
+
+
+def test_cmaes_non_finite_fitness_raises() -> None:
+    engine = CMAESEngine(GeneSpace.uniform(-2.0, 2.0, 3), population_size=6, generations=1)
+
+    with pytest.raises(FitnessError, match="finite"):
+        engine.run(lambda _ind: float("nan"))

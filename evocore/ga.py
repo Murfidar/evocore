@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from statistics import mean, stdev
 from typing import Any, Literal
 
+import pandas as pd
+
 from evocore import _core
 from evocore.batches import CandidateBatch, batch_id_from_seed
 from evocore.callbacks import Callback, GenerationInfo
@@ -34,7 +36,6 @@ from evocore.exceptions import (
     ConfigurationError,
     ConfigurationWarning,
     FitnessError,
-    FitnessWarning,
 )
 from evocore.exporting import json_safe, package_version, stable_json_dumps
 from evocore.gene_space import GeneSpace
@@ -176,13 +177,6 @@ class MultiRunResult:
 
     def to_dataframe(self):
         """Return one pandas DataFrame row per child run."""
-        try:
-            import pandas as pd
-        except ImportError as exc:
-            raise ImportError(
-                "MultiRunResult.to_dataframe() requires pandas. Install with: pip install pandas"
-            ) from exc
-
         rows = [
             {
                 "run_index": index,
@@ -397,10 +391,10 @@ class GAEngine:
 
         ind.metadata["metrics"] = dict(metrics)
         if not math.isfinite(fitness):
-            ind.metadata["raw_fitness"] = fitness
-            ind.fitness = float("-inf")
-            ind.fitness_valid = True
-            return float("-inf"), 1
+            raise FitnessError(
+                f"fitness_fn must return a finite float at generation {gen}, index {idx}; "
+                f"got {fitness!r}."
+            )
 
         ind.fitness = fitness
         ind.fitness_valid = True
@@ -494,20 +488,6 @@ class GAEngine:
         for raw_idx, (ind, raw) in enumerate(zip(pending, raw_results, strict=False)):
             _, n_bad = self._normalise_fitness_result(raw, ind, gen, raw_idx)
             nan_count += n_bad
-
-        if nan_count and not self._fitness_warning_emitted:
-            logger.warning(
-                "GA generation=%s saw %s non-finite fitness values; assigned fitness=-inf",
-                gen,
-                nan_count,
-            )
-            warnings.warn(
-                f"{nan_count} individuals in generation {gen} returned NaN or Inf fitness. "
-                "They have been assigned fitness=-inf for selection.",
-                FitnessWarning,
-                stacklevel=2,
-            )
-            self._fitness_warning_emitted = True
 
         return [
             float(ind.fitness) if ind.fitness is not None else float("-inf") for ind in individuals

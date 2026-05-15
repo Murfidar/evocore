@@ -10,7 +10,6 @@ from evocore import (
     EvaluationContext,
     EvaluationRecord,
     FitnessError,
-    FitnessWarning,
     GAEngine,
     GeneDef,
     GenerationInfo,
@@ -254,21 +253,15 @@ def test_tuple_fitness_stores_metrics():
     assert ind.fitness_valid is True
 
 
-def test_nan_fitness_warns_once_and_sanitizes():
+def test_non_finite_fitness_raises() -> None:
     engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, generations=1)
     ind = Individual([0.0, 0.0])
 
-    with pytest.warns(FitnessWarning):
-        fitnesses, nan_count = engine._evaluate_all([ind], lambda _ind: float("nan"), gen=0)
+    with pytest.raises(FitnessError, match="finite"):
+        engine._evaluate_all([ind], lambda _ind: float("nan"), gen=0)
 
-    assert fitnesses == [float("-inf")]
-    assert nan_count == 1
-
-    with warnings.catch_warnings(record=True) as second:
-        warnings.simplefilter("always")
-        engine._evaluate_all([Individual([0.0, 0.0])], lambda _ind: float("nan"), gen=1)
-
-    assert len(second) == 0
+    assert ind.fitness is None
+    assert ind.fitness_valid is False
 
 
 def test_fitness_exception_wrapped():

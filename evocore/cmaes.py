@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import math
 import time
-import warnings
 from collections.abc import Callable, Sequence
 from typing import Any
 
@@ -22,7 +21,7 @@ from evocore.evaluation import (
     is_state_update_confidence,
     score_for_direction,
 )
-from evocore.exceptions import ConfigurationError, FitnessError, FitnessWarning
+from evocore.exceptions import ConfigurationError, FitnessError
 from evocore.exporting import json_safe, package_version
 from evocore.ga import RunResult
 from evocore.gene_space import GeneSpace
@@ -224,10 +223,10 @@ class CMAESEngine:
 
         ind.metadata["metrics"] = dict(metrics)
         if not math.isfinite(fitness):
-            ind.metadata["raw_fitness"] = fitness
-            ind.fitness = float("-inf")
-            ind.fitness_valid = True
-            return float("-inf"), 1
+            raise FitnessError(
+                f"fitness_fn must return a finite float at generation {gen}, index {idx}; "
+                f"got {fitness!r}."
+            )
 
         ind.fitness = fitness
         ind.fitness_valid = True
@@ -284,20 +283,6 @@ class CMAESEngine:
             fitness, bad_count = self._normalise_fitness_result(raw, ind, gen, idx)
             fitnesses.append(fitness)
             nan_count += bad_count
-
-        if nan_count and not self._fitness_warning_emitted:
-            logger.warning(
-                "CMA-ES generation=%s saw %s non-finite fitness values; assigned fitness=-inf",
-                gen,
-                nan_count,
-            )
-            warnings.warn(
-                f"{nan_count} individuals in generation {gen} returned NaN or Inf fitness. "
-                "They have been assigned fitness=-inf for selection.",
-                FitnessWarning,
-                stacklevel=2,
-            )
-            self._fitness_warning_emitted = True
 
         return fitnesses, nan_count
 
