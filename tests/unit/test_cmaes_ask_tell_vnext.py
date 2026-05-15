@@ -294,6 +294,8 @@ def test_cma_cached_records_are_eligible_for_best_state_and_batch_update() -> No
     assert result.cached_count == 4
     assert result.consumed_batch_ids == (candidates[0].batch_id,)
     assert engine.generation == 1
+    assert engine.vnext_telemetry.candidates_cached == 4
+    assert engine.vnext_telemetry.candidates_full_evaluated == 0
     assert result.best_candidate_id == candidates[-1].candidate_id
     assert result.best_score == pytest.approx(13.0)
 

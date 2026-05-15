@@ -349,7 +349,7 @@ class CMAESEngine:
             self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
             return "trusted"
         if record.confidence == "cached":
-            self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
+            self.vnext_telemetry.record_cached(1, rung=record.rung, cost=record.cost)
             return "cached"
         if record.confidence == "partial":
             self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
