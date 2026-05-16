@@ -14,7 +14,7 @@ class MultiFidelityPolicy:
     """Configure multi-fidelity scheduling for vNext engines."""
 
     rungs: list[Rung]
-    full_evaluation_budget: int
+    max_evaluations: int
     batch_size: int | None = None
     exploration_fraction: float = 0.10
     audit_fraction: float = 0.0
@@ -22,8 +22,8 @@ class MultiFidelityPolicy:
     def __post_init__(self) -> None:
         if not self.rungs:
             raise ConfigurationError("MultiFidelityPolicy requires at least one rung.")
-        if int(self.full_evaluation_budget) <= 0:
-            raise ConfigurationError("full_evaluation_budget must be positive.")
+        if int(self.max_evaluations) <= 0:
+            raise ConfigurationError("max_evaluations must be positive.")
         if self.batch_size is not None and int(self.batch_size) <= 0:
             raise ConfigurationError("batch_size must be positive when provided.")
         if not (0.0 <= float(self.exploration_fraction) < 1.0):
@@ -53,11 +53,28 @@ class MultiFidelityPolicy:
         return self.rungs[-1]
 
     @classmethod
-    def single_full(cls, *, budget: int, batch_size: int | None = None) -> MultiFidelityPolicy:
+    def single_full(
+        cls,
+        *,
+        max_evaluations: int | None = None,
+        batch_size: int | None = None,
+        **legacy_kwargs: object,
+    ) -> MultiFidelityPolicy:
         """Create a one-rung full-evaluation vNext policy."""
+        if "budget" in legacy_kwargs:
+            raise ConfigurationError(
+                "MultiFidelityPolicy.single_full() uses max_evaluations=..., not budget=...."
+            )
+        if legacy_kwargs:
+            unknown = ", ".join(sorted(legacy_kwargs))
+            raise ConfigurationError(
+                f"MultiFidelityPolicy.single_full() got unexpected argument(s): {unknown}."
+            )
+        if max_evaluations is None:
+            raise ConfigurationError("single_full() requires max_evaluations.")
         return cls(
             rungs=[Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")],
-            full_evaluation_budget=budget,
+            max_evaluations=max_evaluations,
             batch_size=batch_size,
             exploration_fraction=0.0,
             audit_fraction=0.0,

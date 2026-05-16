@@ -31,9 +31,9 @@ class IndividualEvaluator:
         return records
 
 
-def full_policy(budget: int, batch_size: int = 8) -> MultiFidelityPolicy:
+def full_policy(max_evaluations: int, batch_size: int = 8) -> MultiFidelityPolicy:
     return MultiFidelityPolicy(
         rungs=[Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")],
-        full_evaluation_budget=budget,
+        max_evaluations=max_evaluations,
         batch_size=batch_size,
     )

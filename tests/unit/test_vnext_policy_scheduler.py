@@ -18,12 +18,13 @@ def test_policy_requires_unique_rung_names_and_full_budget() -> None:
             Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
             Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
-        full_evaluation_budget=32,
+        max_evaluations=32,
         batch_size=8,
         exploration_fraction=0.10,
         audit_fraction=0.05,
     )
 
+    assert policy.max_evaluations == 32
     assert policy.rung_names == ("cheap", "full")
     assert policy.final_rung.name == "full"
 
@@ -35,7 +36,7 @@ def test_policy_rejects_duplicate_rung_names() -> None:
                 Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
                 Rung("cheap", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
             ],
-            full_evaluation_budget=16,
+            max_evaluations=16,
         )
 
 
@@ -43,21 +44,21 @@ def test_policy_rejects_missing_trusted_full_rung() -> None:
     with pytest.raises(ConfigurationError, match="trusted_full"):
         MultiFidelityPolicy(
             rungs=[Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial")],
-            full_evaluation_budget=16,
+            max_evaluations=16,
         )
 
 
 def test_policy_rejects_invalid_budget_and_fractions() -> None:
-    with pytest.raises(ConfigurationError, match="full_evaluation_budget"):
+    with pytest.raises(ConfigurationError, match="max_evaluations"):
         MultiFidelityPolicy(
             rungs=[Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")],
-            full_evaluation_budget=0,
+            max_evaluations=0,
         )
 
     with pytest.raises(ConfigurationError, match="exploration_fraction"):
         MultiFidelityPolicy(
             rungs=[Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")],
-            full_evaluation_budget=1,
+            max_evaluations=1,
             exploration_fraction=1.5,
         )
 
@@ -69,7 +70,7 @@ def test_policy_requires_trusted_full_rung_to_be_final() -> None:
                 Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
                 Rung("audit", budget=1.0, promote_fraction=1.0, confidence="partial"),
             ],
-            full_evaluation_budget=16,
+            max_evaluations=16,
         )
 
 
@@ -81,8 +82,27 @@ def test_policy_rejects_multiple_trusted_full_rungs() -> None:
                 Rung("full_a", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
                 Rung("full_b", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
             ],
+            max_evaluations=16,
+        )
+
+
+def test_policy_rejects_legacy_full_evaluation_budget_name() -> None:
+    with pytest.raises(TypeError, match="full_evaluation_budget"):
+        MultiFidelityPolicy(
+            rungs=[Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")],
             full_evaluation_budget=16,
         )
+
+
+def test_single_full_uses_max_evaluations_and_rejects_budget() -> None:
+    policy = MultiFidelityPolicy.single_full(max_evaluations=12, batch_size=4)
+
+    assert policy.max_evaluations == 12
+    assert policy.batch_size == 4
+    assert policy.rung_names == ("full",)
+
+    with pytest.raises(ConfigurationError, match="max_evaluations"):
+        MultiFidelityPolicy.single_full(budget=12, batch_size=4)
 
 
 def test_scheduler_promotes_top_fraction_by_previous_rung_score() -> None:
@@ -91,7 +111,7 @@ def test_scheduler_promotes_top_fraction_by_previous_rung_score() -> None:
             Rung("cheap", budget=0.10, promote_fraction=0.4, confidence="partial"),
             Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
-        full_evaluation_budget=10,
+        max_evaluations=10,
     )
     scheduler = EvaluationScheduler(policy)
     candidates = [_candidate(index) for index in range(5)]
@@ -118,7 +138,7 @@ def test_scheduler_promotes_by_completed_rung_score_not_best_observed_score() ->
             Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
             Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
-        full_evaluation_budget=10,
+        max_evaluations=10,
         exploration_fraction=0.0,
     )
     scheduler = EvaluationScheduler(policy)
@@ -162,7 +182,7 @@ def test_scheduler_exploration_fraction_adds_tail_candidates() -> None:
             Rung("cheap", budget=0.10, promote_fraction=0.25, confidence="partial"),
             Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
-        full_evaluation_budget=10,
+        max_evaluations=10,
         exploration_fraction=0.25,
     )
     scheduler = EvaluationScheduler(policy)
@@ -189,7 +209,7 @@ def test_scheduler_assigns_first_rung_to_new_candidates() -> None:
             Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
             Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
-        full_evaluation_budget=10,
+        max_evaluations=10,
     )
     scheduler = EvaluationScheduler(policy)
     candidates = [_candidate(0), _candidate(1)]
@@ -206,7 +226,7 @@ def test_scheduler_counts_eliminated_candidates() -> None:
             Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
             Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
-        full_evaluation_budget=10,
+        max_evaluations=10,
     )
     scheduler = EvaluationScheduler(policy)
     candidates = [_candidate(index) for index in range(4)]
@@ -234,7 +254,7 @@ def test_scheduler_audit_fraction_promotes_one_low_ranked_candidate() -> None:
             Rung("cheap", budget=0.10, promote_fraction=0.25, confidence="partial"),
             Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
-        full_evaluation_budget=10,
+        max_evaluations=10,
         audit_fraction=0.25,
     )
     scheduler = EvaluationScheduler(policy)
