@@ -8,6 +8,7 @@ from evocore.stats import (
     Logbook,
     LogEntry,
     ReproducibilityMetadata,
+    append_run_stop_event,
     gene_space_hash,
     gene_space_signature,
 )
@@ -175,6 +176,28 @@ def test_event_history_to_rows_preserves_append_order():
             "metadata": {"source": "unit"},
         },
     ]
+
+
+def test_append_run_stop_event_records_terminal_metadata() -> None:
+    history = EventHistory()
+
+    append_run_stop_event(
+        history,
+        stop_reason="max_evaluations",
+        max_evaluations=12,
+        max_generations=3,
+        n_evaluations=12,
+    )
+
+    assert len(history) == 1
+    row = history.to_rows()[0]
+    assert row["event_type"] == "run_stop"
+    assert row["metadata"] == {
+        "max_evaluations": 12,
+        "max_generations": 3,
+        "n_evaluations": 12,
+        "stop_reason": "max_evaluations",
+    }
 
 
 def test_event_history_rejects_non_append_event_index():

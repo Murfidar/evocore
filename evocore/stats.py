@@ -6,11 +6,25 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+import matplotlib.pyplot as plt
+import pandas as pd
+
 from evocore.evaluation import CandidateOrigin, CandidateStatus, Direction, EvaluationConfidence
 from evocore.exceptions import ConfigurationError
 from evocore.exporting import canonical_json_hash, json_safe, stable_json_dumps
 from evocore.gene_space import GeneSpace
 from evocore.individual import GeneValue
+
+StopReason = Literal[
+    "max_evaluations",
+    "max_generations",
+    "callback",
+    "manual",
+    "optimizer_converged",
+    "target_score",
+    "patience",
+    "wall_time",
+]
 
 
 @dataclass
@@ -91,24 +105,10 @@ class Logbook:
 
     def to_dataframe(self):
         """Convert the logbook into a pandas DataFrame."""
-        try:
-            import pandas as pd
-        except ImportError as exc:
-            raise ImportError(
-                "Logbook.to_dataframe() requires pandas. Install with: pip install pandas"
-            ) from exc
-
         return pd.DataFrame(self.to_rows())
 
     def plot(self, metrics: list[str] | None = None):
         """Plot selected logbook metrics with matplotlib."""
-        try:
-            import matplotlib.pyplot as plt
-        except ImportError as exc:
-            raise ImportError(
-                "Logbook.plot() requires matplotlib. Install with: pip install matplotlib"
-            ) from exc
-
         metric_names = metrics or ["best_fitness", "mean_fitness"]
         rows = self.to_rows()
         xs = [row["gen"] for row in rows]
@@ -125,7 +125,7 @@ class EventRecord:
     """Represent one append-only optimizer lifecycle observation."""
 
     event_index: int
-    event_type: Literal["ask", "tell", "generation"]
+    event_type: Literal["ask", "tell", "generation", "run_stop"]
     batch_id: str | None = None
     candidate_id: str | None = None
     candidate_hash: str | None = None
@@ -202,14 +202,30 @@ class EventHistory:
 
     def to_dataframe(self):
         """Convert event rows into a pandas DataFrame."""
-        try:
-            import pandas as pd
-        except ImportError as exc:
-            raise ImportError(
-                "EventHistory.to_dataframe() requires pandas. Install with: pip install pandas"
-            ) from exc
-
         return pd.DataFrame(self.to_rows())
+
+
+def append_run_stop_event(
+    history: EventHistory,
+    *,
+    stop_reason: StopReason,
+    max_evaluations: int | None,
+    max_generations: int | None,
+    n_evaluations: int,
+) -> None:
+    """Append one terminal run-level stop event."""
+    history.append(
+        EventRecord(
+            event_index=len(history),
+            event_type="run_stop",
+            metadata={
+                "stop_reason": stop_reason,
+                "max_evaluations": max_evaluations,
+                "max_generations": max_generations,
+                "n_evaluations": n_evaluations,
+            },
+        )
+    )
 
 
 @dataclass(frozen=True)

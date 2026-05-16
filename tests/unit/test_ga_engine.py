@@ -62,7 +62,8 @@ def make_result(seed: int, fitness: float) -> RunResult:
         elite_history=[ind],
         diversity_history=[],
         seed=seed,
-        stopped_early=False,
+        stop_reason="max_generations",
+        max_generations=5,
     )
 
 
@@ -77,10 +78,14 @@ def test_multi_run_best_n_and_summary():
     assert multi.fitness_summary() == {"mean": 2.0, "std": 1.0, "min": 1.0, "max": 3.0}
 
 
-def test_run_result_preserves_existing_positional_construction():
+def test_run_result_uses_stop_reason_without_legacy_booleans():
     result = make_result(7, 1.25)
 
     assert result.best_fitness == pytest.approx(1.25)
+    assert result.stop_reason == "max_generations"
+    assert result.max_generations == 5
+    assert not hasattr(result, "stopped_early")
+    assert not hasattr(result, "budget_reached")
     assert result.direction == "maximize"
     assert result.engine_type == ""
     assert result.best_candidate_id is None
@@ -99,6 +104,14 @@ def test_run_result_to_dict_excludes_runtime_by_default():
     assert payload["best"]["fitness"] == pytest.approx(1.25)
     assert payload["best"]["score"] == pytest.approx(1.25)
     assert payload["n_evaluations"] == 1
+    assert payload["stop"] == {"reason": "max_generations"}
+    assert payload["budget"] == {
+        "max_evaluations": None,
+        "max_generations": 5,
+        "n_evaluations": 1,
+    }
+    assert "stopped_early" not in payload["stop"]
+    assert "budget_reached" not in payload["budget"]
     assert "runtime" not in payload
 
 

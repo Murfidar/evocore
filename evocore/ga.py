@@ -13,7 +13,7 @@ from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 from statistics import mean, stdev
-from typing import Any, Literal
+from typing import Any
 
 import pandas as pd
 
@@ -51,11 +51,11 @@ from evocore.stats import (
     Logbook,
     LogEntry,
     ReproducibilityMetadata,
+    StopReason,
+    append_run_stop_event,
 )
 
 logger = logging.getLogger(__name__)
-
-StopReason = Literal["generations", "max_evaluations", "callback"]
 
 
 @dataclass
@@ -71,10 +71,9 @@ class RunResult:
     elite_history: list[Individual]
     diversity_history: list[list[float]]
     seed: int
-    stopped_early: bool
+    stop_reason: StopReason = "max_generations"
+    max_generations: int | None = None
     max_evaluations: int | None = None
-    stop_reason: StopReason = "generations"
-    budget_reached: bool = False
     telemetry: OptimizationTelemetry = field(default_factory=OptimizationTelemetry)
     direction: Direction = "maximize"
     engine_type: str = ""
@@ -100,12 +99,12 @@ class RunResult:
                 "params": self.best_individual.metadata.get("params"),
             },
             "stop": {
-                "stopped_early": self.stopped_early,
                 "reason": self.stop_reason,
             },
             "budget": {
                 "max_evaluations": self.max_evaluations,
-                "budget_reached": self.budget_reached,
+                "max_generations": self.max_generations,
+                "n_evaluations": self.n_evaluations,
             },
             "n_evaluations": self.n_evaluations,
             "reproducibility": (
