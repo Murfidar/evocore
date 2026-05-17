@@ -34,6 +34,8 @@ from evocore.stats import (
     Logbook,
     LogEntry,
     ReproducibilityMetadata,
+    StopReason,
+    append_run_stop_event,
 )
 
 logger = logging.getLogger(__name__)
@@ -47,7 +49,7 @@ class CMAESEngine:
         population_size: Number of sampled candidates per generation.
         initial_mean: Optional encoded initial mean.
         initial_sigma: Initial sigma fraction relative to gene bounds.
-        generations: Maximum number of generations to run.
+        max_generations: Maximum number of generations to run.
         parallel: Evaluation mode: `"none"` or `"thread"`.
         n_workers: Worker count for thread mode.
         callbacks: Optional callbacks invoked during the run.
@@ -64,18 +66,24 @@ class CMAESEngine:
         population_size: int = 50,
         initial_mean: list[float] | None = None,
         initial_sigma: float = 0.3,
-        generations: int = 300,
+        max_generations: int = 300,
         parallel: str = "none",
         n_workers: int | None = None,
         callbacks: Sequence[Callback] | None = None,
         seed: int = 0,
         direction: Direction = "maximize",
         track_diversity: bool = False,
+        **legacy_kwargs: object,
     ) -> None:
         if gene_space is None:
             raise ConfigurationError(
                 "gene_space required for CMAESEngine. Pass GeneSpace.uniform(-5.0, 5.0, length)."
             )
+        if "generations" in legacy_kwargs:
+            raise ConfigurationError("CMAESEngine uses max_generations, not generations")
+        if legacy_kwargs:
+            unknown = ", ".join(sorted(legacy_kwargs))
+            raise ConfigurationError(f"CMAESEngine got unexpected argument(s): {unknown}.")
         if "bool" in gene_space.kinds:
             raise ConfigurationError(
                 "CMAESEngine does not support bool genes; use float/int genes only."
@@ -96,8 +104,8 @@ class CMAESEngine:
             raise ConfigurationError("CMAESEngine parallel must be 'none' or 'thread'.")
         if population_size < 2:
             raise ConfigurationError("population_size must be at least 2.")
-        if generations < 0:
-            raise ConfigurationError("generations must be >= 0.")
+        if max_generations < 0:
+            raise ConfigurationError("max_generations must be >= 0.")
         if not (initial_sigma > 0.0):
             raise ConfigurationError("initial_sigma must be > 0.")
         if initial_mean is not None and len(initial_mean) != gene_space.length:
@@ -107,7 +115,7 @@ class CMAESEngine:
         self.population_size = population_size
         self.initial_mean = initial_mean
         self.initial_sigma = initial_sigma
-        self.generations = generations
+        self.max_generations = max_generations
         self.parallel = parallel
         self.n_workers = n_workers
         self.callbacks = list(callbacks or [])
@@ -289,7 +297,7 @@ class CMAESEngine:
     def _bind_callbacks(self) -> None:
         for callback in self.callbacks:
             callback.should_stop = False
-            callback.bind_context(seed=self.seed, generations=self.generations)
+            callback.bind_context(seed=self.seed, max_generations=self.max_generations)
 
     def _callbacks_should_stop(self) -> bool:
         return any(getattr(callback, "should_stop", False) for callback in self.callbacks)
@@ -497,7 +505,7 @@ class CMAESEngine:
                 "population_size": self.population_size,
                 "initial_mean": self.initial_mean,
                 "initial_sigma": self.initial_sigma,
-                "generations": self.generations,
+                "max_generations": self.max_generations,
                 "parallel": self.parallel,
                 "n_workers": self.n_workers,
                 "track_diversity": self.track_diversity,
@@ -564,13 +572,13 @@ class CMAESEngine:
         diversity_history: list[list[float]] = []
         final_population = Population([])
         n_evaluations = 0
-        stopped_early = False
+        stop_reason: StopReason = "max_generations"
 
-        for gen in range(self.generations):
+        for gen in range(self.max_generations):
             for callback in self.callbacks:
                 callback.on_generation_start(gen, final_population)
             if self._callbacks_should_stop():
-                stopped_early = True
+                stop_reason = "callback"
                 break
 
             gen_start = time.perf_counter()
@@ -617,7 +625,7 @@ class CMAESEngine:
             for callback in self.callbacks:
                 callback.on_generation_end(gen, final_population, info)
             if self._callbacks_should_stop():
-                stopped_early = True
+                stop_reason = "callback"
                 break
 
         if len(final_population):
@@ -638,12 +646,21 @@ class CMAESEngine:
             elite_history=elite_history,
             diversity_history=diversity_history,
             seed=self.seed,
-            stopped_early=stopped_early,
+            stop_reason=stop_reason,
+            max_generations=self.max_generations,
+            max_evaluations=None,
             direction=self.direction,
             engine_type="CMAESEngine",
             best_score=best_fitness,
             history=self._generation_history(logbook),
             reproducibility=self._reproducibility_metadata(),
+        )
+        append_run_stop_event(
+            result.history,
+            stop_reason=result.stop_reason,
+            max_evaluations=result.max_evaluations,
+            max_generations=result.max_generations,
+            n_evaluations=result.n_evaluations,
         )
         for callback in self.callbacks:
             callback.on_run_end(result)

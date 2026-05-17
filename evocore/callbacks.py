@@ -75,7 +75,7 @@ class ProgressBar(Callback):
 
     def bind_context(self, **kwargs) -> None:
         """Store the total generation count for the progress bar."""
-        self._total = kwargs.get("generations")
+        self._total = kwargs.get("max_generations")
 
     def on_generation_start(self, gen: int, pop: Population) -> None:
         """Create the bar lazily on the first generation."""

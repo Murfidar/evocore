@@ -1,7 +1,13 @@
 import json
 import pickle
 
-from evocore.callbacks import CheckpointCallback, EarlyStopping, GenerationInfo, MetricsLogger
+from evocore.callbacks import (
+    CheckpointCallback,
+    EarlyStopping,
+    GenerationInfo,
+    MetricsLogger,
+    ProgressBar,
+)
 from evocore.individual import Individual, Population
 
 
@@ -40,3 +46,11 @@ def test_metrics_logger_uses_utf8_jsonl(tmp_path):
     record = json.loads(path.read_text(encoding="utf-8"))
     assert record["nan_fitness_count"] == 1
     assert record["cached_count"] == 2
+
+
+def test_progress_bar_binds_max_generations():
+    cb = ProgressBar()
+
+    cb.bind_context(seed=42, max_generations=7)
+
+    assert cb._total == 7
