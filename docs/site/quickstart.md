@@ -24,7 +24,7 @@ class SphereEvaluator:
 engine = GAEngine(
     GeneSpace.uniform(-5.0, 5.0, 10),
     population_size=100,
-    generations=100,
+    max_generations=100,
     seed=42,
     direction="maximize",
 )

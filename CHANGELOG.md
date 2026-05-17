@@ -25,6 +25,10 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ### Changed
 
+- Budget and termination vocabulary now uses `max_generations` and
+  `max_evaluations` consistently. Legacy generation and policy-budget names, along
+  with the old `RunResult` stop booleans, were removed in favor of
+  `RunResult.stop_reason`.
 - `GAEngine` and `CMAESEngine` now expose `direction` and preserve raw scores while
   using direction-aware comparisons for best-candidate tracking.
 - Policy-driven evaluators now receive `EvaluationContext` instead of a bare rung.
@@ -117,8 +121,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   `GeneDef` values, fixed/variable gene metadata, initialization, mutation, and
   reproduction.
 - Exact GA evaluation budget caps through `max_evaluations`.
-- GA stop diagnostics on `RunResult`, including `max_evaluations`, `stop_reason`, and
-  `budget_reached`.
+- GA stop diagnostics on `RunResult`, including evaluation-budget metadata and a final
+  stop status.
 - Production CI gates for linting, Rust tests, Python tests, and platform smoke checks.
 - PEP 561 typing marker and PyO3 extension stubs.
 - MkDocs API documentation.
