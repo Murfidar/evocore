@@ -15,8 +15,12 @@ def numpy_sphere(ind):
 
 def test_same_seed_engines_return_identical_results():
     evaluator = IndividualEvaluator(sphere)
-    left = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=30, generations=8, seed=42)
-    right = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=30, generations=8, seed=42)
+    left = GAEngine(
+        GeneSpace.uniform(-5.0, 5.0, 5), population_size=30, max_generations=8, seed=42
+    )
+    right = GAEngine(
+        GeneSpace.uniform(-5.0, 5.0, 5), population_size=30, max_generations=8, seed=42
+    )
 
     r1 = left.run(evaluator)
     r2 = right.run(evaluator)
@@ -29,14 +33,14 @@ def test_sequential_and_thread_parallel_identical():
     seq = GAEngine(
         GeneSpace.uniform(-5.0, 5.0, 5),
         population_size=30,
-        generations=8,
+        max_generations=8,
         parallel="none",
         seed=99,
     )
     thr = GAEngine(
         GeneSpace.uniform(-5.0, 5.0, 5),
         population_size=30,
-        generations=8,
+        max_generations=8,
         parallel="thread",
         n_workers=4,
         seed=99,
@@ -56,7 +60,7 @@ def test_n_workers_does_not_affect_results():
         engine = GAEngine(
             GeneSpace.uniform(-5.0, 5.0, 5),
             population_size=30,
-            generations=8,
+            max_generations=8,
             parallel="thread",
             n_workers=n_workers,
             seed=123,
@@ -67,8 +71,8 @@ def test_n_workers_does_not_affect_results():
 
 
 def test_different_seeds_diverge():
-    e1 = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=20, generations=4, seed=1)
-    e2 = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=20, generations=4, seed=2)
+    e1 = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=20, max_generations=4, seed=1)
+    e2 = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=20, max_generations=4, seed=2)
 
     evaluator = IndividualEvaluator(sphere)
 
@@ -76,7 +80,9 @@ def test_different_seeds_diverge():
 
 
 def test_multi_run_child_seeds_are_independent():
-    engine = GAEngine(GeneSpace.uniform(-5.0, 5.0, 5), population_size=20, generations=4, seed=42)
+    engine = GAEngine(
+        GeneSpace.uniform(-5.0, 5.0, 5), population_size=20, max_generations=4, seed=42
+    )
 
     multi = engine.run_multiple(IndividualEvaluator(sphere), n_runs=5)
 

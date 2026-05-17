@@ -12,7 +12,7 @@ def _candidate(index: int) -> Candidate:
     )
 
 
-def test_policy_requires_unique_rung_names_and_full_budget() -> None:
+def test_policy_requires_unique_rung_names_and_max_evaluations() -> None:
     policy = MultiFidelityPolicy(
         rungs=[
             Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),

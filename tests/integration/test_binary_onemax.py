@@ -11,7 +11,7 @@ def test_binary_onemax_smoke():
     engine = GAEngine(
         space,
         population_size=80,
-        generations=80,
+        max_generations=80,
         crossover="one_point",
         mutation="bit_flip",
         seed=42,

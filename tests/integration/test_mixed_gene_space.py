@@ -14,7 +14,7 @@ def test_mixed_gene_space_keeps_ints_typed():
             GeneDef("threshold", "float", 0.0, 1.0),
         ]
     )
-    engine = GAEngine(space, population_size=60, generations=50, seed=42)
+    engine = GAEngine(space, population_size=60, max_generations=50, seed=42)
 
     result = engine.run(IndividualEvaluator(mixed_target))
 

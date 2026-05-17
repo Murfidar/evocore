@@ -35,7 +35,7 @@ def test_vnext_multifidelity_benchmark_smoke() -> None:
             Rung("cheap", budget=0.1, promote_fraction=0.5, confidence="partial"),
             Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
-        full_evaluation_budget=16,
+        max_evaluations=16,
         batch_size=8,
         audit_fraction=0.25,
     )

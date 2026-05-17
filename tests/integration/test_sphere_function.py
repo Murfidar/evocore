@@ -8,7 +8,7 @@ def sphere(ind):
 
 def test_ga_sphere_converges_smoke():
     engine = GAEngine(
-        GeneSpace.uniform(-5.0, 5.0, 10), population_size=80, generations=80, seed=42
+        GeneSpace.uniform(-5.0, 5.0, 10), population_size=80, max_generations=80, seed=42
     )
 
     result = engine.run(IndividualEvaluator(sphere))

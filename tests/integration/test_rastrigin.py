@@ -12,7 +12,7 @@ def rastrigin(ind):
 
 def test_ga_rastrigin_smoke():
     engine = GAEngine(
-        GeneSpace.uniform(-5.12, 5.12, 6), population_size=100, generations=120, seed=7
+        GeneSpace.uniform(-5.12, 5.12, 6), population_size=100, max_generations=120, seed=7
     )
 
     result = engine.run(IndividualEvaluator(rastrigin))

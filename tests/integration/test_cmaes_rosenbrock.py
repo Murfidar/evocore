@@ -12,7 +12,7 @@ def rosenbrock(ind):
 
 def test_cmaes_rosenbrock_smoke():
     engine = CMAESEngine(
-        GeneSpace.uniform(-2.0, 2.0, 4), population_size=30, generations=80, seed=42
+        GeneSpace.uniform(-2.0, 2.0, 4), population_size=30, max_generations=80, seed=42
     )
 
     result = engine.run(rosenbrock)
