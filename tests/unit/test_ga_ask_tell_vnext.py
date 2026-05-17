@@ -90,7 +90,7 @@ def _space() -> GeneSpace:
 
 
 def test_ga_ask_returns_candidates_with_params_and_ids() -> None:
-    engine = GAEngine(_space(), population_size=6, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=6, max_generations=5, seed=123)
 
     candidates = engine.ask(4)
 
@@ -101,7 +101,7 @@ def test_ga_ask_returns_candidates_with_params_and_ids() -> None:
 
 
 def test_ga_ask_assigns_stable_batch_id_per_batch() -> None:
-    engine = GAEngine(_space(), population_size=6, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=6, max_generations=5, seed=123)
 
     first = engine.ask(3)
     second = engine.ask(2)
@@ -113,7 +113,7 @@ def test_ga_ask_assigns_stable_batch_id_per_batch() -> None:
 
 
 def test_ga_ask_populates_unique_candidate_hash_telemetry() -> None:
-    engine = GAEngine(_space(), population_size=6, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=6, max_generations=5, seed=123)
 
     candidates = engine.ask(4)
 
@@ -124,7 +124,7 @@ def test_ga_ask_populates_unique_candidate_hash_telemetry() -> None:
 
 
 def test_ga_ask_records_append_only_ask_events() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
 
     candidates = engine.ask(2)
 
@@ -140,7 +140,7 @@ def test_ga_ask_records_append_only_ask_events() -> None:
 
 
 def test_ga_tell_trusted_records_builds_trusted_population() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
     candidates = engine.ask(4)
     records = [
         EvaluationRecord(
@@ -161,7 +161,9 @@ def test_ga_tell_trusted_records_builds_trusted_population() -> None:
 
 
 def test_ga_tell_records_raw_and_comparison_scores_for_minimize() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123, direction="minimize")
+    engine = GAEngine(
+        _space(), population_size=4, max_generations=5, seed=123, direction="minimize"
+    )
     candidates = engine.ask(1)
 
     engine.tell(
@@ -189,7 +191,7 @@ def test_ga_tell_records_raw_and_comparison_scores_for_minimize() -> None:
 
 
 def test_ga_tell_accepts_partial_records_for_one_batch() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
     candidates = engine.ask(4)
     records = [
         EvaluationRecord(
@@ -213,7 +215,7 @@ def test_ga_tell_accepts_partial_records_for_one_batch() -> None:
 
 
 def test_ga_tell_rejects_duplicate_candidate_rung_record() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
     candidate = engine.ask(1)[0]
     record = EvaluationRecord(
         candidate_id=candidate.candidate_id,
@@ -231,7 +233,7 @@ def test_ga_tell_rejects_duplicate_candidate_rung_record() -> None:
 
 
 def test_ga_tell_rejects_explicit_batch_mismatch() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
     candidate = engine.ask(1)[0]
 
     with pytest.raises(FitnessError, match="batch_id"):
@@ -250,7 +252,7 @@ def test_ga_tell_rejects_explicit_batch_mismatch() -> None:
 
 
 def test_ga_tell_surrogate_records_do_not_build_trusted_population() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
     candidates = engine.ask(4)
 
     engine.tell(
@@ -271,8 +273,8 @@ def test_ga_tell_surrogate_records_do_not_build_trusted_population() -> None:
 
 
 def test_ga_run_uses_policy_and_returns_vnext_telemetry() -> None:
-    engine = GAEngine(_space(), population_size=6, generations=20, seed=123)
-    policy = MultiFidelityPolicy.single_full(budget=12, batch_size=4)
+    engine = GAEngine(_space(), population_size=6, max_generations=20, seed=123)
+    policy = MultiFidelityPolicy.single_full(max_evaluations=12, batch_size=4)
 
     result = engine.run(SphereEvaluator(), policy=policy)
 
@@ -283,18 +285,18 @@ def test_ga_run_uses_policy_and_returns_vnext_telemetry() -> None:
 
 
 def test_ga_run_rejects_evaluator_that_omits_assigned_records() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
 
     with pytest.raises(FitnessError, match="missing evaluation records"):
         engine.run(
             DroppingEvaluator(),
-            policy=MultiFidelityPolicy.single_full(budget=4, batch_size=4),
+            policy=MultiFidelityPolicy.single_full(max_evaluations=4, batch_size=4),
         )
 
 
 def test_ga_run_resets_vnext_state_for_repeated_runs() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
-    policy = MultiFidelityPolicy.single_full(budget=8, batch_size=4)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    policy = MultiFidelityPolicy.single_full(max_evaluations=8, batch_size=4)
 
     first = engine.run(SphereEvaluator(), policy=policy)
     second = engine.run(SphereEvaluator(), policy=policy)
@@ -306,7 +308,7 @@ def test_ga_run_resets_vnext_state_for_repeated_runs() -> None:
 
 
 def test_ga_tell_empty_records_returns_noop_tell_result() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
 
     result = engine.tell([])
 
@@ -316,7 +318,7 @@ def test_ga_tell_empty_records_returns_noop_tell_result() -> None:
 
 
 def test_ga_tell_rejects_unknown_explicit_batch_id() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
     candidate = engine.ask(1)[0]
 
     with pytest.raises(FitnessError, match="unknown batch_id"):
@@ -335,7 +337,7 @@ def test_ga_tell_rejects_unknown_explicit_batch_id() -> None:
 
 
 def test_ga_state_summary_reports_best_and_pending_batches() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
     candidates = engine.ask(2)
 
     before = engine.state_summary()
@@ -364,7 +366,7 @@ def test_ga_state_summary_reports_best_and_pending_batches() -> None:
 
 
 def test_ga_best_state_ignores_partial_scores() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
     candidates = engine.ask(2)
 
     engine.tell(
@@ -405,7 +407,7 @@ def test_ga_best_state_ignores_partial_scores() -> None:
 
 
 def test_ga_cached_records_are_eligible_for_best_state() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123)
+    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
     candidates = engine.ask(2)
 
     result = engine.tell(
@@ -438,7 +440,9 @@ def test_ga_cached_records_are_eligible_for_best_state() -> None:
 
 
 def test_ga_minimize_direction_selects_lowest_trusted_score() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=5, seed=123, direction="minimize")
+    engine = GAEngine(
+        _space(), population_size=4, max_generations=5, seed=123, direction="minimize"
+    )
     candidates = engine.ask(2)
 
     result = engine.tell(
@@ -468,8 +472,8 @@ def test_ga_minimize_direction_selects_lowest_trusted_score() -> None:
 
 
 def test_ga_run_cached_records_do_not_consume_full_evaluation_budget() -> None:
-    engine = GAEngine(_space(), population_size=4, generations=20, seed=123)
-    policy = MultiFidelityPolicy.single_full(budget=4, batch_size=4)
+    engine = GAEngine(_space(), population_size=4, max_generations=20, seed=123)
+    policy = MultiFidelityPolicy.single_full(max_evaluations=4, batch_size=4)
 
     result = engine.run(OneCachedThenFreshEvaluator(), policy=policy)
 

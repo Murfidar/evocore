@@ -199,7 +199,7 @@ class GAEngine:
     Args:
         gene_space: Gene definitions for individuals.
         population_size: Number of individuals per generation.
-        generations: Maximum number of generations to run.
+        max_generations: Maximum number of generations to run.
         crossover: Crossover operator name. Numeric spaces support `"sbx"`, `"blx"`,
             and `"uniform"`; binary spaces support `"one_point"`, `"two_point"`, and
             `"uniform"`.
@@ -232,7 +232,7 @@ class GAEngine:
         self,
         gene_space: GeneSpace,
         population_size: int = 100,
-        generations: int = 100,
+        max_generations: int = 100,
         crossover: str = "sbx",
         crossover_prob: float = 0.9,
         crossover_eta: float = 2.0,
@@ -255,15 +255,21 @@ class GAEngine:
         max_evaluations: int | None = None,
         track_diversity: bool = False,
         callbacks: Sequence[Callback] | None = None,
+        **legacy_kwargs: object,
     ) -> None:
         if gene_space is None:
             raise ConfigurationError(
                 "gene_space required for GAEngine. Pass GeneSpace.uniform(-5.0, 5.0, length)."
             )
+        if "generations" in legacy_kwargs:
+            raise ConfigurationError("GAEngine uses max_generations, not generations")
+        if legacy_kwargs:
+            unknown = ", ".join(sorted(legacy_kwargs))
+            raise ConfigurationError(f"GAEngine got unexpected argument(s): {unknown}.")
         if population_size < 2:
             raise ConfigurationError("population_size must be at least 2.")
-        if generations < 0:
-            raise ConfigurationError("generations must be >= 0.")
+        if max_generations < 0:
+            raise ConfigurationError("max_generations must be >= 0.")
         if max_evaluations is not None and max_evaluations <= 0:
             raise ConfigurationError("max_evaluations must be positive when provided.")
         if elitism < 0 or elitism >= population_size:
@@ -281,7 +287,7 @@ class GAEngine:
 
         self.gene_space = gene_space
         self.population_size = population_size
-        self.generations = generations
+        self.max_generations = max_generations
         self.crossover = crossover
         self.crossover_prob = crossover_prob
         self.crossover_eta = crossover_eta
@@ -493,10 +499,10 @@ class GAEngine:
         ], nan_count
 
     def _compute_sigma_fraction(self, gen: int) -> float:
-        if self.generations <= 1 or self.mutation_sigma_schedule == "constant":
+        if self.max_generations <= 1 or self.mutation_sigma_schedule == "constant":
             return self.mutation_sigma
 
-        t = gen / max(1, self.generations - 1)
+        t = gen / max(1, self.max_generations - 1)
         if self.mutation_sigma_schedule == "linear_decay":
             return self.mutation_sigma + t * (self.mutation_sigma_end - self.mutation_sigma)
         if self.mutation_sigma_schedule == "cosine_decay":
@@ -526,7 +532,7 @@ class GAEngine:
     def _bind_callbacks(self) -> None:
         for callback in self.callbacks:
             callback.should_stop = False
-            callback.bind_context(seed=self.seed, generations=self.generations)
+            callback.bind_context(seed=self.seed, max_generations=self.max_generations)
 
     def _callbacks_should_stop(self) -> bool:
         return any(getattr(callback, "should_stop", False) for callback in self.callbacks)
@@ -679,13 +685,13 @@ class GAEngine:
             return next_population, fitnesses, n_evaluations, True, "callback"
         if self.max_evaluations is not None and n_evaluations >= self.max_evaluations:
             return next_population, fitnesses, n_evaluations, True, "max_evaluations"
-        return next_population, fitnesses, n_evaluations, False, "generations"
+        return next_population, fitnesses, n_evaluations, False, "max_generations"
 
     def _copy_with_seed(self, seed: int) -> GAEngine:
         return GAEngine(
             gene_space=self.gene_space,
             population_size=self.population_size,
-            generations=self.generations,
+            max_generations=self.max_generations,
             crossover=self.crossover,
             crossover_prob=self.crossover_prob,
             crossover_eta=self.crossover_eta,
@@ -735,15 +741,9 @@ class GAEngine:
         n_evaluations = evaluated_now
         elite_history: list[Individual] = []
         diversity_history: list[list[float]] = []
-        stopped_early = False
-        stop_reason: StopReason = "generations"
-        if self.max_evaluations is not None and n_evaluations >= self.max_evaluations:
-            stopped_early = True
-            stop_reason = "max_evaluations"
-
-        for gen in range(start_generation, self.generations):
-            if stop_reason == "max_evaluations":
-                break
+        stop_reason: StopReason = "max_generations"
+        for gen in range(start_generation, self.max_generations):
+            # No early break here — let _run_generation check callbacks before budget
             (
                 working_population,
                 fitnesses,
@@ -761,7 +761,6 @@ class GAEngine:
                 logbook=logbook,
             )
             if generation_stopped:
-                stopped_early = True
                 stop_reason = generation_stop_reason
                 break
 
@@ -779,17 +778,21 @@ class GAEngine:
             elite_history=elite_history,
             diversity_history=diversity_history,
             seed=self.seed,
-            stopped_early=stopped_early,
-            max_evaluations=self.max_evaluations,
             stop_reason=stop_reason,
-            budget_reached=(
-                self.max_evaluations is not None and n_evaluations >= self.max_evaluations
-            ),
+            max_generations=self.max_generations,
+            max_evaluations=self.max_evaluations,
             direction=self.direction,
             engine_type="GAEngine",
             best_score=float(best.fitness),
             history=self._generation_history(logbook),
             reproducibility=self._reproducibility_metadata(),
+        )
+        append_run_stop_event(
+            result.history,
+            stop_reason=result.stop_reason,
+            max_evaluations=result.max_evaluations,
+            max_generations=result.max_generations,
+            n_evaluations=result.n_evaluations,
         )
         for callback in self.callbacks:
             callback.on_run_end(result)
@@ -1071,7 +1074,7 @@ class GAEngine:
         return json_safe(
             {
                 "population_size": self.population_size,
-                "generations": self.generations,
+                "max_generations": self.max_generations,
                 "crossover": self.crossover,
                 "crossover_prob": self.crossover_prob,
                 "crossover_eta": self.crossover_eta,
@@ -1130,7 +1133,7 @@ class GAEngine:
         self._reset_vnext_state()
 
         resolved_policy = policy or MultiFidelityPolicy.single_full(
-            budget=max(1, self.population_size * max(1, self.generations)),
+            max_evaluations=max(1, self.population_size * max(1, self.max_generations)),
             batch_size=self.population_size,
         )
         scheduler = EvaluationScheduler(resolved_policy)
@@ -1138,12 +1141,9 @@ class GAEngine:
         n_evaluations = 0
         final_candidates: list[Candidate] = []
 
-        while (
-            self.vnext_telemetry.candidates_full_evaluated < resolved_policy.full_evaluation_budget
-        ):
+        while self.vnext_telemetry.candidates_full_evaluated < resolved_policy.max_evaluations:
             remaining = (
-                resolved_policy.full_evaluation_budget
-                - self.vnext_telemetry.candidates_full_evaluated
+                resolved_policy.max_evaluations - self.vnext_telemetry.candidates_full_evaluated
             )
             batch_size = min(resolved_policy.batch_size or self.population_size, remaining)
             active_candidates = self.ask(batch_size)
@@ -1172,7 +1172,7 @@ class GAEngine:
             # Defensive: only possible if policy has no trusted_full rung,
             # which MultiFidelityPolicy.__post_init__ already rejects.
             best = Individual([0.0], fitness=float("-inf"), fitness_valid=False)
-            return RunResult(
+            result = RunResult(
                 best_individual=best,
                 best_fitness=float("-inf"),
                 final_population=Population([best]),
@@ -1182,10 +1182,9 @@ class GAEngine:
                 elite_history=[],
                 diversity_history=[],
                 seed=self.seed,
-                stopped_early=True,
-                max_evaluations=resolved_policy.full_evaluation_budget,
                 stop_reason="max_evaluations",
-                budget_reached=True,
+                max_generations=self.max_generations,
+                max_evaluations=resolved_policy.max_evaluations,
                 telemetry=self.vnext_telemetry,
                 direction=self.direction,
                 engine_type="GAEngine",
@@ -1193,6 +1192,14 @@ class GAEngine:
                 history=self.history,
                 reproducibility=self._reproducibility_metadata(),
             )
+            append_run_stop_event(
+                result.history,
+                stop_reason=result.stop_reason,
+                max_evaluations=result.max_evaluations,
+                max_generations=result.max_generations,
+                n_evaluations=result.n_evaluations,
+            )
+            return result
 
         best = Individual(
             list(self.best_candidate.genes),
@@ -1215,7 +1222,7 @@ class GAEngine:
                 for candidate in final_candidates
             ]
         )
-        return RunResult(
+        result = RunResult(
             best_individual=best,
             best_fitness=float(best.fitness),
             final_population=final_population,
@@ -1225,10 +1232,9 @@ class GAEngine:
             elite_history=[],
             diversity_history=[],
             seed=self.seed,
-            stopped_early=True,
-            max_evaluations=resolved_policy.full_evaluation_budget,
             stop_reason="max_evaluations",
-            budget_reached=True,
+            max_generations=self.max_generations,
+            max_evaluations=resolved_policy.max_evaluations,
             telemetry=self.vnext_telemetry,
             direction=self.direction,
             engine_type="GAEngine",
@@ -1237,6 +1243,14 @@ class GAEngine:
             history=self.history,
             reproducibility=self._reproducibility_metadata(),
         )
+        append_run_stop_event(
+            result.history,
+            stop_reason=result.stop_reason,
+            max_evaluations=result.max_evaluations,
+            max_generations=result.max_generations,
+            n_evaluations=result.n_evaluations,
+        )
+        return result
 
     def run_multiple(
         self,
