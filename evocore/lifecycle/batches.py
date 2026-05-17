@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from evocore import _core
-from evocore.evaluation import EvaluationRecord, is_state_update_confidence
-from evocore.exceptions import FitnessError
+from evocore.core.errors import FitnessError
+from evocore.lifecycle.records import EvaluationRecord, is_state_update_confidence
 
 
 def batch_id_from_seed(master_seed: int, event_index: int) -> str:
@@ -60,11 +60,11 @@ class CandidateBatch:
                         f"candidate_id {record.candidate_id!r} already has a state update record "
                         f"for batch {self.batch_id!r}."
                     )
-        key = (record.candidate_id, record.rung)
+        key = (record.candidate_id, record.stage)
         if key in self.records_by_key:
             raise FitnessError(
-                f"candidate_id {record.candidate_id!r} already has a record for rung "
-                f"{record.rung!r} in batch {self.batch_id!r}."
+                f"candidate_id {record.candidate_id!r} already has a record for stage "
+                f"{record.stage!r} in batch {self.batch_id!r}."
             )
         self.records_by_key[key] = record
 

@@ -5,56 +5,56 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 
-from evocore.evaluation import Candidate
-from evocore.exceptions import ConfigurationError
-from evocore.policies import MultiFidelityPolicy
+from evocore.core.errors import ConfigurationError
+from evocore.lifecycle.policies import BudgetPolicy
+from evocore.lifecycle.records import Candidate
 
 
-class EvaluationScheduler:
-    """Schedule candidates across multi-fidelity rungs."""
+class BudgetScheduler:
+    """Schedule candidates across multi-fidelity stages."""
 
-    def __init__(self, policy: MultiFidelityPolicy) -> None:
+    def __init__(self, policy: BudgetPolicy) -> None:
         self.policy = policy
 
-    def rung_after(self, completed_rung: str) -> str | None:
-        """Return the next rung name after a completed rung."""
-        names = self.policy.rung_names
-        if completed_rung not in names:
-            raise ConfigurationError(f"unknown rung: {completed_rung!r}")
-        index = names.index(completed_rung)
+    def stage_after(self, completed_stage: str) -> str | None:
+        """Return the next stage name after a completed stage."""
+        names = self.policy.stage_names
+        if completed_stage not in names:
+            raise ConfigurationError(f"unknown stage: {completed_stage!r}")
+        index = names.index(completed_stage)
         if index + 1 >= len(names):
             return None
         return names[index + 1]
 
-    def assign_rung(self, candidates: Sequence[Candidate], *, rung_name: str) -> list[Candidate]:
-        """Assign a rung to candidates selected for evaluation."""
-        if rung_name not in self.policy.rung_names:
-            raise ConfigurationError(f"unknown rung: {rung_name!r}")
+    def assign_stage(self, candidates: Sequence[Candidate], *, stage_name: str) -> list[Candidate]:
+        """Assign a stage to candidates selected for evaluation."""
+        if stage_name not in self.policy.stage_names:
+            raise ConfigurationError(f"unknown stage: {stage_name!r}")
         assigned = list(candidates)
         for candidate in assigned:
-            candidate.rung = rung_name
+            candidate.stage = stage_name
             candidate.status = "racing"
         return assigned
 
     @staticmethod
-    def _score_for_rung(candidate: Candidate, rung_name: str) -> float:
-        score = candidate.scores.get(rung_name)
+    def _score_for_stage(candidate: Candidate, stage_name: str) -> float:
+        score = candidate.scores.get(stage_name)
         if score is None or score.score is None:
             return float("-inf")
         return float(score.score)
 
-    def promote(self, candidates: Sequence[Candidate], *, completed_rung: str) -> list[Candidate]:
+    def promote(self, candidates: Sequence[Candidate], *, completed_stage: str) -> list[Candidate]:
         """Promote top candidates plus deterministic audit samples."""
-        if completed_rung not in self.policy.rung_names:
-            raise ConfigurationError(f"unknown rung: {completed_rung!r}")
+        if completed_stage not in self.policy.stage_names:
+            raise ConfigurationError(f"unknown stage: {completed_stage!r}")
 
-        rung = self.policy.rungs[self.policy.rung_names.index(completed_rung)]
+        stage = self.policy.stages[self.policy.stage_names.index(completed_stage)]
         ranked = sorted(
             candidates,
-            key=lambda candidate: self._score_for_rung(candidate, completed_rung),
+            key=lambda candidate: self._score_for_stage(candidate, completed_stage),
             reverse=True,
         )
-        promote_count = max(1, int(math.ceil(len(ranked) * rung.promote_fraction)))
+        promote_count = max(1, int(math.ceil(len(ranked) * stage.promote_fraction)))
         exploration_count = int(math.floor(len(ranked) * self.policy.exploration_fraction))
         audit_count = int(math.floor(len(ranked) * self.policy.audit_fraction))
         promoted = list(ranked[:promote_count])

@@ -6,11 +6,11 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 
-from evocore.exceptions import ConfigurationError
+from evocore.core.errors import ConfigurationError
 
 
 @dataclass(frozen=True)
-class IntegerMargin:
+class IntegerMarginDistribution:
     """Convert continuous integer samples into margin-protected probabilities."""
 
     low: int
@@ -19,14 +19,16 @@ class IntegerMargin:
 
     def __post_init__(self) -> None:
         if self.low > self.high:
-            raise ConfigurationError("IntegerMargin requires low <= high.")
+            raise ConfigurationError("IntegerMarginDistribution requires low <= high.")
         if not (0.0 < self.min_probability < 1.0):
-            raise ConfigurationError("IntegerMargin min_probability must be in (0, 1).")
+            raise ConfigurationError(
+                "IntegerMarginDistribution min_probability must be in (0, 1)."
+            )
 
     def probabilities(self, *, mean: float, sigma: float) -> dict[int, float]:
         """Return normalized integer probabilities with a minimum margin."""
         if sigma <= 0.0 or not math.isfinite(sigma):
-            raise ConfigurationError("IntegerMargin sigma must be finite and > 0.")
+            raise ConfigurationError("IntegerMarginDistribution sigma must be finite and > 0.")
         raw: dict[int, float] = {}
         for value in range(self.low, self.high + 1):
             z = (float(value) - float(mean)) / sigma
@@ -36,7 +38,9 @@ class IntegerMargin:
         categories = len(probabilities)
         floor_total = self.min_probability * categories
         if floor_total >= 1.0:
-            raise ConfigurationError("IntegerMargin min_probability is too large for range.")
+            raise ConfigurationError(
+                "IntegerMarginDistribution min_probability is too large for range."
+            )
         adjusted = {
             key: self.min_probability + (1.0 - floor_total) * value
             for key, value in probabilities.items()
@@ -46,7 +50,7 @@ class IntegerMargin:
 
 
 @dataclass
-class CategoricalState:
+class CategoricalDistributionState:
     """Maintain a categorical distribution for mixed-variable CMA."""
 
     categories: Sequence[int]
@@ -55,11 +59,15 @@ class CategoricalState:
 
     def __post_init__(self) -> None:
         if not self.categories:
-            raise ConfigurationError("CategoricalState requires at least one category.")
+            raise ConfigurationError(
+                "CategoricalDistributionState requires at least one category."
+            )
         if len(set(self.categories)) != len(self.categories):
-            raise ConfigurationError("CategoricalState categories must be unique.")
+            raise ConfigurationError("CategoricalDistributionState categories must be unique.")
         if not (0.0 < self.learning_rate <= 1.0):
-            raise ConfigurationError("CategoricalState learning_rate must be in (0, 1].")
+            raise ConfigurationError(
+                "CategoricalDistributionState learning_rate must be in (0, 1]."
+            )
         probability = 1.0 / len(self.categories)
         self.probabilities = dict.fromkeys(self.categories, probability)
 

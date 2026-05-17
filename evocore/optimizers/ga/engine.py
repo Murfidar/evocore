@@ -11,193 +11,58 @@ import time
 import warnings
 from collections import Counter
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass, field
-from statistics import mean, stdev
 from typing import Any
 
 from evocore import _core
-from evocore.batches import CandidateBatch, batch_id_from_seed
 from evocore.callbacks import Callback, GenerationInfo
-from evocore.evaluation import (
-    Candidate,
-    Direction,
-    EngineStateSummary,
-    EvaluationContext,
-    EvaluationRecord,
-    OptimizationTelemetry,
-    TellResult,
-    is_state_update_confidence,
-    score_for_direction,
-)
-from evocore.exceptions import (
+from evocore.core.errors import (
     CheckpointError,
     ConfigurationError,
     ConfigurationWarning,
     FitnessError,
 )
-from evocore.exporting import json_safe, package_version, stable_json_dumps
-from evocore.gene_space import GeneSpace
-from evocore.individual import Individual, Population
-from evocore.operators import OperatorSet
-from evocore.parallel import ProcessParallel, ThreadParallel, ensure_picklable
-from evocore.policies import MultiFidelityPolicy
-from evocore.protocols import Evaluator
-from evocore.scheduler import EvaluationScheduler
-from evocore.stats import (
+from evocore.core.parallel import ProcessParallel, ThreadParallel, ensure_picklable
+from evocore.core.serialization import json_safe, package_version
+from evocore.lifecycle import (
+    BudgetPolicy,
+    BudgetScheduler,
+    Candidate,
+    CandidateBatch,
+    Direction,
+    EvaluationContext,
+    EvaluationRecord,
+    Evaluator,
+    OptimizationTelemetry,
+    OptimizerStateSummary,
+    UpdateResult,
+    batch_id_from_seed,
+    is_state_update_confidence,
+    score_for_direction,
+)
+from evocore.results import (
     EventHistory,
     EventRecord,
-    Logbook,
-    LogEntry,
+    GenerationHistory,
+    GenerationRecord,
+    OptimizationBatchResult,
+    OptimizationResult,
     ReproducibilityMetadata,
     StopReason,
     append_run_stop_event,
 )
+from evocore.search_space import GeneSpace, OperatorCodec, Solution, SolutionSet
 
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class RunResult:
-    """Store the outcome of one optimization run."""
-
-    best_individual: Individual
-    best_fitness: float
-    final_population: Population
-    logbook: Logbook
-    wall_time_seconds: float
-    n_evaluations: int
-    elite_history: list[Individual]
-    diversity_history: list[list[float]]
-    seed: int
-    stop_reason: StopReason = "max_generations"
-    max_generations: int | None = None
-    max_evaluations: int | None = None
-    telemetry: OptimizationTelemetry = field(default_factory=OptimizationTelemetry)
-    direction: Direction = "maximize"
-    engine_type: str = ""
-    best_candidate_id: str | None = None
-    best_score: float | None = None
-    history: EventHistory = field(default_factory=EventHistory)
-    reproducibility: ReproducibilityMetadata | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    def to_dict(self, *, include_runtime: bool = False) -> dict[str, Any]:
-        """Export this run result as a stable JSON-safe dictionary."""
-        best_score = self.best_score if self.best_score is not None else self.best_fitness
-        payload: dict[str, Any] = {
-            "schema_version": 1,
-            "engine_type": self.engine_type,
-            "direction": self.direction,
-            "seed": self.seed,
-            "best": {
-                "fitness": self.best_fitness,
-                "score": best_score,
-                "candidate_id": self.best_candidate_id,
-                "genes": list(self.best_individual.genes),
-                "params": self.best_individual.metadata.get("params"),
-            },
-            "stop": {
-                "reason": self.stop_reason,
-            },
-            "budget": {
-                "max_evaluations": self.max_evaluations,
-                "max_generations": self.max_generations,
-                "n_evaluations": self.n_evaluations,
-            },
-            "n_evaluations": self.n_evaluations,
-            "reproducibility": (
-                self.reproducibility.to_dict() if self.reproducibility is not None else None
-            ),
-            "telemetry": self.telemetry.to_dict(),
-            "history": self.history.to_dict(),
-            "logbook": self.logbook.to_dict(),
-            "metadata": self.metadata,
-        }
-        if include_runtime:
-            payload["runtime"] = {"wall_time_seconds": self.wall_time_seconds}
-        return json_safe(payload)
-
-    def to_json(self, *, include_runtime: bool = False, indent: int | None = None) -> str:
-        """Export this run result as deterministic JSON."""
-        return stable_json_dumps(self.to_dict(include_runtime=include_runtime), indent=indent)
-
-    def to_dataframe(self):
-        """Return event history as a DataFrame, falling back to generation logbook rows."""
-        if len(self.history):
-            return self.history.to_dataframe()
-        return self.logbook.to_dataframe()
-
-
-@dataclass
-class MultiRunResult:
-    """Store the aggregated outcome of multiple GA runs."""
-
-    best: RunResult
-    all_runs: list[RunResult]
-    n_runs: int
-    wall_time_seconds: float
-    direction: Direction = "maximize"
-    metadata: dict[str, Any] = field(default_factory=dict)
-
-    def best_n(self, n: int) -> list[RunResult]:
-        """Return the top `n` runs sorted by best fitness."""
-        return self.all_runs[:n]
-
-    def fitness_summary(self) -> dict[str, float]:
-        """Return summary statistics across best fitness values."""
-        values = [run.best_fitness for run in self.all_runs]
-        return {
-            "mean": mean(values) if values else float("nan"),
-            "std": stdev(values) if len(values) > 1 else 0.0,
-            "min": min(values) if values else float("nan"),
-            "max": max(values) if values else float("nan"),
-        }
-
-    def to_dict(self, *, include_runtime: bool = False) -> dict[str, Any]:
-        """Export aggregate run results as a stable JSON-safe dictionary."""
-        payload: dict[str, Any] = {
-            "schema_version": 1,
-            "direction": self.direction,
-            "n_runs": self.n_runs,
-            "best": self.best.to_dict(include_runtime=include_runtime),
-            "runs": [run.to_dict(include_runtime=include_runtime) for run in self.all_runs],
-            "fitness_summary": self.fitness_summary(),
-            "metadata": self.metadata,
-        }
-        if include_runtime:
-            payload["runtime"] = {"wall_time_seconds": self.wall_time_seconds}
-        return json_safe(payload)
-
-    def to_json(self, *, include_runtime: bool = False, indent: int | None = None) -> str:
-        """Export aggregate run results as deterministic JSON."""
-        return stable_json_dumps(self.to_dict(include_runtime=include_runtime), indent=indent)
-
-    def to_dataframe(self):
-        """Return one pandas DataFrame row per child run."""
-        try:
-            import pandas as pd
-        except ImportError as exc:
-            raise ImportError(
-                "MultiRunResult.to_dataframe() requires pandas; pip install pandas."
-            ) from exc
-        rows = [
-            {
-                "run_index": index,
-                "seed": run.seed,
-                "best_fitness": run.best_fitness,
-                "best_score": run.best_score if run.best_score is not None else run.best_fitness,
-                "n_evaluations": run.n_evaluations,
-            }
-            for index, run in enumerate(self.all_runs)
-        ]
-        return pd.DataFrame(rows)
-
-
-def _run_child_engine(engine: GAEngine, seed: int, evaluator: Evaluator) -> RunResult:
+def run_child_optimizer(
+    engine: GeneticAlgorithmOptimizer, seed: int, evaluator: Evaluator
+) -> OptimizationResult:
+    """Run one child optimizer with a derived seed for process-pool execution."""
     return engine._copy_with_seed(seed).run(evaluator)
 
 
-class GAEngine:
+class GeneticAlgorithmOptimizer:
     """Run deterministic genetic algorithm optimization over a gene space.
 
     Args:
@@ -263,13 +128,17 @@ class GAEngine:
     ) -> None:
         if gene_space is None:
             raise ConfigurationError(
-                "gene_space required for GAEngine. Pass GeneSpace.uniform(-5.0, 5.0, length)."
+                "gene_space required for GeneticAlgorithmOptimizer. Pass GeneSpace.uniform(-5.0, 5.0, length)."
             )
         if "generations" in legacy_kwargs:
-            raise ConfigurationError("GAEngine uses max_generations, not generations")
+            raise ConfigurationError(
+                "GeneticAlgorithmOptimizer uses max_generations, not generations"
+            )
         if legacy_kwargs:
             unknown = ", ".join(sorted(legacy_kwargs))
-            raise ConfigurationError(f"GAEngine got unexpected argument(s): {unknown}.")
+            raise ConfigurationError(
+                f"GeneticAlgorithmOptimizer got unexpected argument(s): {unknown}."
+            )
         if population_size < 2:
             raise ConfigurationError("population_size must be at least 2.")
         if max_generations < 0:
@@ -316,7 +185,7 @@ class GAEngine:
         self.max_evaluations = max_evaluations
         self.track_diversity = track_diversity
         self.callbacks = list(callbacks or [])
-        self.operators = OperatorSet(gene_space, crossover, mutation)
+        self.operators = OperatorCodec(gene_space, crossover, mutation)
         self._fitness_warning_emitted = False
         self._reset_vnext_state()
 
@@ -330,7 +199,7 @@ class GAEngine:
         self._trusted_population_vnext: list[Candidate] = []
         self.vnext_telemetry = OptimizationTelemetry()
         self.best_candidate: Candidate | None = None
-        self.history = EventHistory()
+        self.events = EventHistory()
 
     def _pending_batch_ids(self) -> tuple[str, ...]:
         return tuple(
@@ -358,10 +227,10 @@ class GAEngine:
         ) > self.best_candidate.state_comparison_score(self.direction):
             self.best_candidate = candidate
 
-    def state_summary(self) -> EngineStateSummary:
+    def state_summary(self) -> OptimizerStateSummary:
         """Return a stable read-only vNext state summary."""
         best_candidate_id, best_score = self._best_candidate_id_and_score()
-        return EngineStateSummary(
+        return OptimizerStateSummary(
             best_candidate_id=best_candidate_id,
             best_score=best_score,
             event_index=self._event_index,
@@ -375,7 +244,7 @@ class GAEngine:
             if gene.kind == "int" and gene.sigma is None and (gene.high - gene.low) > 100:
                 sigma_abs = self.mutation_sigma * (gene.high - gene.low)
                 warnings.warn(
-                    f'GeneDef("{gene.name}", "int", {gene.low}, {gene.high}) has range '
+                    f'Gene("{gene.name}", "int", {gene.low}, {gene.high}) has range '
                     f"{gene.high - gene.low} and no per-gene sigma. With mutation_sigma={self.mutation_sigma}, "
                     f"sigma_abs={sigma_abs:g} may prevent fine-tuning. Consider sigma=0.03.",
                     category=ConfigurationWarning,
@@ -383,7 +252,7 @@ class GAEngine:
                 )
 
     def _normalise_fitness_result(
-        self, result, ind: Individual, gen: int, idx: int
+        self, result, ind: Solution, gen: int, idx: int
     ) -> tuple[float, int]:
         metrics = {}
         if isinstance(result, tuple):
@@ -415,7 +284,7 @@ class GAEngine:
         return max(self.max_evaluations - n_evaluations, 0)
 
     @staticmethod
-    def _fitnesses_for_selection(individuals: Sequence[Individual]) -> list[float]:
+    def _fitnesses_for_selection(individuals: Sequence[Solution]) -> list[float]:
         return [
             float(ind.fitness) if ind.fitness is not None and ind.fitness_valid else float("-inf")
             for ind in individuals
@@ -423,11 +292,11 @@ class GAEngine:
 
     def _evaluate_with_budget(
         self,
-        individuals: Sequence[Individual],
+        individuals: Sequence[Solution],
         fitness_fn: Callable,
         gen: int,
         n_evaluations: int,
-    ) -> tuple[list[Individual], list[float], int, int]:
+    ) -> tuple[list[Solution], list[float], int, int]:
         working = list(individuals)
         pending = [ind for ind in working if not ind.fitness_valid]
         remaining = self._remaining_evaluations(n_evaluations)
@@ -445,7 +314,7 @@ class GAEngine:
         return evaluated, self._fitnesses_for_selection(evaluated), evaluated_now, nan_count
 
     def _evaluate_all(
-        self, individuals: Sequence[Individual], fitness_fn: Callable, gen: int
+        self, individuals: Sequence[Solution], fitness_fn: Callable, gen: int
     ) -> tuple[list[float], int]:
         pending = [ind for ind in individuals if not ind.fitness_valid]
         if self.parallel == "process":
@@ -489,7 +358,7 @@ class GAEngine:
                     raw_results.append(fitness_fn(ind))
                 except Exception as exc:
                     raise FitnessError(
-                        f"fitness_fn raised {type(exc).__name__} for individual at generation {gen}, index {idx}. "
+                        f"fitness_fn raised {type(exc).__name__} for Solution at generation {gen}, index {idx}. "
                         f"Original error: {exc}"
                     ) from exc
 
@@ -516,7 +385,7 @@ class GAEngine:
             )
         raise ConfigurationError("unknown mutation_sigma_schedule")
 
-    def _initial_population(self) -> list[Individual]:
+    def _initial_population(self) -> list[Solution]:
         population_size = self.population_size
         if self.max_evaluations is not None:
             population_size = min(population_size, self.max_evaluations)
@@ -528,10 +397,10 @@ class GAEngine:
         )
         return self.operators.decode_population(encoded)
 
-    def _clone_elites(self, population: Sequence[Individual]) -> list[Individual]:
+    def _clone_elites(self, solutions: Sequence[Solution]) -> list[Solution]:
         if self.elitism == 0:
             return []
-        return [ind.clone() for ind in Population(population).best(self.elitism)]
+        return [solution.clone() for solution in SolutionSet(solutions).best(self.elitism)]
 
     def _bind_callbacks(self) -> None:
         for callback in self.callbacks:
@@ -544,21 +413,21 @@ class GAEngine:
     def _log_entry(
         self,
         gen: int,
-        pop: Population,
+        pop: SolutionSet,
         gen_start: float,
         n_evaluations: int,
         info: GenerationInfo,
         diversity: list[float],
-    ) -> LogEntry:
+    ) -> GenerationRecord:
         best = pop.best(1)[0]
-        return LogEntry(
+        return GenerationRecord(
             gen=gen,
-            best_fitness=float(best.fitness),
-            mean_fitness=pop.mean_fitness(),
-            std_fitness=pop.std_fitness(),
+            best_score=float(best.fitness),
+            mean_score=pop.mean_fitness(),
+            std_score=pop.std_fitness(),
             wall_time_ms=(time.perf_counter() - gen_start) * 1000.0,
             n_evaluations=n_evaluations,
-            nan_fitness_count=info.nan_fitness_count,
+            nan_score_count=info.nan_fitness_count,
             cached_count=info.cached_count,
             diversity=diversity,
             custom=dict(best.metadata.get("metrics", {})),
@@ -566,11 +435,11 @@ class GAEngine:
 
     def _make_offspring(
         self,
-        working_population: Sequence[Individual],
+        working_population: Sequence[Solution],
         fitnesses: Sequence[float],
         gen: int,
         offspring_count: int,
-    ) -> list[Individual]:
+    ) -> list[Solution]:
         if offspring_count <= 0:
             return []
 
@@ -603,28 +472,28 @@ class GAEngine:
         gen_start: float,
         n_evaluations: int,
         eval_before: int,
-        elites: Sequence[Individual],
+        elites: Sequence[Solution],
         nan_count: int,
-        population: Population,
-        elite_history: list[Individual],
+        solutions: SolutionSet,
+        elite_history: list[Solution],
         diversity_history: list[list[float]],
-        logbook: Logbook,
+        generation_history: GenerationHistory,
     ) -> GenerationInfo:
         info = GenerationInfo(gen, nan_count, len(elites))
-        diversity = population.diversity() if self.track_diversity else []
+        diversity = solutions.diversity() if self.track_diversity else []
         if self.track_diversity:
             diversity_history.append(diversity)
-        elite_history.append(population.best(1)[0].clone())
-        logbook.append(
+        elite_history.append(solutions.best(1)[0].clone())
+        generation_history.append(
             self._log_entry(
-                gen, population, gen_start, n_evaluations - eval_before, info, diversity
+                gen, solutions, gen_start, n_evaluations - eval_before, info, diversity
             )
         )
         logger.info(
-            "GA generation=%s best_fitness=%s mean_fitness=%s nan_fitness_count=%s cached_count=%s",
+            "GA generation=%s best_score=%s mean_fitness=%s nan_fitness_count=%s cached_count=%s",
             gen,
-            float(population.best(1)[0].fitness),
-            population.mean_fitness(),
+            float(solutions.best(1)[0].fitness),
+            solutions.mean_fitness(),
             nan_count,
             len(elites),
         )
@@ -633,17 +502,17 @@ class GAEngine:
     def _run_generation(
         self,
         *,
-        working_population: Sequence[Individual],
+        working_population: Sequence[Solution],
         fitnesses: Sequence[float],
-        fitness_fn: Callable[[Individual], float | tuple[float, dict]],
+        fitness_fn: Callable[[Solution], float | tuple[float, dict]],
         gen: int,
         n_evaluations: int,
-        elite_history: list[Individual],
+        elite_history: list[Solution],
         diversity_history: list[list[float]],
-        logbook: Logbook,
-    ) -> tuple[list[Individual], list[float], int, bool, StopReason]:
+        generation_history: GenerationHistory,
+    ) -> tuple[list[Solution], list[float], int, bool, StopReason]:
         gen_start = time.perf_counter()
-        current_pop = Population(working_population)
+        current_pop = SolutionSet(working_population)
         for callback in self.callbacks:
             callback.on_generation_start(gen, current_pop)
         if self._callbacks_should_stop():
@@ -669,7 +538,7 @@ class GAEngine:
             n_evaluations=n_evaluations,
         )
         n_evaluations += evaluated_now
-        pop_obj = Population(next_population)
+        pop_obj = SolutionSet(next_population)
         info = self._record_generation(
             gen=gen,
             gen_start=gen_start,
@@ -677,10 +546,10 @@ class GAEngine:
             eval_before=eval_before,
             elites=elites,
             nan_count=nan_count,
-            population=pop_obj,
+            solutions=pop_obj,
             elite_history=elite_history,
             diversity_history=diversity_history,
-            logbook=logbook,
+            generation_history=generation_history,
         )
 
         for callback in self.callbacks:
@@ -691,8 +560,8 @@ class GAEngine:
             return next_population, fitnesses, n_evaluations, True, "max_evaluations"
         return next_population, fitnesses, n_evaluations, False, "max_generations"
 
-    def _copy_with_seed(self, seed: int) -> GAEngine:
-        return GAEngine(
+    def _copy_with_seed(self, seed: int) -> GeneticAlgorithmOptimizer:
+        return GeneticAlgorithmOptimizer(
             gene_space=self.gene_space,
             population_size=self.population_size,
             max_generations=self.max_generations,
@@ -722,11 +591,11 @@ class GAEngine:
 
     def _run_from_population(
         self,
-        population: Sequence[Individual],
-        fitness_fn: Callable[[Individual], float | tuple[float, dict]],
+        solutions: Sequence[Solution],
+        fitness_fn: Callable[[Solution], float | tuple[float, dict]],
         *,
         start_generation: int,
-    ) -> RunResult:
+    ) -> OptimizationResult:
         if self.parallel == "process":
             ensure_picklable(fitness_fn, context="parallel='process'")
 
@@ -734,8 +603,8 @@ class GAEngine:
         self._bind_callbacks()
 
         start = time.perf_counter()
-        logbook = Logbook()
-        working_population = [ind.clone() for ind in population]
+        generation_history = GenerationHistory()
+        working_population = [ind.clone() for ind in solutions]
         working_population, fitnesses, evaluated_now, _ = self._evaluate_with_budget(
             working_population,
             fitness_fn,
@@ -743,7 +612,7 @@ class GAEngine:
             n_evaluations=0,
         )
         n_evaluations = evaluated_now
-        elite_history: list[Individual] = []
+        elite_history: list[Solution] = []
         diversity_history: list[list[float]] = []
         stop_reason: StopReason = "max_generations"
         for gen in range(start_generation, self.max_generations):
@@ -762,7 +631,7 @@ class GAEngine:
                 n_evaluations=n_evaluations,
                 elite_history=elite_history,
                 diversity_history=diversity_history,
-                logbook=logbook,
+                generation_history=generation_history,
             )
             if generation_stopped:
                 stop_reason = generation_stop_reason
@@ -770,29 +639,28 @@ class GAEngine:
 
         if not working_population:
             raise FitnessError("GA run produced no evaluated individuals.")
-        final_population = Population(working_population)
-        best = final_population.best(1)[0]
-        result = RunResult(
-            best_individual=best.clone(),
-            best_fitness=float(best.fitness),
-            final_population=final_population,
-            logbook=logbook,
+        final_solutions = SolutionSet(working_population)
+        best = final_solutions.best(1)[0]
+        result = OptimizationResult(
+            best_solution=best.clone(),
+            best_score=float(best.fitness),
+            final_solutions=final_solutions,
+            generations=generation_history,
             wall_time_seconds=time.perf_counter() - start,
             n_evaluations=n_evaluations,
-            elite_history=elite_history,
-            diversity_history=diversity_history,
+            elite_solutions=elite_history,
+            diversity_by_generation=diversity_history,
             seed=self.seed,
             stop_reason=stop_reason,
             max_generations=self.max_generations,
             max_evaluations=self.max_evaluations,
             direction=self.direction,
-            engine_type="GAEngine",
-            best_score=float(best.fitness),
-            history=self._generation_history(logbook),
+            optimizer_type="GeneticAlgorithmOptimizer",
+            events=self._generation_history(generation_history),
             reproducibility=self._reproducibility_metadata(),
         )
         append_run_stop_event(
-            result.history,
+            result.events,
             stop_reason=result.stop_reason,
             max_evaluations=result.max_evaluations,
             max_generations=result.max_generations,
@@ -842,17 +710,17 @@ class GAEngine:
             individuals = self.operators.decode_population(encoded)
             candidates = [
                 self._candidate_from_genes(
-                    individual.genes,
+                    Solution.genes,
                     batch_id=batch_id,
                     origin="random",
                     event_index=event_index,
                     candidate_index=index,
                 )
-                for index, individual in enumerate(individuals)
+                for index, Solution in enumerate(individuals)
             ]
         else:
             trusted_individuals = [
-                Individual(
+                Solution(
                     list(candidate.genes),
                     fitness=candidate.state_comparison_score(self.direction),
                     fitness_valid=True,
@@ -860,7 +728,7 @@ class GAEngine:
                 )
                 for candidate in self._trusted_population_vnext
             ]
-            fitnesses = [individual.fitness or float("-inf") for individual in trusted_individuals]
+            fitnesses = [Solution.fitness or float("-inf") for Solution in trusted_individuals]
             offspring = self._make_offspring(
                 trusted_individuals,
                 fitnesses,
@@ -869,13 +737,13 @@ class GAEngine:
             )
             candidates = [
                 self._candidate_from_genes(
-                    individual.genes,
+                    Solution.genes,
                     batch_id=batch_id,
                     origin="mutation",
                     event_index=event_index,
                     candidate_index=index,
                 )
-                for index, individual in enumerate(offspring)
+                for index, Solution in enumerate(offspring)
             ]
 
         for candidate in candidates:
@@ -889,7 +757,7 @@ class GAEngine:
         self._append_ask_events(candidates)
         return candidates
 
-    def tell(self, records: Sequence[EvaluationRecord]) -> TellResult:
+    def tell(self, records: Sequence[EvaluationRecord]) -> UpdateResult:
         """Update GA state from vNext evaluation records."""
         trusted = partial = surrogate = cached = rejected = 0
         touched_batch_ids: set[str] = set()
@@ -912,19 +780,19 @@ class GAEngine:
                 self._record_state_candidate(candidate)
             if record.confidence == "trusted_full":
                 trusted += 1
-                self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
+                self.vnext_telemetry.record_full(1, stage=record.stage, cost=record.cost)
             elif record.confidence == "cached":
                 cached += 1
-                self.vnext_telemetry.record_cached(1, rung=record.rung, cost=record.cost)
+                self.vnext_telemetry.record_cached(1, stage=record.stage, cost=record.cost)
             elif record.confidence == "partial":
                 partial += 1
-                self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
+                self.vnext_telemetry.record_partial(1, stage=record.stage, cost=record.cost)
             elif record.confidence == "surrogate":
                 surrogate += 1
                 self.vnext_telemetry.record_screened(1)
             else:
                 rejected += 1
-                self.vnext_telemetry.record_eliminated(1, rung=record.rung)
+                self.vnext_telemetry.record_eliminated(1, stage=record.stage)
 
         self._trusted_population_vnext.sort(
             key=lambda candidate: candidate.state_comparison_score(self.direction), reverse=True
@@ -937,7 +805,7 @@ class GAEngine:
             if len(self._batches_by_id[batch_id].records_by_key)
             >= len(self._batches_by_id[batch_id].candidate_ids)
         )
-        return TellResult(
+        return UpdateResult(
             accepted_count=len(records),
             trusted_count=trusted,
             partial_count=partial,
@@ -954,7 +822,7 @@ class GAEngine:
     def _evaluation_context(
         self,
         assigned: Sequence[Candidate],
-        rung,
+        stage,
     ) -> EvaluationContext:
         batch_ids = {candidate.batch_id for candidate in assigned}
         if len(batch_ids) != 1:
@@ -964,11 +832,11 @@ class GAEngine:
         batch_id = next(iter(batch_ids))
         event_index = assigned[0].event_index if assigned else self._event_index
         return EvaluationContext(
-            rung=rung,
+            stage=stage,
             batch_id=batch_id,
             event_index=event_index,
             direction=self.direction,
-            budget=rung.budget,
+            budget=stage.budget,
         )
 
     def _validate_evaluator_records(
@@ -1026,9 +894,9 @@ class GAEngine:
     def _append_ask_events(self, candidates: Sequence[Candidate]) -> None:
         """Record ask events for proposed candidates."""
         for candidate in candidates:
-            self.history.append(
+            self.events.append(
                 EventRecord(
-                    event_index=len(self.history),
+                    event_index=len(self.events),
                     event_type="ask",
                     batch_id=candidate.batch_id,
                     candidate_id=candidate.candidate_id,
@@ -1050,15 +918,15 @@ class GAEngine:
             if raw_score is not None and math.isfinite(raw_score)
             else None
         )
-        self.history.append(
+        self.events.append(
             EventRecord(
-                event_index=len(self.history),
+                event_index=len(self.events),
                 event_type="tell",
                 batch_id=candidate.batch_id,
                 candidate_id=candidate.candidate_id,
                 candidate_hash=candidate.candidate_hash(),
                 generation=candidate.generation,
-                rung=record.rung,
+                stage=record.stage,
                 confidence=record.confidence,
                 raw_score=raw_score,
                 comparison_score=comparison_score,
@@ -1104,7 +972,7 @@ class GAEngine:
         signature = self.gene_space.signature()
         return ReproducibilityMetadata(
             evocore_version=package_version(),
-            engine_type="GAEngine",
+            optimizer_type="GeneticAlgorithmOptimizer",
             seed=self.seed,
             direction=self.direction,
             gene_space_signature=signature,
@@ -1112,35 +980,35 @@ class GAEngine:
             optimizer_config=self._optimizer_config(),
         )
 
-    def _generation_history(self, logbook: Logbook) -> EventHistory:
-        """Convert generation logbook entries into generation events."""
+    def _generation_history(self, generation_history: GenerationHistory) -> EventHistory:
+        """Convert generation GenerationHistory entries into generation events."""
         history = EventHistory()
-        for entry in logbook:
+        for entry in generation_history:
             history.append(
                 EventRecord(
                     event_index=len(history),
                     event_type="generation",
                     generation=entry.gen,
-                    raw_score=entry.best_fitness,
-                    comparison_score=score_for_direction(entry.best_fitness, self.direction),
+                    raw_score=entry.best_score,
+                    comparison_score=score_for_direction(entry.best_score, self.direction),
                     metrics=entry.to_dict(),
                 )
             )
         return history
 
-    def run(self, evaluator: Evaluator, policy: MultiFidelityPolicy | None = None) -> RunResult:
+    def run(self, evaluator: Evaluator, policy: BudgetPolicy | None = None) -> OptimizationResult:
         """Run vNext policy-driven GA optimization."""
         if not isinstance(evaluator, Evaluator):
             raise ConfigurationError(
-                "GAEngine.run requires an evaluator with evaluate(candidates, context)."
+                "GeneticAlgorithmOptimizer.run requires an evaluator with evaluate(candidates, context)."
             )
         self._reset_vnext_state()
 
-        resolved_policy = policy or MultiFidelityPolicy.single_full(
+        resolved_policy = policy or BudgetPolicy.single_full(
             max_evaluations=max(1, self.population_size * max(1, self.max_generations)),
             batch_size=self.population_size,
         )
-        scheduler = EvaluationScheduler(resolved_policy)
+        scheduler = BudgetScheduler(resolved_policy)
         start = time.perf_counter()
         n_evaluations = 0
         final_candidates: list[Candidate] = []
@@ -1152,13 +1020,13 @@ class GAEngine:
             batch_size = min(resolved_policy.batch_size or self.population_size, remaining)
             active_candidates = self.ask(batch_size)
 
-            for rung in resolved_policy.rungs:
-                assigned = scheduler.assign_rung(active_candidates, rung_name=rung.name)
-                context = self._evaluation_context(assigned, rung)
+            for stage in resolved_policy.stages:
+                assigned = scheduler.assign_stage(active_candidates, stage_name=stage.name)
+                context = self._evaluation_context(assigned, stage)
                 records = list(evaluator.evaluate(assigned, context))
                 self._validate_evaluator_records(assigned, records)
                 self.tell(records)
-                if rung.confidence == "trusted_full":
+                if stage.confidence == "trusted_full":
                     fresh_count = sum(
                         1 for record in records if record.confidence == "trusted_full"
                     )
@@ -1166,38 +1034,37 @@ class GAEngine:
                     final_candidates.extend(assigned)
                     if fresh_count == 0:
                         raise FitnessError(
-                            "Evaluator returned no fresh trusted_full records for the final rung; "
+                            "Evaluator returned no fresh trusted_full records for the final stage; "
                             "cached records do not consume full-evaluation budget."
                         )
                     break
-                active_candidates = scheduler.promote(assigned, completed_rung=rung.name)
+                active_candidates = scheduler.promote(assigned, completed_stage=stage.name)
 
         if self.best_candidate is None:
-            # Defensive: only possible if policy has no trusted_full rung,
-            # which MultiFidelityPolicy.__post_init__ already rejects.
-            best = Individual([0.0], fitness=float("-inf"), fitness_valid=False)
-            result = RunResult(
-                best_individual=best,
-                best_fitness=float("-inf"),
-                final_population=Population([best]),
-                logbook=Logbook(),
+            # Defensive: only possible if policy has no trusted_full stage,
+            # which BudgetPolicy.__post_init__ already rejects.
+            best = Solution([0.0], fitness=float("-inf"), fitness_valid=False)
+            result = OptimizationResult(
+                best_solution=best,
+                best_score=float("-inf"),
+                final_solutions=SolutionSet([best]),
+                generations=GenerationHistory(),
                 wall_time_seconds=time.perf_counter() - start,
                 n_evaluations=n_evaluations,
-                elite_history=[],
-                diversity_history=[],
+                elite_solutions=[],
+                diversity_by_generation=[],
                 seed=self.seed,
                 stop_reason="max_evaluations",
                 max_generations=self.max_generations,
                 max_evaluations=resolved_policy.max_evaluations,
                 telemetry=self.vnext_telemetry,
                 direction=self.direction,
-                engine_type="GAEngine",
-                best_score=float("-inf"),
-                history=self.history,
+                optimizer_type="GeneticAlgorithmOptimizer",
+                events=self.events,
                 reproducibility=self._reproducibility_metadata(),
             )
             append_run_stop_event(
-                result.history,
+                result.events,
                 stop_reason=result.stop_reason,
                 max_evaluations=result.max_evaluations,
                 max_generations=result.max_generations,
@@ -1205,7 +1072,7 @@ class GAEngine:
             )
             return result
 
-        best = Individual(
+        best = Solution(
             list(self.best_candidate.genes),
             fitness=self.best_candidate.best_state_score(self.direction),
             fitness_valid=True,
@@ -1214,9 +1081,9 @@ class GAEngine:
                 "candidate_id": self.best_candidate.candidate_id,
             },
         )
-        final_population = Population(
+        final_solutions = SolutionSet(
             [
-                Individual(
+                Solution(
                     list(candidate.genes),
                     fitness=candidate.best_state_score(self.direction),
                     fitness_valid=candidate.confidence is not None
@@ -1226,29 +1093,28 @@ class GAEngine:
                 for candidate in final_candidates
             ]
         )
-        result = RunResult(
-            best_individual=best,
-            best_fitness=float(best.fitness),
-            final_population=final_population,
-            logbook=Logbook(),
+        result = OptimizationResult(
+            best_solution=best,
+            best_score=float(best.fitness),
+            final_solutions=final_solutions,
+            generations=GenerationHistory(),
             wall_time_seconds=time.perf_counter() - start,
             n_evaluations=n_evaluations,
-            elite_history=[],
-            diversity_history=[],
+            elite_solutions=[],
+            diversity_by_generation=[],
             seed=self.seed,
             stop_reason="max_evaluations",
             max_generations=self.max_generations,
             max_evaluations=resolved_policy.max_evaluations,
             telemetry=self.vnext_telemetry,
             direction=self.direction,
-            engine_type="GAEngine",
+            optimizer_type="GeneticAlgorithmOptimizer",
             best_candidate_id=self.best_candidate.candidate_id,
-            best_score=float(best.fitness),
-            history=self.history,
             reproducibility=self._reproducibility_metadata(),
+            events=self.events,
         )
         append_run_stop_event(
-            result.history,
+            result.events,
             stop_reason=result.stop_reason,
             max_evaluations=result.max_evaluations,
             max_generations=result.max_generations,
@@ -1262,7 +1128,7 @@ class GAEngine:
         n_runs: int = 10,
         aggregate: str = "best",
         run_parallel: bool = False,
-    ) -> MultiRunResult:
+    ) -> OptimizationBatchResult:
         """Run multiple deterministic child runs from derived seeds.
 
         Args:
@@ -1303,7 +1169,7 @@ class GAEngine:
             )
             try:
                 futures = [
-                    pool.submit(_run_child_engine, self, seed, evaluator) for seed in child_seeds
+                    pool.submit(run_child_optimizer, self, seed, evaluator) for seed in child_seeds
                 ]
                 results = [future.result() for future in concurrent.futures.as_completed(futures)]
             finally:
@@ -1312,10 +1178,10 @@ class GAEngine:
             results = [self._copy_with_seed(seed).run(evaluator) for seed in child_seeds]
 
         results.sort(
-            key=lambda run: score_for_direction(run.best_fitness, self.direction),
+            key=lambda run: score_for_direction(run.best_score, self.direction),
             reverse=True,
         )
-        return MultiRunResult(
+        return OptimizationBatchResult(
             best=results[0],
             all_runs=results,
             n_runs=n_runs,
@@ -1323,7 +1189,7 @@ class GAEngine:
             direction=self.direction,
         )
 
-    def resume(self, fitness_fn: Callable, checkpoint: str) -> RunResult:
+    def resume(self, fitness_fn: Callable, checkpoint: str) -> OptimizationResult:
         """Resume a GA run from a checkpoint file.
 
         Args:
@@ -1357,12 +1223,14 @@ class GAEngine:
                 f"checkpoint file {checkpoint!r} is corrupt or incompatible: {exc}"
             ) from exc
 
-        population = payload.get("population")
-        if not isinstance(population, list) or not all(
-            isinstance(individual, Individual) for individual in population
+        solutions = payload.get("population")
+        if solutions is None:
+            solutions = payload.get("SolutionSet")
+        if not isinstance(solutions, list) or not all(
+            isinstance(solution, Solution) for solution in solutions
         ):
             raise CheckpointError(
-                "checkpoint payload must contain a list[Individual] under key 'population'."
+                "checkpoint payload must contain a list[Solution] under key 'population'."
             )
 
         saved_generation = int(payload.get("generation", -1))
@@ -1373,7 +1241,7 @@ class GAEngine:
             )
 
         return self._run_from_population(
-            population,
+            solutions,
             fitness_fn,
             start_generation=saved_generation + 1,
         )

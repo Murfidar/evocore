@@ -1,27 +1,27 @@
 # Quickstart
 
 ```python
-from evocore import EvaluationContext, EvaluationRecord, GAEngine, GeneSpace
+from evocore import EvaluationContext, EvaluationRecord, GeneticAlgorithmOptimizer, GeneSpace
 
 
 class SphereEvaluator:
     def evaluate(self, candidates, context):
         assert isinstance(context, EvaluationContext)
-        assert context.rung is not None
+        assert context.stage is not None
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
                 batch_id=candidate.batch_id,
                 score=-sum(float(value) ** 2 for value in candidate.genes),
-                confidence=context.rung.confidence,
-                rung=context.rung.name,
-                cost=context.rung.budget,
+                confidence=context.stage.confidence,
+                stage=context.stage.name,
+                cost=context.stage.budget,
             )
             for candidate in candidates
         ]
 
 
-engine = GAEngine(
+engine = GeneticAlgorithmOptimizer(
     GeneSpace.uniform(-5.0, 5.0, 10),
     population_size=100,
     max_generations=100,
@@ -30,6 +30,6 @@ engine = GAEngine(
 )
 result = engine.run(SphereEvaluator())
 
-print(result.best_fitness)
-print(result.best_individual.genes)
+print(result.best_score)
+print(result.best_solution.genes)
 ```

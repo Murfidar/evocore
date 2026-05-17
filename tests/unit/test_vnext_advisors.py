@@ -1,6 +1,6 @@
-from evocore.advisors import InverseDistanceSurrogateAdvisor
-from evocore.evaluation import Candidate, EvaluationRecord
-from evocore.gene_space import GeneDef, GeneSpace
+from evocore.lifecycle import Candidate, EvaluationRecord
+from evocore.search_space import Gene, GeneSpace
+from evocore.surrogates import InverseDistanceAdvisor
 
 
 def _candidate(candidate_id: str, x: float) -> Candidate:
@@ -8,13 +8,17 @@ def _candidate(candidate_id: str, x: float) -> Candidate:
 
 
 def test_surrogate_advisor_scores_near_known_good_candidate_higher() -> None:
-    advisor = InverseDistanceSurrogateAdvisor()
+    advisor = InverseDistanceAdvisor()
     good = _candidate("good", 1.0)
     bad = _candidate("bad", 5.0)
     advisor.observe(
         [
-            EvaluationRecord("good", score=10.0, confidence="trusted_full", rung="full", cost=1.0),
-            EvaluationRecord("bad", score=-10.0, confidence="trusted_full", rung="full", cost=1.0),
+            EvaluationRecord(
+                "good", score=10.0, confidence="trusted_full", stage="full", cost=1.0
+            ),
+            EvaluationRecord(
+                "bad", score=-10.0, confidence="trusted_full", stage="full", cost=1.0
+            ),
         ],
         candidates={"good": good, "bad": bad},
     )
@@ -28,7 +32,7 @@ def test_surrogate_advisor_scores_near_known_good_candidate_higher() -> None:
 
 
 def test_surrogate_advisor_returns_zero_scores_before_observations() -> None:
-    advisor = InverseDistanceSurrogateAdvisor()
+    advisor = InverseDistanceAdvisor()
     rankings = advisor.rank([_candidate("x", 1.0)])
 
     assert rankings[0].score == 0.0
@@ -38,17 +42,21 @@ def test_surrogate_advisor_returns_zero_scores_before_observations() -> None:
 def test_surrogate_advisor_normalizes_mixed_gene_distances() -> None:
     space = GeneSpace(
         [
-            GeneDef("wide", "float", 0.0, 1000.0),
-            GeneDef("narrow", "float", 0.0, 1.0),
+            Gene("wide", "float", 0.0, 1000.0),
+            Gene("narrow", "float", 0.0, 1.0),
         ]
     )
-    advisor = InverseDistanceSurrogateAdvisor(gene_space=space)
+    advisor = InverseDistanceAdvisor(gene_space=space)
     good = Candidate(candidate_id="good", genes=[0.0, 1.0], origin="random", event_index=0)
     bad = Candidate(candidate_id="bad", genes=[1000.0, 0.0], origin="random", event_index=0)
     advisor.observe(
         [
-            EvaluationRecord("good", score=10.0, confidence="trusted_full", rung="full", cost=1.0),
-            EvaluationRecord("bad", score=-10.0, confidence="trusted_full", rung="full", cost=1.0),
+            EvaluationRecord(
+                "good", score=10.0, confidence="trusted_full", stage="full", cost=1.0
+            ),
+            EvaluationRecord(
+                "bad", score=-10.0, confidence="trusted_full", stage="full", cost=1.0
+            ),
         ],
         candidates={"good": good, "bad": bad},
     )

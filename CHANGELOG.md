@@ -10,15 +10,15 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 - Structural `Optimizer` and `Evaluator` protocols for the clean-break ask/tell
   lifecycle.
-- `EvaluationContext`, `TellResult`, and shared `EngineStateSummary` records for
+- `EvaluationContext`, `UpdateResult`, and shared `OptimizerStateSummary` records for
   evaluator calls, `tell(...)` summaries, and stable state inspection.
 - Public `batch_id` fields on vNext `Candidate` and `EvaluationRecord` so async
   evaluators can group results by ask batch.
-- Stable `RunResult`, `MultiRunResult`, `Logbook`, and `OptimizationTelemetry` export
+- Stable `OptimizationResult`, `OptimizationBatchResult`, `GenerationHistory`, and `OptimizationTelemetry` export
   helpers with deterministic JSON output by default.
 - Append-only `EventRecord` and `EventHistory` APIs for ask/tell audit rows and
   generation-level observations.
-- `ReproducibilityMetadata` on run results with version, engine, seed, direction,
+- `ReproducibilityMetadata` on run results with version, optimizer, seed, direction,
   gene-space signature/hash, and serializable optimizer configuration.
 - `GeneSpace` now owns stable `signature()`, `hash()`, `to_dict()`, `to_json()`,
   and `validate_genes(...)` helpers for the flat search-space contract.
@@ -28,21 +28,31 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Budget and termination vocabulary now uses `max_generations` and
   `max_evaluations` consistently. Legacy generation and policy-budget names, along
   with the old `RunResult` stop booleans, were removed in favor of
-  `RunResult.stop_reason`.
-- `GAEngine` and `CMAESEngine` now expose `direction` and preserve raw scores while
+  `OptimizationResult.stop_reason`.
+- Whole-package Python imports now use domain packages: `evocore.search_space`,
+  `evocore.lifecycle`, `evocore.results`, `evocore.optimizers`, `evocore.core`, and
+  `evocore.surrogates`.
+- Public optimizer names are now `GeneticAlgorithmOptimizer` and `CMAESOptimizer`.
+  Result fields use `best_solution`, `best_score`, `final_solutions`, `generations`,
+  `events`, `elite_solutions`, and `diversity_by_generation`.
+- Public search-space names are now `Gene`, `Solution`, `SolutionSet`, and
+  `OperatorCodec`.
+- Evaluator context and record fields now use `stage`; telemetry exports now use
+  `promoted_by_stage`, `eliminated_by_stage`, and `cost_by_stage`.
+- `GeneticAlgorithmOptimizer` and `CMAESOptimizer` now expose `direction` and preserve raw scores while
   using direction-aware comparisons for best-candidate tracking.
 - Policy-driven evaluators now receive `EvaluationContext` instead of a bare rung.
-- `GAEngine` and `CMAESEngine` ask/tell flows now treat partial trusted batches as a
+- `GeneticAlgorithmOptimizer` and `CMAESOptimizer` ask/tell flows now treat partial trusted batches as a
   first-class API, with strict duplicate and batch-mismatch validation.
-- `GAEngine.run(...)` now fails fast when a synchronous evaluator omits assigned
+- `GeneticAlgorithmOptimizer.run(...)` now fails fast when a synchronous evaluator omits assigned
   candidates instead of stalling the policy loop.
-- `MultiFidelityPolicy` now requires exactly one `trusted_full` rung and it must be the
-  final rung.
+- `BudgetPolicy` now requires exactly one `trusted_full` stage and it must be the
+  final stage.
 - `ProcessParallel` now reuses a persistent process pool across repeated `evaluate(...)`
   calls until closed.
 - Cached evaluation records remain eligible for optimizer state updates but no longer
   consume fresh full-evaluation budget; they are counted through
-  `OptimizationTelemetry.candidates_cached` and `TellResult.cached_count`.
+  `OptimizationTelemetry.candidates_cached` and `UpdateResult.cached_count`.
 - Objective records now reject non-finite scores uniformly, and `rejected` records must
   use `score=None` with diagnostics in metrics or metadata.
 - Runtime timing in result exports now lives under `runtime` and is included only when
@@ -52,8 +62,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ### Fixed
 
-- Scheduler promotion now ranks candidates by the completed rung score, so surrogate or
-  later-rung observations cannot distort promotion from an earlier rung.
+- Scheduler promotion now ranks candidates by the completed stage score, so surrogate or
+  later-stage observations cannot distort promotion from an earlier stage.
 - `exploration_fraction` now adds deterministic tail exploration candidates during
   scheduler promotion.
 - `OptimizationTelemetry.unique_candidate_hashes` is populated from proposed candidate
@@ -65,9 +75,9 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   bounds when provided.
 - GA and CMA best-candidate tracking now ignores partial and surrogate observations when
   selecting the optimizer state best candidate.
-- `CMAESEngine(direction="minimize").run(...)` now optimizes and reports the lowest raw
+- `CMAESOptimizer(direction="minimize").run(...)` now optimizes and reports the lowest raw
   fitness instead of treating larger values as better.
-- `GAEngine.run_multiple(...)` now chooses the best child run using the engine direction.
+- `GeneticAlgorithmOptimizer.run_multiple(...)` now chooses the best child run using the engine direction.
 - Positional `EvaluationRecord(..., metrics, batch_id)` construction again preserves the
   supplied batch ID after adding record metadata.
 

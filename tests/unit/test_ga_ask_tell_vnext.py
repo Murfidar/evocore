@@ -1,29 +1,29 @@
 import pytest
 
 from evocore import (
+    BudgetPolicy,
     EvaluationContext,
     EvaluationRecord,
-    GAEngine,
-    GeneDef,
+    Gene,
     GeneSpace,
-    MultiFidelityPolicy,
+    GeneticAlgorithmOptimizer,
 )
-from evocore.exceptions import FitnessError
+from evocore.core.errors import FitnessError
 
 
 class SphereEvaluator:
     def evaluate(self, candidates, context):
         assert isinstance(context, EvaluationContext)
-        assert context.rung is not None
-        confidence = context.rung.confidence
+        assert context.stage is not None
+        confidence = context.stage.confidence
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
                 batch_id=candidate.batch_id,
                 score=-sum(float(value) ** 2 for value in candidate.genes),
                 confidence=confidence,
-                rung=context.rung.name,
-                cost=context.rung.budget,
+                stage=context.stage.name,
+                cost=context.stage.budget,
             )
             for candidate in candidates
         ]
@@ -31,15 +31,15 @@ class SphereEvaluator:
 
 class DroppingEvaluator:
     def evaluate(self, candidates, context):
-        assert context.rung is not None
+        assert context.stage is not None
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
                 batch_id=candidate.batch_id,
                 score=1.0,
-                confidence=context.rung.confidence,
-                rung=context.rung.name,
-                cost=context.rung.budget,
+                confidence=context.stage.confidence,
+                stage=context.stage.name,
+                cost=context.stage.budget,
             )
             for candidate in candidates[:-1]
         ]
@@ -51,7 +51,7 @@ class OneCachedThenFreshEvaluator:
 
     def evaluate(self, candidates, context):
         assert isinstance(context, EvaluationContext)
-        assert context.rung is not None
+        assert context.stage is not None
         records = []
         for candidate in candidates:
             if not self._returned_cached:
@@ -62,7 +62,7 @@ class OneCachedThenFreshEvaluator:
                         batch_id=candidate.batch_id,
                         score=100.0,
                         confidence="cached",
-                        rung=context.rung.name,
+                        stage=context.stage.name,
                         cost=0.0,
                     )
                 )
@@ -73,8 +73,8 @@ class OneCachedThenFreshEvaluator:
                         batch_id=candidate.batch_id,
                         score=-sum(float(value) ** 2 for value in candidate.genes),
                         confidence="trusted_full",
-                        rung=context.rung.name,
-                        cost=context.rung.budget,
+                        stage=context.stage.name,
+                        cost=context.stage.budget,
                     )
                 )
         return records
@@ -83,14 +83,14 @@ class OneCachedThenFreshEvaluator:
 def _space() -> GeneSpace:
     return GeneSpace(
         [
-            GeneDef("x", "float", -5.0, 5.0),
-            GeneDef("mode", "int", 0, 3),
+            Gene("x", "float", -5.0, 5.0),
+            Gene("mode", "int", 0, 3),
         ]
     )
 
 
 def test_ga_ask_returns_candidates_with_params_and_ids() -> None:
-    engine = GAEngine(_space(), population_size=6, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=6, max_generations=5, seed=123)
 
     candidates = engine.ask(4)
 
@@ -101,7 +101,7 @@ def test_ga_ask_returns_candidates_with_params_and_ids() -> None:
 
 
 def test_ga_ask_assigns_stable_batch_id_per_batch() -> None:
-    engine = GAEngine(_space(), population_size=6, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=6, max_generations=5, seed=123)
 
     first = engine.ask(3)
     second = engine.ask(2)
@@ -113,7 +113,7 @@ def test_ga_ask_assigns_stable_batch_id_per_batch() -> None:
 
 
 def test_ga_ask_populates_unique_candidate_hash_telemetry() -> None:
-    engine = GAEngine(_space(), population_size=6, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=6, max_generations=5, seed=123)
 
     candidates = engine.ask(4)
 
@@ -124,12 +124,12 @@ def test_ga_ask_populates_unique_candidate_hash_telemetry() -> None:
 
 
 def test_ga_ask_records_append_only_ask_events() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
 
     candidates = engine.ask(2)
 
-    assert len(engine.history) == 2
-    rows = engine.history.to_rows()
+    assert len(engine.events) == 2
+    rows = engine.events.to_rows()
     assert [row["event_index"] for row in rows] == [0, 1]
     assert all(row["event_type"] == "ask" for row in rows)
     assert rows[0]["batch_id"] == candidates[0].batch_id
@@ -140,14 +140,14 @@ def test_ga_ask_records_append_only_ask_events() -> None:
 
 
 def test_ga_tell_trusted_records_builds_trusted_population() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
     candidates = engine.ask(4)
     records = [
         EvaluationRecord(
             candidate_id=candidate.candidate_id,
             score=float(index),
             confidence="trusted_full",
-            rung="full",
+            stage="full",
             cost=1.0,
         )
         for index, candidate in enumerate(candidates)
@@ -161,7 +161,7 @@ def test_ga_tell_trusted_records_builds_trusted_population() -> None:
 
 
 def test_ga_tell_records_raw_and_comparison_scores_for_minimize() -> None:
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         _space(), population_size=4, max_generations=5, seed=123, direction="minimize"
     )
     candidates = engine.ask(1)
@@ -173,7 +173,7 @@ def test_ga_tell_records_raw_and_comparison_scores_for_minimize() -> None:
                 batch_id=candidates[0].batch_id,
                 score=2.5,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
                 metrics={"loss": 0.25},
                 metadata={"source": "unit"},
@@ -181,7 +181,7 @@ def test_ga_tell_records_raw_and_comparison_scores_for_minimize() -> None:
         ]
     )
 
-    row = engine.history.to_rows()[-1]
+    row = engine.events.to_rows()[-1]
     assert row["event_type"] == "tell"
     assert row["raw_score"] == pytest.approx(2.5)
     assert row["comparison_score"] == pytest.approx(-2.5)
@@ -191,7 +191,7 @@ def test_ga_tell_records_raw_and_comparison_scores_for_minimize() -> None:
 
 
 def test_ga_tell_accepts_partial_records_for_one_batch() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
     candidates = engine.ask(4)
     records = [
         EvaluationRecord(
@@ -199,7 +199,7 @@ def test_ga_tell_accepts_partial_records_for_one_batch() -> None:
             batch_id=candidate.batch_id,
             score=float(index),
             confidence="trusted_full",
-            rung="full",
+            stage="full",
             cost=1.0,
         )
         for index, candidate in enumerate(candidates)
@@ -215,14 +215,14 @@ def test_ga_tell_accepts_partial_records_for_one_batch() -> None:
 
 
 def test_ga_tell_rejects_duplicate_candidate_rung_record() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
     candidate = engine.ask(1)[0]
     record = EvaluationRecord(
         candidate_id=candidate.candidate_id,
         batch_id=candidate.batch_id,
         score=1.0,
         confidence="trusted_full",
-        rung="full",
+        stage="full",
         cost=1.0,
     )
 
@@ -233,7 +233,7 @@ def test_ga_tell_rejects_duplicate_candidate_rung_record() -> None:
 
 
 def test_ga_tell_rejects_explicit_batch_mismatch() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
     candidate = engine.ask(1)[0]
 
     with pytest.raises(FitnessError, match="batch_id"):
@@ -244,7 +244,7 @@ def test_ga_tell_rejects_explicit_batch_mismatch() -> None:
                     batch_id="b-wrong",
                     score=1.0,
                     confidence="trusted_full",
-                    rung="full",
+                    stage="full",
                     cost=1.0,
                 )
             ]
@@ -252,7 +252,7 @@ def test_ga_tell_rejects_explicit_batch_mismatch() -> None:
 
 
 def test_ga_tell_surrogate_records_do_not_build_trusted_population() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
     candidates = engine.ask(4)
 
     engine.tell(
@@ -261,7 +261,7 @@ def test_ga_tell_surrogate_records_do_not_build_trusted_population() -> None:
                 candidate_id=candidate.candidate_id,
                 score=100.0,
                 confidence="surrogate",
-                rung="surrogate",
+                stage="surrogate",
                 cost=0.0,
             )
             for candidate in candidates
@@ -273,42 +273,42 @@ def test_ga_tell_surrogate_records_do_not_build_trusted_population() -> None:
 
 
 def test_ga_run_uses_policy_and_returns_vnext_telemetry() -> None:
-    engine = GAEngine(_space(), population_size=6, max_generations=20, seed=123)
-    policy = MultiFidelityPolicy.single_full(max_evaluations=12, batch_size=4)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=6, max_generations=20, seed=123)
+    policy = BudgetPolicy.single_full(max_evaluations=12, batch_size=4)
 
     result = engine.run(SphereEvaluator(), policy=policy)
 
     assert result.n_evaluations == 12
-    assert result.best_individual.fitness_valid
+    assert result.best_solution.fitness_valid
     assert result.telemetry.candidates_full_evaluated == 12
     assert result.stop_reason == "max_evaluations"
 
 
 def test_ga_run_rejects_evaluator_that_omits_assigned_records() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
 
     with pytest.raises(FitnessError, match="missing evaluation records"):
         engine.run(
             DroppingEvaluator(),
-            policy=MultiFidelityPolicy.single_full(max_evaluations=4, batch_size=4),
+            policy=BudgetPolicy.single_full(max_evaluations=4, batch_size=4),
         )
 
 
 def test_ga_run_resets_vnext_state_for_repeated_runs() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
-    policy = MultiFidelityPolicy.single_full(max_evaluations=8, batch_size=4)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
+    policy = BudgetPolicy.single_full(max_evaluations=8, batch_size=4)
 
     first = engine.run(SphereEvaluator(), policy=policy)
     second = engine.run(SphereEvaluator(), policy=policy)
 
     assert first.n_evaluations == 8
     assert second.n_evaluations == 8
-    assert len(second.final_population) == 8
+    assert len(second.final_solutions) == 8
     assert second.telemetry.candidates_full_evaluated == 8
 
 
 def test_ga_tell_empty_records_returns_noop_tell_result() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
 
     result = engine.tell([])
 
@@ -318,7 +318,7 @@ def test_ga_tell_empty_records_returns_noop_tell_result() -> None:
 
 
 def test_ga_tell_rejects_unknown_explicit_batch_id() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
     candidate = engine.ask(1)[0]
 
     with pytest.raises(FitnessError, match="unknown batch_id"):
@@ -329,7 +329,7 @@ def test_ga_tell_rejects_unknown_explicit_batch_id() -> None:
                     batch_id="b-missing",
                     score=1.0,
                     confidence="trusted_full",
-                    rung="full",
+                    stage="full",
                     cost=1.0,
                 )
             ]
@@ -337,7 +337,7 @@ def test_ga_tell_rejects_unknown_explicit_batch_id() -> None:
 
 
 def test_ga_state_summary_reports_best_and_pending_batches() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
     candidates = engine.ask(2)
 
     before = engine.state_summary()
@@ -352,7 +352,7 @@ def test_ga_state_summary_reports_best_and_pending_batches() -> None:
                 batch_id=candidates[0].batch_id,
                 score=1.0,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             )
         ]
@@ -366,7 +366,7 @@ def test_ga_state_summary_reports_best_and_pending_batches() -> None:
 
 
 def test_ga_best_state_ignores_partial_scores() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
     candidates = engine.ask(2)
 
     engine.tell(
@@ -376,7 +376,7 @@ def test_ga_best_state_ignores_partial_scores() -> None:
                 batch_id=candidates[0].batch_id,
                 score=999.0,
                 confidence="partial",
-                rung="cheap",
+                stage="cheap",
                 cost=0.1,
             )
         ]
@@ -388,7 +388,7 @@ def test_ga_best_state_ignores_partial_scores() -> None:
                 batch_id=candidates[0].batch_id,
                 score=0.0,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             ),
             EvaluationRecord(
@@ -396,7 +396,7 @@ def test_ga_best_state_ignores_partial_scores() -> None:
                 batch_id=candidates[1].batch_id,
                 score=10.0,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             ),
         ]
@@ -407,7 +407,7 @@ def test_ga_best_state_ignores_partial_scores() -> None:
 
 
 def test_ga_cached_records_are_eligible_for_best_state() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=5, seed=123)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
     candidates = engine.ask(2)
 
     result = engine.tell(
@@ -417,7 +417,7 @@ def test_ga_cached_records_are_eligible_for_best_state() -> None:
                 batch_id=candidates[0].batch_id,
                 score=12.0,
                 confidence="cached",
-                rung="full",
+                stage="full",
                 cost=0.0,
             ),
             EvaluationRecord(
@@ -425,7 +425,7 @@ def test_ga_cached_records_are_eligible_for_best_state() -> None:
                 batch_id=candidates[1].batch_id,
                 score=10.0,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             ),
         ]
@@ -440,7 +440,7 @@ def test_ga_cached_records_are_eligible_for_best_state() -> None:
 
 
 def test_ga_minimize_direction_selects_lowest_trusted_score() -> None:
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         _space(), population_size=4, max_generations=5, seed=123, direction="minimize"
     )
     candidates = engine.ask(2)
@@ -452,7 +452,7 @@ def test_ga_minimize_direction_selects_lowest_trusted_score() -> None:
                 batch_id=candidates[0].batch_id,
                 score=10.0,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             ),
             EvaluationRecord(
@@ -460,7 +460,7 @@ def test_ga_minimize_direction_selects_lowest_trusted_score() -> None:
                 batch_id=candidates[1].batch_id,
                 score=2.0,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             ),
         ]
@@ -472,8 +472,8 @@ def test_ga_minimize_direction_selects_lowest_trusted_score() -> None:
 
 
 def test_ga_run_cached_records_do_not_consume_full_evaluation_budget() -> None:
-    engine = GAEngine(_space(), population_size=4, max_generations=20, seed=123)
-    policy = MultiFidelityPolicy.single_full(max_evaluations=4, batch_size=4)
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=20, seed=123)
+    policy = BudgetPolicy.single_full(max_evaluations=4, batch_size=4)
 
     result = engine.run(OneCachedThenFreshEvaluator(), policy=policy)
 

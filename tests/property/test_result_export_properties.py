@@ -3,7 +3,7 @@ import json
 from hypothesis import given
 from hypothesis import strategies as st
 
-from evocore.stats import EventHistory, EventRecord
+from evocore.results import EventHistory, EventRecord
 
 json_scalars = (
     st.none()

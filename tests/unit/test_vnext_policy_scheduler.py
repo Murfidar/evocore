@@ -1,9 +1,13 @@
 import pytest
 
-from evocore.evaluation import Candidate, EvaluationRecord, Rung
-from evocore.exceptions import ConfigurationError
-from evocore.policies import MultiFidelityPolicy
-from evocore.scheduler import EvaluationScheduler
+from evocore.core.errors import ConfigurationError
+from evocore.lifecycle import (
+    BudgetPolicy,
+    BudgetScheduler,
+    Candidate,
+    EvaluationRecord,
+    EvaluationStage,
+)
 
 
 def _candidate(index: int) -> Candidate:
@@ -13,10 +17,10 @@ def _candidate(index: int) -> Candidate:
 
 
 def test_policy_requires_unique_rung_names_and_max_evaluations() -> None:
-    policy = MultiFidelityPolicy(
-        rungs=[
-            Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
-            Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+    policy = BudgetPolicy(
+        stages=[
+            EvaluationStage("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
+            EvaluationStage("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
         max_evaluations=32,
         batch_size=8,
@@ -25,16 +29,18 @@ def test_policy_requires_unique_rung_names_and_max_evaluations() -> None:
     )
 
     assert policy.max_evaluations == 32
-    assert policy.rung_names == ("cheap", "full")
-    assert policy.final_rung.name == "full"
+    assert policy.stage_names == ("cheap", "full")
+    assert policy.final_stage.name == "full"
 
 
 def test_policy_rejects_duplicate_rung_names() -> None:
-    with pytest.raises(ConfigurationError, match="duplicate rung"):
-        MultiFidelityPolicy(
-            rungs=[
-                Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
-                Rung("cheap", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+    with pytest.raises(ConfigurationError, match="duplicate stage"):
+        BudgetPolicy(
+            stages=[
+                EvaluationStage("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
+                EvaluationStage(
+                    "cheap", budget=1.0, promote_fraction=1.0, confidence="trusted_full"
+                ),
             ],
             max_evaluations=16,
         )
@@ -42,33 +48,45 @@ def test_policy_rejects_duplicate_rung_names() -> None:
 
 def test_policy_rejects_missing_trusted_full_rung() -> None:
     with pytest.raises(ConfigurationError, match="trusted_full"):
-        MultiFidelityPolicy(
-            rungs=[Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial")],
+        BudgetPolicy(
+            stages=[
+                EvaluationStage("cheap", budget=0.10, promote_fraction=0.5, confidence="partial")
+            ],
             max_evaluations=16,
         )
 
 
 def test_policy_rejects_invalid_budget_and_fractions() -> None:
     with pytest.raises(ConfigurationError, match="max_evaluations"):
-        MultiFidelityPolicy(
-            rungs=[Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")],
+        BudgetPolicy(
+            stages=[
+                EvaluationStage(
+                    "full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"
+                )
+            ],
             max_evaluations=0,
         )
 
     with pytest.raises(ConfigurationError, match="exploration_fraction"):
-        MultiFidelityPolicy(
-            rungs=[Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")],
+        BudgetPolicy(
+            stages=[
+                EvaluationStage(
+                    "full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"
+                )
+            ],
             max_evaluations=1,
             exploration_fraction=1.5,
         )
 
 
 def test_policy_requires_trusted_full_rung_to_be_final() -> None:
-    with pytest.raises(ConfigurationError, match="final rung"):
-        MultiFidelityPolicy(
-            rungs=[
-                Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
-                Rung("audit", budget=1.0, promote_fraction=1.0, confidence="partial"),
+    with pytest.raises(ConfigurationError, match="final stage"):
+        BudgetPolicy(
+            stages=[
+                EvaluationStage(
+                    "full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"
+                ),
+                EvaluationStage("audit", budget=1.0, promote_fraction=1.0, confidence="partial"),
             ],
             max_evaluations=16,
         )
@@ -76,11 +94,15 @@ def test_policy_requires_trusted_full_rung_to_be_final() -> None:
 
 def test_policy_rejects_multiple_trusted_full_rungs() -> None:
     with pytest.raises(ConfigurationError, match="exactly one trusted_full"):
-        MultiFidelityPolicy(
-            rungs=[
-                Rung("cheap", budget=0.1, promote_fraction=0.5, confidence="partial"),
-                Rung("full_a", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
-                Rung("full_b", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+        BudgetPolicy(
+            stages=[
+                EvaluationStage("cheap", budget=0.1, promote_fraction=0.5, confidence="partial"),
+                EvaluationStage(
+                    "full_a", budget=1.0, promote_fraction=1.0, confidence="trusted_full"
+                ),
+                EvaluationStage(
+                    "full_b", budget=1.0, promote_fraction=1.0, confidence="trusted_full"
+                ),
             ],
             max_evaluations=16,
         )
@@ -88,32 +110,36 @@ def test_policy_rejects_multiple_trusted_full_rungs() -> None:
 
 def test_policy_rejects_legacy_full_evaluation_budget_name() -> None:
     with pytest.raises(TypeError, match="full_evaluation_budget"):
-        MultiFidelityPolicy(
-            rungs=[Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")],
+        BudgetPolicy(
+            stages=[
+                EvaluationStage(
+                    "full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"
+                )
+            ],
             full_evaluation_budget=16,
         )
 
 
 def test_single_full_uses_max_evaluations_and_rejects_budget() -> None:
-    policy = MultiFidelityPolicy.single_full(max_evaluations=12, batch_size=4)
+    policy = BudgetPolicy.single_full(max_evaluations=12, batch_size=4)
 
     assert policy.max_evaluations == 12
     assert policy.batch_size == 4
-    assert policy.rung_names == ("full",)
+    assert policy.stage_names == ("full",)
 
     with pytest.raises(ConfigurationError, match="max_evaluations"):
-        MultiFidelityPolicy.single_full(budget=12, batch_size=4)
+        BudgetPolicy.single_full(budget=12, batch_size=4)
 
 
 def test_scheduler_promotes_top_fraction_by_previous_rung_score() -> None:
-    policy = MultiFidelityPolicy(
-        rungs=[
-            Rung("cheap", budget=0.10, promote_fraction=0.4, confidence="partial"),
-            Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+    policy = BudgetPolicy(
+        stages=[
+            EvaluationStage("cheap", budget=0.10, promote_fraction=0.4, confidence="partial"),
+            EvaluationStage("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
         max_evaluations=10,
     )
-    scheduler = EvaluationScheduler(policy)
+    scheduler = BudgetScheduler(policy)
     candidates = [_candidate(index) for index in range(5)]
     for index, candidate in enumerate(candidates):
         candidate.apply_record(
@@ -121,34 +147,34 @@ def test_scheduler_promotes_top_fraction_by_previous_rung_score() -> None:
                 candidate_id=candidate.candidate_id,
                 score=float(index),
                 confidence="partial",
-                rung="cheap",
+                stage="cheap",
                 cost=0.1,
             )
         )
 
-    promoted = scheduler.promote(candidates, completed_rung="cheap")
+    promoted = scheduler.promote(candidates, completed_stage="cheap")
 
     assert [candidate.candidate_id for candidate in promoted] == ["c-4", "c-3"]
     assert all(candidate.status == "promoted" for candidate in promoted)
 
 
 def test_scheduler_promotes_by_completed_rung_score_not_best_observed_score() -> None:
-    policy = MultiFidelityPolicy(
-        rungs=[
-            Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
-            Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+    policy = BudgetPolicy(
+        stages=[
+            EvaluationStage("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
+            EvaluationStage("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
         max_evaluations=10,
         exploration_fraction=0.0,
     )
-    scheduler = EvaluationScheduler(policy)
+    scheduler = BudgetScheduler(policy)
     candidates = [_candidate(0), _candidate(1)]
     candidates[0].apply_record(
         EvaluationRecord(
             candidate_id="c-0",
             score=1.0,
             confidence="partial",
-            rung="cheap",
+            stage="cheap",
             cost=0.1,
         )
     )
@@ -157,7 +183,7 @@ def test_scheduler_promotes_by_completed_rung_score_not_best_observed_score() ->
             candidate_id="c-0",
             score=100.0,
             confidence="surrogate",
-            rung="surrogate",
+            stage="surrogate",
             cost=0.0,
         )
     )
@@ -166,26 +192,26 @@ def test_scheduler_promotes_by_completed_rung_score_not_best_observed_score() ->
             candidate_id="c-1",
             score=2.0,
             confidence="partial",
-            rung="cheap",
+            stage="cheap",
             cost=0.1,
         )
     )
 
-    promoted = scheduler.promote(candidates, completed_rung="cheap")
+    promoted = scheduler.promote(candidates, completed_stage="cheap")
 
     assert [candidate.candidate_id for candidate in promoted] == ["c-1"]
 
 
 def test_scheduler_exploration_fraction_adds_tail_candidates() -> None:
-    policy = MultiFidelityPolicy(
-        rungs=[
-            Rung("cheap", budget=0.10, promote_fraction=0.25, confidence="partial"),
-            Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+    policy = BudgetPolicy(
+        stages=[
+            EvaluationStage("cheap", budget=0.10, promote_fraction=0.25, confidence="partial"),
+            EvaluationStage("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
         max_evaluations=10,
         exploration_fraction=0.25,
     )
-    scheduler = EvaluationScheduler(policy)
+    scheduler = BudgetScheduler(policy)
     candidates = [_candidate(index) for index in range(8)]
     for index, candidate in enumerate(candidates):
         candidate.apply_record(
@@ -193,42 +219,42 @@ def test_scheduler_exploration_fraction_adds_tail_candidates() -> None:
                 candidate_id=candidate.candidate_id,
                 score=float(index),
                 confidence="partial",
-                rung="cheap",
+                stage="cheap",
                 cost=0.1,
             )
         )
 
-    promoted = scheduler.promote(candidates, completed_rung="cheap")
+    promoted = scheduler.promote(candidates, completed_stage="cheap")
 
     assert [candidate.candidate_id for candidate in promoted] == ["c-7", "c-6", "c-0", "c-1"]
 
 
 def test_scheduler_assigns_first_rung_to_new_candidates() -> None:
-    policy = MultiFidelityPolicy(
-        rungs=[
-            Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
-            Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+    policy = BudgetPolicy(
+        stages=[
+            EvaluationStage("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
+            EvaluationStage("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
         max_evaluations=10,
     )
-    scheduler = EvaluationScheduler(policy)
+    scheduler = BudgetScheduler(policy)
     candidates = [_candidate(0), _candidate(1)]
 
-    assigned = scheduler.assign_rung(candidates, rung_name="cheap")
+    assigned = scheduler.assign_stage(candidates, stage_name="cheap")
 
-    assert [candidate.rung for candidate in assigned] == ["cheap", "cheap"]
+    assert [candidate.stage for candidate in assigned] == ["cheap", "cheap"]
     assert [candidate.status for candidate in assigned] == ["racing", "racing"]
 
 
 def test_scheduler_counts_eliminated_candidates() -> None:
-    policy = MultiFidelityPolicy(
-        rungs=[
-            Rung("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
-            Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+    policy = BudgetPolicy(
+        stages=[
+            EvaluationStage("cheap", budget=0.10, promote_fraction=0.5, confidence="partial"),
+            EvaluationStage("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
         max_evaluations=10,
     )
-    scheduler = EvaluationScheduler(policy)
+    scheduler = BudgetScheduler(policy)
     candidates = [_candidate(index) for index in range(4)]
     for index, candidate in enumerate(candidates):
         candidate.apply_record(
@@ -236,12 +262,12 @@ def test_scheduler_counts_eliminated_candidates() -> None:
                 candidate_id=candidate.candidate_id,
                 score=float(index),
                 confidence="partial",
-                rung="cheap",
+                stage="cheap",
                 cost=0.1,
             )
         )
 
-    promoted = scheduler.promote(candidates, completed_rung="cheap")
+    promoted = scheduler.promote(candidates, completed_stage="cheap")
     eliminated = [candidate for candidate in candidates if candidate.status == "eliminated"]
 
     assert len(promoted) == 2
@@ -249,15 +275,15 @@ def test_scheduler_counts_eliminated_candidates() -> None:
 
 
 def test_scheduler_audit_fraction_promotes_one_low_ranked_candidate() -> None:
-    policy = MultiFidelityPolicy(
-        rungs=[
-            Rung("cheap", budget=0.10, promote_fraction=0.25, confidence="partial"),
-            Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+    policy = BudgetPolicy(
+        stages=[
+            EvaluationStage("cheap", budget=0.10, promote_fraction=0.25, confidence="partial"),
+            EvaluationStage("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
         max_evaluations=10,
         audit_fraction=0.25,
     )
-    scheduler = EvaluationScheduler(policy)
+    scheduler = BudgetScheduler(policy)
     candidates = [_candidate(index) for index in range(8)]
     for index, candidate in enumerate(candidates):
         candidate.apply_record(
@@ -265,12 +291,12 @@ def test_scheduler_audit_fraction_promotes_one_low_ranked_candidate() -> None:
                 candidate_id=candidate.candidate_id,
                 score=float(index),
                 confidence="partial",
-                rung="cheap",
+                stage="cheap",
                 cost=0.1,
             )
         )
 
-    promoted = scheduler.promote(candidates, completed_rung="cheap")
+    promoted = scheduler.promote(candidates, completed_stage="cheap")
     promoted_ids = {candidate.candidate_id for candidate in promoted}
 
     assert {"c-7", "c-6"}.issubset(promoted_ids)

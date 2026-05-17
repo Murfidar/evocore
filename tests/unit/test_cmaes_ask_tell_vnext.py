@@ -1,20 +1,20 @@
 import pytest
 
-from evocore import CMAESEngine, EvaluationRecord, GeneDef, GeneSpace
-from evocore.exceptions import FitnessError
+from evocore import CMAESOptimizer, EvaluationRecord, Gene, GeneSpace
+from evocore.core.errors import FitnessError
 
 
 def _space() -> GeneSpace:
     return GeneSpace(
         [
-            GeneDef("x", "float", -5.0, 5.0),
-            GeneDef("period", "int", 2, 20),
+            Gene("x", "float", -5.0, 5.0),
+            Gene("period", "int", 2, 20),
         ]
     )
 
 
 def test_cma_ask_returns_candidate_batch() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
 
     candidates = engine.ask()
 
@@ -25,12 +25,12 @@ def test_cma_ask_returns_candidate_batch() -> None:
 
 
 def test_cma_ask_records_append_only_ask_events() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
 
     candidates = engine.ask()
 
-    assert len(engine.history) == 4
-    rows = engine.history.to_rows()
+    assert len(engine.events) == 4
+    rows = engine.events.to_rows()
     assert [row["event_index"] for row in rows] == [0, 1, 2, 3]
     assert all(row["event_type"] == "ask" for row in rows)
     assert rows[0]["batch_id"] == candidates[0].batch_id
@@ -39,7 +39,7 @@ def test_cma_ask_records_append_only_ask_events() -> None:
 
 
 def test_cma_tell_ignores_partial_records_for_state_update() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
     candidates = engine.ask()
     generation_before = engine.generation
 
@@ -49,7 +49,7 @@ def test_cma_tell_ignores_partial_records_for_state_update() -> None:
                 candidate_id=candidate.candidate_id,
                 score=1.0,
                 confidence="partial",
-                rung="cheap",
+                stage="cheap",
                 cost=0.1,
             )
             for candidate in candidates
@@ -61,7 +61,7 @@ def test_cma_tell_ignores_partial_records_for_state_update() -> None:
 
 
 def test_cma_tell_trusted_records_updates_state() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
     candidates = engine.ask()
 
     summary = engine.tell(
@@ -70,7 +70,7 @@ def test_cma_tell_trusted_records_updates_state() -> None:
                 candidate_id=candidate.candidate_id,
                 score=-sum(float(value) ** 2 for value in candidate.genes),
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             )
             for candidate in candidates
@@ -82,7 +82,7 @@ def test_cma_tell_trusted_records_updates_state() -> None:
 
 
 def test_cma_tell_records_raw_and_comparison_scores_for_minimize() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7, direction="minimize")
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7, direction="minimize")
     candidates = engine.ask()
 
     engine.tell(
@@ -92,13 +92,13 @@ def test_cma_tell_records_raw_and_comparison_scores_for_minimize() -> None:
                 batch_id=candidates[0].batch_id,
                 score=3.0,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             )
         ]
     )
 
-    row = engine.history.to_rows()[-1]
+    row = engine.events.to_rows()[-1]
     assert row["event_type"] == "tell"
     assert row["raw_score"] == pytest.approx(3.0)
     assert row["comparison_score"] == pytest.approx(-3.0)
@@ -106,7 +106,7 @@ def test_cma_tell_records_raw_and_comparison_scores_for_minimize() -> None:
 
 
 def test_cma_tell_accumulates_trusted_records_across_partial_calls() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
     candidates = engine.ask()
     records = [
         EvaluationRecord(
@@ -114,7 +114,7 @@ def test_cma_tell_accumulates_trusted_records_across_partial_calls() -> None:
             batch_id=candidate.batch_id,
             score=-sum(float(value) ** 2 for value in candidate.genes),
             confidence="trusted_full",
-            rung="full",
+            stage="full",
             cost=1.0,
         )
         for candidate in candidates
@@ -132,7 +132,7 @@ def test_cma_tell_accumulates_trusted_records_across_partial_calls() -> None:
 
 
 def test_cma_tell_completes_batch_out_of_order() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
     candidates = engine.ask()
     records = [
         EvaluationRecord(
@@ -140,7 +140,7 @@ def test_cma_tell_completes_batch_out_of_order() -> None:
             batch_id=candidate.batch_id,
             score=-sum(float(value) ** 2 for value in candidate.genes),
             confidence="trusted_full",
-            rung="full",
+            stage="full",
             cost=1.0,
         )
         for candidate in candidates
@@ -154,7 +154,7 @@ def test_cma_tell_completes_batch_out_of_order() -> None:
 
 
 def test_cma_tell_rejects_duplicate_trusted_record_after_batch_consumed() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
     candidates = engine.ask()
     records = [
         EvaluationRecord(
@@ -162,7 +162,7 @@ def test_cma_tell_rejects_duplicate_trusted_record_after_batch_consumed() -> Non
             batch_id=candidate.batch_id,
             score=-sum(float(value) ** 2 for value in candidate.genes),
             confidence="trusted_full",
-            rung="full",
+            stage="full",
             cost=1.0,
         )
         for candidate in candidates
@@ -175,7 +175,7 @@ def test_cma_tell_rejects_duplicate_trusted_record_after_batch_consumed() -> Non
 
 
 def test_cma_tell_empty_records_returns_noop_tell_result() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
 
     result = engine.tell([])
 
@@ -185,7 +185,7 @@ def test_cma_tell_empty_records_returns_noop_tell_result() -> None:
 
 
 def test_cma_tell_rejects_unknown_explicit_batch_id() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
     candidate = engine.ask()[0]
 
     with pytest.raises(FitnessError, match="unknown batch_id"):
@@ -196,7 +196,7 @@ def test_cma_tell_rejects_unknown_explicit_batch_id() -> None:
                     batch_id="b-missing",
                     score=1.0,
                     confidence="trusted_full",
-                    rung="full",
+                    stage="full",
                     cost=1.0,
                 )
             ]
@@ -204,7 +204,7 @@ def test_cma_tell_rejects_unknown_explicit_batch_id() -> None:
 
 
 def test_cma_state_summary_reports_best_and_pending_batches() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
     candidates = engine.ask()
 
     before = engine.state_summary()
@@ -219,7 +219,7 @@ def test_cma_state_summary_reports_best_and_pending_batches() -> None:
                 batch_id=candidates[0].batch_id,
                 score=3.0,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             )
         ]
@@ -233,7 +233,7 @@ def test_cma_state_summary_reports_best_and_pending_batches() -> None:
 
 
 def test_cma_best_state_ignores_partial_scores() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
     candidates = engine.ask()
 
     engine.tell(
@@ -243,7 +243,7 @@ def test_cma_best_state_ignores_partial_scores() -> None:
                 batch_id=candidates[0].batch_id,
                 score=999.0,
                 confidence="partial",
-                rung="cheap",
+                stage="cheap",
                 cost=0.1,
             )
         ]
@@ -255,7 +255,7 @@ def test_cma_best_state_ignores_partial_scores() -> None:
                 batch_id=candidates[0].batch_id,
                 score=0.0,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             ),
             EvaluationRecord(
@@ -263,7 +263,7 @@ def test_cma_best_state_ignores_partial_scores() -> None:
                 batch_id=candidates[1].batch_id,
                 score=10.0,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             ),
         ]
@@ -274,7 +274,7 @@ def test_cma_best_state_ignores_partial_scores() -> None:
 
 
 def test_cma_cached_records_are_eligible_for_best_state_and_batch_update() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7)
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
     candidates = engine.ask()
 
     result = engine.tell(
@@ -284,7 +284,7 @@ def test_cma_cached_records_are_eligible_for_best_state_and_batch_update() -> No
                 batch_id=candidate.batch_id,
                 score=10.0 + index,
                 confidence="cached",
-                rung="full",
+                stage="full",
                 cost=0.0,
             )
             for index, candidate in enumerate(candidates)
@@ -301,7 +301,7 @@ def test_cma_cached_records_are_eligible_for_best_state_and_batch_update() -> No
 
 
 def test_cma_minimize_direction_tracks_lowest_trusted_score() -> None:
-    engine = CMAESEngine(_space(), population_size=4, seed=7, direction="minimize")
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7, direction="minimize")
     candidates = engine.ask()
 
     result = engine.tell(
@@ -311,7 +311,7 @@ def test_cma_minimize_direction_tracks_lowest_trusted_score() -> None:
                 batch_id=candidates[0].batch_id,
                 score=10.0,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             ),
             EvaluationRecord(
@@ -319,7 +319,7 @@ def test_cma_minimize_direction_tracks_lowest_trusted_score() -> None:
                 batch_id=candidates[1].batch_id,
                 score=2.0,
                 confidence="trusted_full",
-                rung="full",
+                stage="full",
                 cost=1.0,
             ),
         ]

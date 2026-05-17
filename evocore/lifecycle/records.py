@@ -9,9 +9,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from evocore.exceptions import ConfigurationError, FitnessError
-from evocore.exporting import stable_json_dumps
-from evocore.individual import GeneValue
+from evocore.core.errors import ConfigurationError, FitnessError
+from evocore.core.serialization import stable_json_dumps
+from evocore.search_space import GeneValue
 
 Direction = Literal["maximize", "minimize"]
 CandidateOrigin = Literal[
@@ -51,8 +51,8 @@ def score_for_direction(score: float, direction: Direction) -> float:
 
 
 @dataclass(frozen=True)
-class Rung:
-    """Describe one multi-fidelity evaluation rung."""
+class EvaluationStage:
+    """Describe one multi-fidelity evaluation stage."""
 
     name: str
     budget: float
@@ -61,20 +61,20 @@ class Rung:
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name:
-            raise ConfigurationError("rung name must be a non-empty string.")
+            raise ConfigurationError("EvaluationStage name must be a non-empty string.")
         if not math.isfinite(float(self.budget)) or self.budget <= 0.0:
-            raise ConfigurationError("rung budget must be finite and > 0.")
+            raise ConfigurationError("EvaluationStage budget must be finite and > 0.")
         if not (0.0 < float(self.promote_fraction) <= 1.0):
-            raise ConfigurationError("rung promote_fraction must be in (0, 1].")
+            raise ConfigurationError("EvaluationStage promote_fraction must be in (0, 1].")
         if self.confidence not in ("surrogate", "partial", "cached", "trusted_full", "rejected"):
-            raise ConfigurationError("rung confidence is invalid.")
+            raise ConfigurationError("EvaluationStage confidence is invalid.")
 
 
 @dataclass(frozen=True)
 class EvaluationContext:
     """Describe the evaluator call context for one ask/tell batch."""
 
-    rung: Rung | None
+    stage: EvaluationStage | None
     batch_id: str
     event_index: int
     direction: Direction
@@ -95,12 +95,12 @@ class EvaluationContext:
 
 
 @dataclass(frozen=True)
-class CandidateScore:
-    """Store one score observation for one candidate and rung."""
+class ScoreObservation:
+    """Store one score observation for one candidate and stage."""
 
     score: float | None
     confidence: EvaluationConfidence
-    rung: str
+    stage: str
     cost: float
     metrics: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
@@ -113,7 +113,7 @@ class EvaluationRecord:
     candidate_id: str
     score: float | None
     confidence: EvaluationConfidence
-    rung: str
+    stage: str
     cost: float = 0.0
     metrics: dict[str, Any] = field(default_factory=dict)
     batch_id: str | None = None
@@ -122,8 +122,8 @@ class EvaluationRecord:
     def __post_init__(self) -> None:
         if not self.candidate_id:
             raise FitnessError("EvaluationRecord candidate_id must be non-empty.")
-        if not self.rung:
-            raise FitnessError("EvaluationRecord rung must be non-empty.")
+        if not self.stage:
+            raise FitnessError("EvaluationRecord stage must be non-empty.")
         if self.confidence not in ("surrogate", "partial", "cached", "trusted_full", "rejected"):
             raise FitnessError("EvaluationRecord confidence is invalid.")
         if self.confidence != "rejected" and (
@@ -153,11 +153,11 @@ class Candidate:
     parents: Sequence[str] = ()
     event_index: int = 0
     generation: int | None = None
-    rung: str | None = None
+    stage: str | None = None
     status: CandidateStatus = "proposed"
     confidence: EvaluationConfidence | None = None
     cost: float = 0.0
-    scores: dict[str, CandidateScore] = field(default_factory=dict)
+    scores: dict[str, ScoreObservation] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
 
     def apply_record(self, record: EvaluationRecord) -> None:
@@ -172,13 +172,13 @@ class Candidate:
                 f"EvaluationRecord batch_id {record.batch_id!r} does not match "
                 f"candidate batch {self.batch_id!r}."
             )
-        self.rung = record.rung
+        self.stage = record.stage
         self.confidence = record.confidence
         self.cost += record.cost
-        self.scores[record.rung] = CandidateScore(
+        self.scores[record.stage] = ScoreObservation(
             score=record.score,
             confidence=record.confidence,
-            rung=record.rung,
+            stage=record.stage,
             cost=record.cost,
             metrics=dict(record.metrics),
             metadata=dict(record.metadata),
@@ -260,9 +260,9 @@ class OptimizationTelemetry:
     candidates_partial_evaluated: int = 0
     candidates_full_evaluated: int = 0
     candidates_cached: int = 0
-    promoted_by_rung: dict[str, int] = field(default_factory=dict)
-    eliminated_by_rung: dict[str, int] = field(default_factory=dict)
-    cost_by_rung: dict[str, float] = field(default_factory=dict)
+    promoted_by_stage: dict[str, int] = field(default_factory=dict)
+    eliminated_by_stage: dict[str, int] = field(default_factory=dict)
+    cost_by_stage: dict[str, float] = field(default_factory=dict)
 
     def record_proposed(self, count: int) -> None:
         """Record newly proposed candidate count."""
@@ -278,28 +278,28 @@ class OptimizationTelemetry:
         """Record candidates scored by a surrogate or screen."""
         self.candidates_screened += int(count)
 
-    def record_partial(self, count: int, *, rung: str, cost: float) -> None:
+    def record_partial(self, count: int, *, stage: str, cost: float) -> None:
         """Record partial-fidelity evaluations and their cost."""
         self.candidates_partial_evaluated += int(count)
-        self.cost_by_rung[rung] = self.cost_by_rung.get(rung, 0.0) + float(cost)
+        self.cost_by_stage[stage] = self.cost_by_stage.get(stage, 0.0) + float(cost)
 
-    def record_full(self, count: int, *, rung: str, cost: float) -> None:
+    def record_full(self, count: int, *, stage: str, cost: float) -> None:
         """Record full trusted evaluations and their cost."""
         self.candidates_full_evaluated += int(count)
-        self.cost_by_rung[rung] = self.cost_by_rung.get(rung, 0.0) + float(cost)
+        self.cost_by_stage[stage] = self.cost_by_stage.get(stage, 0.0) + float(cost)
 
-    def record_cached(self, count: int, *, rung: str, cost: float) -> None:
+    def record_cached(self, count: int, *, stage: str, cost: float) -> None:
         """Record cached trusted observations without spending fresh full-evaluation budget."""
         self.candidates_cached += int(count)
-        self.cost_by_rung[rung] = self.cost_by_rung.get(rung, 0.0) + float(cost)
+        self.cost_by_stage[stage] = self.cost_by_stage.get(stage, 0.0) + float(cost)
 
-    def record_promoted(self, count: int, *, rung: str) -> None:
-        """Record candidates promoted from a rung."""
-        self.promoted_by_rung[rung] = self.promoted_by_rung.get(rung, 0) + int(count)
+    def record_promoted(self, count: int, *, stage: str) -> None:
+        """Record candidates promoted from a stage."""
+        self.promoted_by_stage[stage] = self.promoted_by_stage.get(stage, 0) + int(count)
 
-    def record_eliminated(self, count: int, *, rung: str) -> None:
-        """Record candidates eliminated at a rung."""
-        self.eliminated_by_rung[rung] = self.eliminated_by_rung.get(rung, 0) + int(count)
+    def record_eliminated(self, count: int, *, stage: str) -> None:
+        """Record candidates eliminated at a stage."""
+        self.eliminated_by_stage[stage] = self.eliminated_by_stage.get(stage, 0) + int(count)
 
     def to_dict(self) -> dict[str, Any]:
         """Export stable JSON-safe telemetry fields."""
@@ -311,13 +311,13 @@ class OptimizationTelemetry:
             "candidates_partial_evaluated": self.candidates_partial_evaluated,
             "candidates_full_evaluated": self.candidates_full_evaluated,
             "candidates_cached": self.candidates_cached,
-            "promoted_by_rung": {
-                key: self.promoted_by_rung[key] for key in sorted(self.promoted_by_rung)
+            "promoted_by_stage": {
+                key: self.promoted_by_stage[key] for key in sorted(self.promoted_by_stage)
             },
-            "eliminated_by_rung": {
-                key: self.eliminated_by_rung[key] for key in sorted(self.eliminated_by_rung)
+            "eliminated_by_stage": {
+                key: self.eliminated_by_stage[key] for key in sorted(self.eliminated_by_stage)
             },
-            "cost_by_rung": {key: self.cost_by_rung[key] for key in sorted(self.cost_by_rung)},
+            "cost_by_stage": {key: self.cost_by_stage[key] for key in sorted(self.cost_by_stage)},
         }
 
     def to_json(self, *, indent: int | None = None) -> str:
@@ -326,7 +326,7 @@ class OptimizationTelemetry:
 
 
 @dataclass(frozen=True)
-class TellResult:
+class UpdateResult:
     """Summarize one optimizer tell() update."""
 
     accepted_count: int
@@ -343,7 +343,7 @@ class TellResult:
 
 
 @dataclass(frozen=True)
-class EngineStateSummary:
+class OptimizerStateSummary:
     """Expose a stable read-only optimizer state summary."""
 
     best_candidate_id: str | None

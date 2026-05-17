@@ -1,4 +1,4 @@
-"""Run logbook data structures and reporting helpers."""
+"""Run GenerationHistory data structures and reporting helpers."""
 
 from __future__ import annotations
 
@@ -6,11 +6,10 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from evocore.evaluation import CandidateOrigin, CandidateStatus, Direction, EvaluationConfidence
-from evocore.exceptions import ConfigurationError
-from evocore.exporting import canonical_json_hash, json_safe, stable_json_dumps
-from evocore.gene_space import GeneSpace
-from evocore.individual import GeneValue
+from evocore.core.errors import ConfigurationError
+from evocore.core.serialization import canonical_json_hash, json_safe, stable_json_dumps
+from evocore.lifecycle import CandidateOrigin, CandidateStatus, Direction, EvaluationConfidence
+from evocore.search_space import GeneSpace, GeneValue
 
 StopReason = Literal[
     "max_evaluations",
@@ -25,16 +24,16 @@ StopReason = Literal[
 
 
 @dataclass
-class LogEntry:
+class GenerationRecord:
     """Capture per-generation statistics from an optimization engine."""
 
     gen: int
-    best_fitness: float
-    mean_fitness: float
-    std_fitness: float
+    best_score: float
+    mean_score: float
+    std_score: float
     wall_time_ms: float
     n_evaluations: int
-    nan_fitness_count: int
+    nan_score_count: int
     cached_count: int
     diversity: list[float] = field(default_factory=list)
     custom: dict = field(default_factory=dict)
@@ -43,12 +42,12 @@ class LogEntry:
         """Export this generation summary as a JSON-safe dictionary."""
         row: dict[str, Any] = {
             "gen": self.gen,
-            "best_fitness": self.best_fitness,
-            "mean_fitness": self.mean_fitness,
-            "std_fitness": self.std_fitness,
+            "best_score": self.best_score,
+            "mean_score": self.mean_score,
+            "std_score": self.std_score,
             "wall_time_ms": self.wall_time_ms,
             "n_evaluations": self.n_evaluations,
-            "nan_fitness_count": self.nan_fitness_count,
+            "nan_score_count": self.nan_score_count,
             "cached_count": self.cached_count,
             "diversity": list(self.diversity),
         }
@@ -56,32 +55,32 @@ class LogEntry:
         return json_safe(row)
 
 
-class Logbook:
-    """Store ordered `LogEntry` records with export helpers."""
+class GenerationHistory:
+    """Store ordered `GenerationRecord` records with export helpers."""
 
     def __init__(self) -> None:
-        self._entries: list[LogEntry] = []
+        self._entries: list[GenerationRecord] = []
 
-    def append(self, entry: LogEntry) -> None:
-        """Append a generation record to the logbook."""
+    def append(self, entry: GenerationRecord) -> None:
+        """Append a generation record to the GenerationHistory."""
         self._entries.append(entry)
 
     def __len__(self) -> int:
         return len(self._entries)
 
-    def __iter__(self) -> Iterator[LogEntry]:
+    def __iter__(self) -> Iterator[GenerationRecord]:
         return iter(self._entries)
 
-    def __getitem__(self, index: int) -> LogEntry:
+    def __getitem__(self, index: int) -> GenerationRecord:
         return self._entries[index]
 
-    def best_fitnesses(self) -> list[float]:
-        """Return the best fitness value from each generation."""
-        return [entry.best_fitness for entry in self._entries]
+    def best_scores(self) -> list[float]:
+        """Return the best score value from each generation."""
+        return [entry.best_score for entry in self._entries]
 
     def nan_counts(self) -> list[int]:
-        """Return the number of non-finite fitness values per generation."""
-        return [entry.nan_fitness_count for entry in self._entries]
+        """Return the number of non-finite score values per generation."""
+        return [entry.nan_score_count for entry in self._entries]
 
     def to_rows(self) -> list[dict[str, Any]]:
         """Convert log entries into JSON-serializable row dictionaries."""
@@ -101,24 +100,24 @@ class Logbook:
             print(row)
 
     def to_dataframe(self):
-        """Convert the logbook into a pandas DataFrame."""
+        """Convert the GenerationHistory into a pandas DataFrame."""
         try:
             import pandas as pd
         except ImportError as exc:
             raise ImportError(
-                "Logbook.to_dataframe() requires pandas; pip install pandas."
+                "GenerationHistory.to_dataframe() requires pandas; pip install pandas."
             ) from exc
         return pd.DataFrame(self.to_rows())
 
     def plot(self, metrics: list[str] | None = None):
-        """Plot selected logbook metrics with matplotlib."""
+        """Plot selected GenerationHistory metrics with matplotlib."""
         try:
             import matplotlib.pyplot as plt
         except ImportError as exc:
             raise ImportError(
-                "Logbook.plot() requires matplotlib; pip install matplotlib."
+                "GenerationHistory.plot() requires matplotlib; pip install matplotlib."
             ) from exc
-        metric_names = metrics or ["best_fitness", "mean_fitness"]
+        metric_names = metrics or ["best_score", "mean_score"]
         rows = self.to_rows()
         xs = [row["gen"] for row in rows]
         fig, ax = plt.subplots()
@@ -139,7 +138,7 @@ class EventRecord:
     candidate_id: str | None = None
     candidate_hash: str | None = None
     generation: int | None = None
-    rung: str | None = None
+    stage: str | None = None
     confidence: EvaluationConfidence | None = None
     raw_score: float | None = None
     comparison_score: float | None = None
@@ -162,7 +161,7 @@ class EventRecord:
                 "candidate_id": self.candidate_id,
                 "candidate_hash": self.candidate_hash,
                 "generation": self.generation,
-                "rung": self.rung,
+                "stage": self.stage,
                 "confidence": self.confidence,
                 "raw_score": self.raw_score,
                 "comparison_score": self.comparison_score,
@@ -248,7 +247,7 @@ class ReproducibilityMetadata:
     """Capture deterministic optimizer and environment identity for a result."""
 
     evocore_version: str
-    engine_type: str
+    optimizer_type: str
     seed: int
     direction: Direction
     gene_space_signature: dict[str, Any]
@@ -261,7 +260,7 @@ class ReproducibilityMetadata:
         return json_safe(
             {
                 "evocore_version": self.evocore_version,
-                "engine_type": self.engine_type,
+                "optimizer_type": self.optimizer_type,
                 "seed": self.seed,
                 "direction": self.direction,
                 "gene_space_signature": self.gene_space_signature,

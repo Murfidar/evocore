@@ -7,14 +7,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from evocore.exceptions import ConfigurationError
-from evocore.exporting import canonical_json_hash, stable_json_dumps
+from evocore.core.errors import ConfigurationError
+from evocore.core.serialization import canonical_json_hash, stable_json_dumps
 
 GeneKind = Literal["float", "int", "bool"]
 
 
 @dataclass(frozen=True)
-class GeneDef:
+class Gene:
     """Describe one named optimization gene.
 
     Args:
@@ -36,31 +36,29 @@ class GeneDef:
 
     def __post_init__(self) -> None:
         if not isinstance(self.name, str) or not self.name:
-            raise ConfigurationError("GeneDef name must be a non-empty string.")
+            raise ConfigurationError("Gene name must be a non-empty string.")
         if self.kind not in ("float", "int", "bool"):
-            raise ConfigurationError("GeneDef kind must be 'float', 'int', or 'bool'.")
+            raise ConfigurationError("Gene kind must be 'float', 'int', or 'bool'.")
 
         if self.kind == "bool":
             if self.low is not None or self.high is not None:
-                raise ConfigurationError(
-                    "bool genes do not use bounds; pass GeneDef(name, 'bool')."
-                )
+                raise ConfigurationError("bool genes do not use bounds; pass Gene(name, 'bool').")
         else:
             if self.low is None or self.high is None:
                 raise ConfigurationError(f"bounds required for {self.kind} gene '{self.name}'.")
             if not math.isfinite(float(self.low)) or not math.isfinite(float(self.high)):
-                raise ConfigurationError(f"GeneDef('{self.name}') requires finite numeric bounds.")
+                raise ConfigurationError(f"Gene('{self.name}') requires finite numeric bounds.")
             if self.low > self.high:
-                raise ConfigurationError(f"GeneDef('{self.name}') requires low <= high.")
+                raise ConfigurationError(f"Gene('{self.name}') requires low <= high.")
             if self.kind == "int" and (
                 not isinstance(self.low, int) or not isinstance(self.high, int)
             ):
                 raise ConfigurationError(
-                    f"GeneDef('{self.name}') with kind='int' requires integer bounds."
+                    f"Gene('{self.name}') with kind='int' requires integer bounds."
                 )
 
         if self.sigma is not None and not (0.0 < self.sigma <= 1.0):
-            raise ConfigurationError("GeneDef sigma must be in (0, 1].")
+            raise ConfigurationError("Gene sigma must be in (0, 1].")
 
     @property
     def is_fixed(self) -> bool:
@@ -71,9 +69,9 @@ class GeneDef:
 class GeneSpace:
     """Collect gene definitions used by optimization engines."""
 
-    def __init__(self, genes: Sequence[GeneDef], *, has_names: bool = True) -> None:
+    def __init__(self, genes: Sequence[Gene], *, has_names: bool = True) -> None:
         if not genes:
-            raise ConfigurationError("GeneSpace requires at least one GeneDef.")
+            raise ConfigurationError("GeneSpace requires at least one Gene.")
 
         self._genes = tuple(genes)
         self._has_names = bool(has_names)
@@ -107,15 +105,12 @@ class GeneSpace:
         if low >= high:
             raise ConfigurationError("GeneSpace.uniform requires low < high.")
         return cls(
-            [
-                GeneDef(f"gene_{index}", "float", float(low), float(high))
-                for index in range(length)
-            ],
+            [Gene(f"gene_{index}", "float", float(low), float(high)) for index in range(length)],
             has_names=False,
         )
 
     @property
-    def genes(self) -> tuple[GeneDef, ...]:
+    def genes(self) -> tuple[Gene, ...]:
         """Return the ordered gene definitions."""
         return self._genes
 

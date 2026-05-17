@@ -9,39 +9,38 @@ from collections.abc import Callable, Sequence
 from typing import Any
 
 from evocore import _core
-from evocore.batches import CandidateBatch, batch_id_from_seed
 from evocore.callbacks import Callback, GenerationInfo
-from evocore.evaluation import (
+from evocore.core.errors import ConfigurationError, FitnessError
+from evocore.core.parallel import ThreadParallel
+from evocore.core.serialization import json_safe, package_version
+from evocore.lifecycle import (
     Candidate,
+    CandidateBatch,
     Direction,
-    EngineStateSummary,
     EvaluationRecord,
     OptimizationTelemetry,
-    TellResult,
+    OptimizerStateSummary,
+    UpdateResult,
+    batch_id_from_seed,
     is_state_update_confidence,
     score_for_direction,
 )
-from evocore.exceptions import ConfigurationError, FitnessError
-from evocore.exporting import json_safe, package_version
-from evocore.ga import RunResult
-from evocore.gene_space import GeneSpace
-from evocore.individual import Individual, Population
-from evocore.operators import OperatorSet
-from evocore.parallel import ThreadParallel
-from evocore.stats import (
+from evocore.results import (
     EventHistory,
     EventRecord,
-    Logbook,
-    LogEntry,
+    GenerationHistory,
+    GenerationRecord,
+    OptimizationResult,
     ReproducibilityMetadata,
     StopReason,
     append_run_stop_event,
 )
+from evocore.search_space import GeneSpace, OperatorCodec, Solution, SolutionSet
 
 logger = logging.getLogger(__name__)
 
 
-class CMAESEngine:
+class CMAESOptimizer:
     """Run covariance matrix adaptation evolution strategy optimization.
 
     Args:
@@ -77,31 +76,31 @@ class CMAESEngine:
     ) -> None:
         if gene_space is None:
             raise ConfigurationError(
-                "gene_space required for CMAESEngine. Pass GeneSpace.uniform(-5.0, 5.0, length)."
+                "gene_space required for CMAESOptimizer. Pass GeneSpace.uniform(-5.0, 5.0, length)."
             )
         if "generations" in legacy_kwargs:
-            raise ConfigurationError("CMAESEngine uses max_generations, not generations")
+            raise ConfigurationError("CMAESOptimizer uses max_generations, not generations")
         if legacy_kwargs:
             unknown = ", ".join(sorted(legacy_kwargs))
-            raise ConfigurationError(f"CMAESEngine got unexpected argument(s): {unknown}.")
+            raise ConfigurationError(f"CMAESOptimizer got unexpected argument(s): {unknown}.")
         if "bool" in gene_space.kinds:
             raise ConfigurationError(
-                "CMAESEngine does not support bool genes; use float/int genes only."
+                "CMAESOptimizer does not support bool genes; use float/int genes only."
             )
         if gene_space.fixed_count:
             raise ConfigurationError(
-                "CMAESEngine does not support fixed numeric genes yet. "
-                "Use GAEngine for full-genome fixed genes, or remove fixed genes from the CMA-ES GeneSpace."
+                "CMAESOptimizer does not support fixed numeric genes yet. "
+                "Use GeneticAlgorithmOptimizer for full-genome fixed genes, or remove fixed genes from the CMA-ES GeneSpace."
             )
         if parallel == "process":
             raise ConfigurationError(
-                "CMAESEngine does not support parallel='process'.\n"
+                "CMAESOptimizer does not support parallel='process'.\n"
                 "  Reason: the internal CMA-ES covariance state (a PyO3 Rust object) is not picklable.\n"
                 "  Fix: use parallel='thread' if your fitness function releases the GIL, or parallel='none'.\n"
-                "  Note: parallel='process' is supported by GAEngine, not CMAESEngine."
+                "  Note: parallel='process' is supported by GeneticAlgorithmOptimizer, not CMAESOptimizer."
             )
         if parallel not in ("none", "thread"):
-            raise ConfigurationError("CMAESEngine parallel must be 'none' or 'thread'.")
+            raise ConfigurationError("CMAESOptimizer parallel must be 'none' or 'thread'.")
         if population_size < 2:
             raise ConfigurationError("population_size must be at least 2.")
         if max_generations < 0:
@@ -124,13 +123,13 @@ class CMAESEngine:
             raise ConfigurationError("direction must be 'maximize' or 'minimize'.")
         self.direction = direction
         self.track_diversity = track_diversity
-        self.operators = OperatorSet(gene_space, "sbx", "gaussian")
+        self.operators = OperatorCodec(gene_space, "sbx", "gaussian")
         self._fitness_warning_emitted = False
         self._state: _core.PyCMAESState | None = None
         self._event_index = 0
         self._batches_by_id: dict[str, CandidateBatch] = {}
         self._candidates_by_id: dict[str, Candidate] = {}
-        self.history = EventHistory()
+        self.events = EventHistory()
         self.vnext_telemetry = OptimizationTelemetry()
         self.best_candidate: Candidate | None = None
 
@@ -163,10 +162,10 @@ class CMAESEngine:
             )
         )
 
-    def state_summary(self) -> EngineStateSummary:
+    def state_summary(self) -> OptimizerStateSummary:
         """Return a stable read-only vNext state summary."""
         best_candidate_id, best_score = self._best_candidate_id_and_score()
-        return EngineStateSummary(
+        return OptimizerStateSummary(
             best_candidate_id=best_candidate_id,
             best_score=best_score,
             event_index=self._event_index,
@@ -202,7 +201,7 @@ class CMAESEngine:
         self,
         genes_f64: Sequence[float],
         fitness: float | None = None,
-    ) -> Individual:
+    ) -> Solution:
         return self.operators.decode_individual(
             genes_f64,
             fitness=fitness,
@@ -212,7 +211,7 @@ class CMAESEngine:
     def _normalise_fitness_result(
         self,
         result,
-        ind: Individual,
+        ind: Solution,
         gen: int,
         idx: int,
     ) -> tuple[float, int]:
@@ -248,21 +247,21 @@ class CMAESEngine:
             return float("-inf")
         return score_for_direction(fitness, self.direction)
 
-    def _best_population_individual(self, population: Population) -> Individual:
+    def _best_population_individual(self, solutions: SolutionSet) -> Solution:
         return max(
-            population,
-            key=lambda individual: self._fitness_comparison_score(individual.fitness),
+            solutions,
+            key=lambda solution: self._fitness_comparison_score(solution.fitness),
         )
 
     def _evaluate_all(
         self,
-        individuals: Sequence[Individual],
-        fitness_fn: Callable[[Individual], float | tuple[float, dict]],
+        individuals: Sequence[Solution],
+        fitness_fn: Callable[[Solution], float | tuple[float, dict]],
         gen: int,
     ) -> tuple[list[float], int]:
         if self.parallel == "thread":
             logger.debug(
-                "CMA-ES thread evaluation generation=%s n_workers=%s population=%s",
+                "CMA-ES thread evaluation generation=%s n_workers=%s SolutionSet=%s",
                 gen,
                 self.n_workers,
                 len(individuals),
@@ -281,7 +280,7 @@ class CMAESEngine:
                     raw_results.append(fitness_fn(ind))
                 except Exception as exc:
                     raise FitnessError(
-                        f"fitness_fn raised {type(exc).__name__} for individual at generation {gen}, index {idx}. "
+                        f"fitness_fn raised {type(exc).__name__} for Solution at generation {gen}, index {idx}. "
                         f"Original error: {exc}"
                     ) from exc
 
@@ -339,18 +338,18 @@ class CMAESEngine:
             self.best_candidate = candidate
         if record.confidence == "trusted_full":
             trusted_records.append(record)
-            self.vnext_telemetry.record_full(1, rung=record.rung, cost=record.cost)
+            self.vnext_telemetry.record_full(1, stage=record.stage, cost=record.cost)
             return "trusted"
         if record.confidence == "cached":
-            self.vnext_telemetry.record_cached(1, rung=record.rung, cost=record.cost)
+            self.vnext_telemetry.record_cached(1, stage=record.stage, cost=record.cost)
             return "cached"
         if record.confidence == "partial":
-            self.vnext_telemetry.record_partial(1, rung=record.rung, cost=record.cost)
+            self.vnext_telemetry.record_partial(1, stage=record.stage, cost=record.cost)
             return "partial"
         if record.confidence == "surrogate":
             self.vnext_telemetry.record_screened(1)
             return "surrogate"
-        self.vnext_telemetry.record_eliminated(1, rung=record.rung)
+        self.vnext_telemetry.record_eliminated(1, stage=record.stage)
         return "rejected"
 
     def _consume_complete_batch(self, batch: CandidateBatch) -> bool:
@@ -378,9 +377,9 @@ class CMAESEngine:
     def _append_ask_events(self, candidates: Sequence[Candidate]) -> None:
         """Record ask events for proposed CMA candidates."""
         for candidate in candidates:
-            self.history.append(
+            self.events.append(
                 EventRecord(
-                    event_index=len(self.history),
+                    event_index=len(self.events),
                     event_type="ask",
                     batch_id=candidate.batch_id,
                     candidate_id=candidate.candidate_id,
@@ -402,15 +401,15 @@ class CMAESEngine:
             if raw_score is not None and math.isfinite(raw_score)
             else None
         )
-        self.history.append(
+        self.events.append(
             EventRecord(
-                event_index=len(self.history),
+                event_index=len(self.events),
                 event_type="tell",
                 batch_id=candidate.batch_id,
                 candidate_id=candidate.candidate_id,
                 candidate_hash=candidate.candidate_hash(),
                 generation=candidate.generation,
-                rung=record.rung,
+                stage=record.stage,
                 confidence=record.confidence,
                 raw_score=raw_score,
                 comparison_score=comparison_score,
@@ -429,7 +428,7 @@ class CMAESEngine:
         """Return a CMA candidate batch."""
         if n is not None and int(n) != self.population_size:
             raise ConfigurationError(
-                "CMAESEngine.ask currently requires n to equal population_size."
+                "CMAESOptimizer.ask currently requires n to equal population_size."
             )
         state = self._ensure_state()
         event_index = self._event_index
@@ -439,13 +438,13 @@ class CMAESEngine:
         candidates: list[Candidate] = []
         continuous_samples_by_id: dict[str, list[float]] = {}
         for index, sample in enumerate(samples_discrete):
-            individual = self._decode_individual(sample)
+            solution = self._decode_individual(sample)
             candidate_id = _core.candidate_id(self.seed, event_index, index)
             candidate = Candidate(
                 candidate_id=candidate_id,
-                genes=list(individual.genes),
+                genes=list(solution.genes),
                 batch_id=batch_id,
-                params=individual.params,
+                params=solution.params,
                 origin="cma_sample",
                 event_index=event_index,
             )
@@ -462,7 +461,7 @@ class CMAESEngine:
         self._append_ask_events(candidates)
         return candidates
 
-    def tell(self, records: Sequence[EvaluationRecord]) -> TellResult:
+    def tell(self, records: Sequence[EvaluationRecord]) -> UpdateResult:
         """Update CMA state from trusted evaluation records."""
         trusted_records: list[EvaluationRecord] = []
         counts = {"partial": 0, "surrogate": 0, "cached": 0, "rejected": 0}
@@ -484,7 +483,7 @@ class CMAESEngine:
                 consumed_batch_ids.add(batch.batch_id)
 
         best_candidate_id, best_score = self._best_candidate_id_and_score()
-        return TellResult(
+        return UpdateResult(
             accepted_count=len(records),
             trusted_count=len(trusted_records),
             partial_count=counts["partial"],
@@ -517,7 +516,7 @@ class CMAESEngine:
         signature = self.gene_space.signature()
         return ReproducibilityMetadata(
             evocore_version=package_version(),
-            engine_type="CMAESEngine",
+            optimizer_type="CMAESOptimizer",
             seed=self.seed,
             direction=self.direction,
             gene_space_signature=signature,
@@ -525,31 +524,33 @@ class CMAESEngine:
             optimizer_config=self._optimizer_config(),
         )
 
-    def _generation_history(self, logbook: Logbook) -> EventHistory:
-        """Convert generation logbook entries into generation events."""
+    def _generation_history(self, generation_history: GenerationHistory) -> EventHistory:
+        """Convert generation GenerationHistory entries into generation events."""
         history = EventHistory()
-        for entry in logbook:
+        for entry in generation_history:
             history.append(
                 EventRecord(
                     event_index=len(history),
                     event_type="generation",
                     generation=entry.gen,
-                    raw_score=entry.best_fitness,
-                    comparison_score=score_for_direction(entry.best_fitness, self.direction),
+                    raw_score=entry.best_score,
+                    comparison_score=score_for_direction(entry.best_score, self.direction),
                     metrics=entry.to_dict(),
                 )
             )
         return history
 
-    def run(self, fitness_fn: Callable[[Individual], float | tuple[float, dict]]) -> RunResult:
+    def run(
+        self, fitness_fn: Callable[[Solution], float | tuple[float, dict]]
+    ) -> OptimizationResult:
         """Run one CMA-ES optimization.
 
         Args:
-            fitness_fn: Callable receiving an `Individual` and returning either a fitness
+            fitness_fn: Callable receiving an `Solution` and returning either a fitness
                 float or `(fitness, metrics_dict)`.
 
         Returns:
-            Run result containing the best individual, final population, logbook, and timing.
+            Run result containing the best Solution, final SolutionSet, GenerationHistory, and timing.
 
         Raises:
             FitnessError: If the fitness function raises or returns an invalid value.
@@ -567,16 +568,16 @@ class CMAESEngine:
             self.population_size,
             self._bounds_list,
         )
-        logbook = Logbook()
-        elite_history: list[Individual] = []
-        diversity_history: list[list[float]] = []
-        final_population = Population([])
+        generation_history = GenerationHistory()
+        elite_history: list[Solution] = []
+        diversity_by_generation: list[list[float]] = []
+        final_solutions = SolutionSet([])
         n_evaluations = 0
         stop_reason: StopReason = "max_generations"
 
         for gen in range(self.max_generations):
             for callback in self.callbacks:
-                callback.on_generation_start(gen, final_population)
+                callback.on_generation_start(gen, final_solutions)
             if self._callbacks_should_stop():
                 stop_reason = "callback"
                 break
@@ -594,69 +595,68 @@ class CMAESEngine:
                 [self._fitness_comparison_score(fitness) for fitness in fitnesses],
             )
 
-            final_population = Population(individuals)
+            final_solutions = SolutionSet(individuals)
             info = GenerationInfo(gen, nan_count, 0)
-            best = self._best_population_individual(final_population)
-            diversity = final_population.diversity() if self.track_diversity else []
+            best = self._best_population_individual(final_solutions)
+            diversity = final_solutions.diversity() if self.track_diversity else []
             if self.track_diversity:
-                diversity_history.append(diversity)
+                diversity_by_generation.append(diversity)
             elite_history.append(best.clone())
-            logbook.append(
-                LogEntry(
+            generation_history.append(
+                GenerationRecord(
                     gen=gen,
-                    best_fitness=float(best.fitness),
-                    mean_fitness=final_population.mean_fitness(),
-                    std_fitness=final_population.std_fitness(),
+                    best_score=float(best.fitness),
+                    mean_score=final_solutions.mean_fitness(),
+                    std_score=final_solutions.std_fitness(),
                     wall_time_ms=(time.perf_counter() - gen_start) * 1000.0,
                     n_evaluations=len(individuals),
-                    nan_fitness_count=nan_count,
+                    nan_score_count=nan_count,
                     cached_count=0,
                     diversity=diversity,
                     custom=dict(best.metadata.get("metrics", {})),
                 )
             )
             logger.info(
-                "CMA-ES generation=%s best_fitness=%s mean_fitness=%s nan_fitness_count=%s",
+                "CMA-ES generation=%s best_score=%s mean_fitness=%s nan_fitness_count=%s",
                 gen,
                 float(best.fitness),
-                final_population.mean_fitness(),
+                final_solutions.mean_fitness(),
                 nan_count,
             )
             for callback in self.callbacks:
-                callback.on_generation_end(gen, final_population, info)
+                callback.on_generation_end(gen, final_solutions, info)
             if self._callbacks_should_stop():
                 stop_reason = "callback"
                 break
 
-        if len(final_population):
-            best = self._best_population_individual(final_population)
-            best_individual = best.clone()
-            best_fitness = float(best.fitness)
+        if len(final_solutions):
+            best = self._best_population_individual(final_solutions)
+            best_solution = best.clone()
+            best_score = float(best.fitness)
         else:
-            best_individual = Individual([], fitness=float("-inf"), fitness_valid=True)
-            best_fitness = float("-inf")
+            best_solution = Solution([], fitness=float("-inf"), fitness_valid=True)
+            best_score = float("-inf")
 
-        result = RunResult(
-            best_individual=best_individual,
-            best_fitness=best_fitness,
-            final_population=final_population,
-            logbook=logbook,
+        result = OptimizationResult(
+            best_solution=best_solution,
+            best_score=best_score,
+            final_solutions=final_solutions,
+            generations=generation_history,
             wall_time_seconds=time.perf_counter() - start,
             n_evaluations=n_evaluations,
-            elite_history=elite_history,
-            diversity_history=diversity_history,
+            elite_solutions=elite_history,
+            diversity_by_generation=diversity_by_generation,
             seed=self.seed,
             stop_reason=stop_reason,
             max_generations=self.max_generations,
             max_evaluations=None,
             direction=self.direction,
-            engine_type="CMAESEngine",
-            best_score=best_fitness,
-            history=self._generation_history(logbook),
+            optimizer_type="CMAESOptimizer",
+            events=self._generation_history(generation_history),
             reproducibility=self._reproducibility_metadata(),
         )
         append_run_stop_event(
-            result.history,
+            result.events,
             stop_reason=result.stop_reason,
             max_evaluations=result.max_evaluations,
             max_generations=result.max_generations,

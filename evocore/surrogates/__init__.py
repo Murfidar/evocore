@@ -5,14 +5,13 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
-from evocore.evaluation import Candidate, EvaluationConfidence, EvaluationRecord
-from evocore.exceptions import ConfigurationError
-from evocore.gene_space import GeneSpace
-from evocore.individual import GeneValue
+from evocore.core.errors import ConfigurationError
+from evocore.lifecycle import Candidate, EvaluationConfidence, EvaluationRecord
+from evocore.search_space import GeneSpace, GeneValue
 
 
 @dataclass(frozen=True)
-class AdvisorScore:
+class SurrogateScore:
     """Rank one candidate using an advisor."""
 
     candidate_id: str
@@ -21,7 +20,7 @@ class AdvisorScore:
     reason: str
 
 
-class InverseDistanceSurrogateAdvisor:
+class InverseDistanceAdvisor:
     """Pure-Python inverse-distance baseline surrogate advisor."""
 
     def __init__(self, gene_space: GeneSpace | None = None) -> None:
@@ -93,14 +92,14 @@ class InverseDistanceSurrogateAdvisor:
             candidate = candidates[record.candidate_id]
             self._observations.append((list(candidate.genes), float(record.score)))
 
-    def rank(self, candidates: list[Candidate]) -> list[AdvisorScore]:
+    def rank(self, candidates: list[Candidate]) -> list[SurrogateScore]:
         """Rank candidates by inverse-distance weighted known scores."""
-        rankings: list[AdvisorScore] = []
+        rankings: list[SurrogateScore] = []
         ranges = [] if self.gene_space is not None else self._inferred_ranges(candidates)
         for candidate in candidates:
             if not self._observations:
                 rankings.append(
-                    AdvisorScore(
+                    SurrogateScore(
                         candidate_id=candidate.candidate_id,
                         score=0.0,
                         confidence="surrogate",
@@ -131,7 +130,7 @@ class InverseDistanceSurrogateAdvisor:
                 weighted_sum += observed_score * weight
                 weight_total += weight
             rankings.append(
-                AdvisorScore(
+                SurrogateScore(
                     candidate_id=candidate.candidate_id,
                     score=weighted_sum / weight_total,
                     confidence="surrogate",

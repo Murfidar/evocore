@@ -1,4 +1,4 @@
-from evocore import GAEngine, GeneDef, GeneSpace
+from evocore import Gene, GeneSpace, GeneticAlgorithmOptimizer
 from tests.vnext_helpers import IndividualEvaluator
 
 
@@ -10,13 +10,13 @@ def mixed_target(ind):
 def test_mixed_gene_space_keeps_ints_typed():
     space = GeneSpace(
         [
-            GeneDef("period", "int", 5, 50, sigma=0.05),
-            GeneDef("threshold", "float", 0.0, 1.0),
+            Gene("period", "int", 5, 50, sigma=0.05),
+            Gene("threshold", "float", 0.0, 1.0),
         ]
     )
-    engine = GAEngine(space, population_size=60, max_generations=50, seed=42)
+    engine = GeneticAlgorithmOptimizer(space, population_size=60, max_generations=50, seed=42)
 
     result = engine.run(IndividualEvaluator(mixed_target))
 
-    assert isinstance(result.best_individual.genes[0], int)
-    assert result.best_fitness > -10.0
+    assert isinstance(result.best_solution.genes[0], int)
+    assert result.best_score > -10.0

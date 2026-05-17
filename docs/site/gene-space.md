@@ -9,14 +9,14 @@ Supported gene kinds are:
 - `bool`: unbounded binary values represented as Python `bool`.
 
 ```python
-from evocore import GeneDef, GeneSpace
+from evocore import Gene, GeneSpace
 
 space = GeneSpace(
     [
-        GeneDef("period", "int", 2, 50, sigma=0.05),
-        GeneDef("threshold", "float", 0.0, 1.0),
-        GeneDef("enabled", "bool"),
-        GeneDef("fixed_mode", "int", 2, 2),
+        Gene("period", "int", 2, 50, sigma=0.05),
+        Gene("threshold", "float", 0.0, 1.0),
+        Gene("enabled", "bool"),
+        Gene("fixed_mode", "int", 2, 2),
     ]
 )
 ```
@@ -69,8 +69,8 @@ json_text = space.to_json(indent=2)
 
 `signature()` and `to_dict()` return the same payload. The signature includes
 `schema_version`, ordered gene definitions, `has_names`, `length`, and per-gene
-`is_fixed` metadata. `RunResult.reproducibility.gene_space_signature` and
-`RunResult.reproducibility.gene_space_hash` use the same canonical values.
+`is_fixed` metadata. `OptimizationResult.reproducibility.gene_space_signature` and
+`OptimizationResult.reproducibility.gene_space_hash` use the same canonical values.
 
 This contract is intentionally flat. Categorical, permutation, conditional, and
 multi-variable spaces are not part of this slice.

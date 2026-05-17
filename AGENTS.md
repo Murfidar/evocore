@@ -30,8 +30,8 @@ Important surfaces:
 
 ## Target Package Architecture
 
-EvoCore is migrating from a flat Python package to domain-oriented modules.
-New source changes should follow this architecture and avoid recreating old flat
+EvoCore uses a domain-oriented Python package layout. New source changes should
+follow this architecture and avoid recreating old flat
 modules such as `evocore.ga`, `evocore.cmaes`, `evocore.gene_space`,
 `evocore.evaluation`, `evocore.policies`, `evocore.scheduler`, or
 `evocore.stats`.
@@ -79,11 +79,13 @@ evocore/
 ```
 
 Public convenience imports from `evocore` should remain available, but should use
-the new domain vocabulary. Prefer names such as `GeneticAlgorithmOptimizer`,
+the domain vocabulary. Prefer names such as `GeneticAlgorithmOptimizer`,
 `CMAESOptimizer`, `Gene`, `Solution`, `OptimizationResult`, `BudgetPolicy`,
-`EvaluationStage`, `UpdateResult`, and `OptimizerStateSummary`. Do not introduce
-new public APIs with the old `Engine`, `RunResult`, `MultiRunResult`, `Rung`,
-`TellResult`, `Individual`, `Population`, or public `fitness` naming unless a
+`EvaluationStage`, `UpdateResult`, and `OptimizerStateSummary`. Use `stage` for
+candidate/evaluation context fields, `events` for append-only event logs, and
+`optimizer_type` for optimizer identity. Do not introduce new public APIs with the
+old `Engine`, `RunResult`, `MultiRunResult`, `Rung`, `TellResult`, `Individual`,
+`Population`, `history`, `engine_type`, or public `fitness` naming unless a
 compatibility requirement is explicitly approved.
 
 ## Branch Workflow

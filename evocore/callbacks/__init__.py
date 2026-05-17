@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from evocore.ga import RunResult
-    from evocore.individual import Population
+    from evocore.results import OptimizationResult
+    from evocore.search_space import SolutionSet
 
 
 @dataclass
@@ -30,13 +30,13 @@ class Callback:
     def bind_context(self, **kwargs) -> None:
         """Receive run context before optimization starts."""
 
-    def on_generation_start(self, gen: int, pop: Population) -> None:
+    def on_generation_start(self, gen: int, pop: SolutionSet) -> None:
         """Run before one generation starts."""
 
-    def on_generation_end(self, gen: int, pop: Population, info: GenerationInfo) -> None:
+    def on_generation_end(self, gen: int, pop: SolutionSet, info: GenerationInfo) -> None:
         """Run after one generation completes."""
 
-    def on_run_end(self, result: RunResult) -> None:
+    def on_run_end(self, result: OptimizationResult) -> None:
         """Run after the optimization finishes."""
 
 
@@ -50,7 +50,7 @@ class EarlyStopping(Callback):
         self._best = float("-inf")
         self._no_improve_count = 0
 
-    def on_generation_end(self, gen: int, pop: Population, info: GenerationInfo) -> None:
+    def on_generation_end(self, gen: int, pop: SolutionSet, info: GenerationInfo) -> None:
         """Track best fitness and request a stop when progress stalls."""
         best = pop.best(1)
         if not best or best[0].fitness is None:
@@ -77,7 +77,7 @@ class ProgressBar(Callback):
         """Store the total generation count for the progress bar."""
         self._total = kwargs.get("max_generations")
 
-    def on_generation_start(self, gen: int, pop: Population) -> None:
+    def on_generation_start(self, gen: int, pop: SolutionSet) -> None:
         """Create the bar lazily on the first generation."""
         if self._bar is None:
             try:
@@ -87,7 +87,7 @@ class ProgressBar(Callback):
                 return
             self._bar = tqdm(total=self._total)
 
-    def on_generation_end(self, gen: int, pop: Population, info: GenerationInfo) -> None:
+    def on_generation_end(self, gen: int, pop: SolutionSet, info: GenerationInfo) -> None:
         """Advance the bar and show the latest best fitness."""
         if not self._bar:
             return
@@ -99,7 +99,7 @@ class ProgressBar(Callback):
         self._bar.set_postfix(**postfix)
         self._bar.update(1)
 
-    def on_run_end(self, result: RunResult) -> None:
+    def on_run_end(self, result: OptimizationResult) -> None:
         """Close the progress bar when the run ends."""
         if self._bar:
             self._bar.close()
@@ -117,7 +117,7 @@ class CheckpointCallback(Callback):
         """Capture the engine seed for checkpoint validation."""
         self._seed = kwargs.get("seed")
 
-    def on_generation_end(self, gen: int, pop: Population, info: GenerationInfo) -> None:
+    def on_generation_end(self, gen: int, pop: SolutionSet, info: GenerationInfo) -> None:
         """Persist a checkpoint when the current generation matches the cadence."""
         if self.every <= 0 or gen % self.every != 0:
             return
@@ -134,12 +134,12 @@ class MetricsLogger(Callback):
     def __init__(self, path: str = "./metrics.jsonl") -> None:
         self.path = path
 
-    def on_generation_end(self, gen: int, pop: Population, info: GenerationInfo) -> None:
+    def on_generation_end(self, gen: int, pop: SolutionSet, info: GenerationInfo) -> None:
         """Write one JSON line containing generation metrics."""
         best = pop.best(1)
         record = {
             "generation": gen,
-            "best_fitness": best[0].fitness if best else None,
+            "best_score": best[0].score if best else None,
             "nan_fitness_count": info.nan_fitness_count,
             "cached_count": info.cached_count,
         }

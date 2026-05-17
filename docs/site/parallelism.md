@@ -2,7 +2,7 @@
 
 EvoCore vNext lets evaluators own expensive evaluation strategy.
 
-`GAEngine.run()` calls your `Evaluator.evaluate(candidates, context)` method for each scheduled
+`GeneticAlgorithmOptimizer.run()` calls your `Evaluator.evaluate(candidates, context)` method for each scheduled
 batch. Put thread pools, process pools, remote jobs, cached simulations, or service rate limits
 inside that evaluator.
 
@@ -15,4 +15,4 @@ The legacy generation-loop helpers still support three local modes:
 `ProcessParallel` keeps its process pool alive across repeated `evaluate(...)` calls on the
 same helper. Use it as a context manager or call `close()` when an evaluator is finished.
 
-`CMAESEngine` supports only `parallel="none"` and `parallel="thread"`.
+`CMAESOptimizer` supports only `parallel="none"` and `parallel="thread"`.

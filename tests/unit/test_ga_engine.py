@@ -3,23 +3,27 @@ import warnings
 import pytest
 
 from evocore import (
+    BudgetPolicy,
     Callback,
     CheckpointError,
     ConfigurationError,
     ConfigurationWarning,
     EvaluationContext,
     EvaluationRecord,
+    EvaluationStage,
     FitnessError,
-    GAEngine,
-    GeneDef,
+    Gene,
     GenerationInfo,
     GeneSpace,
-    MultiFidelityPolicy,
-    Rung,
+    GeneticAlgorithmOptimizer,
 )
-from evocore.ga import MultiRunResult, RunResult
-from evocore.individual import Individual, Population
-from evocore.stats import EventRecord, Logbook
+from evocore.results import (
+    EventRecord,
+    GenerationHistory,
+    OptimizationBatchResult,
+    OptimizationResult,
+)
+from evocore.search_space import Solution, SolutionSet
 
 
 class CallableEvaluator:
@@ -28,39 +32,41 @@ class CallableEvaluator:
 
     def evaluate(self, candidates, context):
         assert isinstance(context, EvaluationContext)
-        assert context.rung is not None
+        assert context.stage is not None
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
                 batch_id=candidate.batch_id,
                 score=float(self.fn(candidate.genes)),
-                confidence=context.rung.confidence,
-                rung=context.rung.name,
-                cost=context.rung.budget,
+                confidence=context.stage.confidence,
+                stage=context.stage.name,
+                cost=context.stage.budget,
             )
             for candidate in candidates
         ]
 
 
-def full_policy(max_evaluations: int, batch_size: int = 8) -> MultiFidelityPolicy:
-    return MultiFidelityPolicy(
-        rungs=[Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")],
+def full_policy(max_evaluations: int, batch_size: int = 8) -> BudgetPolicy:
+    return BudgetPolicy(
+        stages=[
+            EvaluationStage("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")
+        ],
         max_evaluations=max_evaluations,
         batch_size=batch_size,
     )
 
 
-def make_result(seed: int, fitness: float) -> RunResult:
-    ind = Individual([fitness], fitness=fitness, fitness_valid=True)
-    return RunResult(
-        best_individual=ind,
-        best_fitness=fitness,
-        final_population=Population([ind]),
-        logbook=Logbook(),
+def make_result(seed: int, fitness: float) -> OptimizationResult:
+    ind = Solution([fitness], fitness=fitness, fitness_valid=True)
+    return OptimizationResult(
+        best_solution=ind,
+        best_score=fitness,
+        final_solutions=SolutionSet([ind]),
+        generations=GenerationHistory(),
         wall_time_seconds=0.01,
         n_evaluations=1,
-        elite_history=[ind],
-        diversity_history=[],
+        elite_solutions=[ind],
+        diversity_by_generation=[],
         seed=seed,
         stop_reason="max_generations",
         max_generations=5,
@@ -72,25 +78,27 @@ def test_multi_run_best_n_and_summary():
     r2 = make_result(2, 3.0)
     r3 = make_result(3, 2.0)
 
-    multi = MultiRunResult(best=r2, all_runs=[r2, r3, r1], n_runs=3, wall_time_seconds=0.03)
+    multi = OptimizationBatchResult(
+        best=r2, all_runs=[r2, r3, r1], n_runs=3, wall_time_seconds=0.03
+    )
 
     assert multi.best_n(2) == [r2, r3]
-    assert multi.fitness_summary() == {"mean": 2.0, "std": 1.0, "min": 1.0, "max": 3.0}
+    assert multi.score_summary() == {"mean": 2.0, "std": 1.0, "min": 1.0, "max": 3.0}
 
 
 def test_run_result_uses_stop_reason_without_legacy_booleans():
     result = make_result(7, 1.25)
 
-    assert result.best_fitness == pytest.approx(1.25)
+    assert result.best_score == pytest.approx(1.25)
     assert result.stop_reason == "max_generations"
     assert result.max_generations == 5
     assert not hasattr(result, "stopped_early")
     assert not hasattr(result, "budget_reached")
     assert result.direction == "maximize"
-    assert result.engine_type == ""
+    assert result.optimizer_type == ""
     assert result.best_candidate_id is None
-    assert result.best_score is None
-    assert len(result.history) == 0
+    assert result.best_observed_score is None
+    assert len(result.events) == 0
     assert result.metadata == {}
 
 
@@ -99,10 +107,10 @@ def test_run_result_to_dict_excludes_runtime_by_default():
 
     payload = result.to_dict()
 
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 2
     assert payload["seed"] == 7
-    assert payload["best"]["fitness"] == pytest.approx(1.25)
     assert payload["best"]["score"] == pytest.approx(1.25)
+    assert payload["best"]["observed_score"] == pytest.approx(1.25)
     assert payload["n_evaluations"] == 1
     assert payload["stop"] == {"reason": "max_generations"}
     assert payload["budget"] == {
@@ -131,7 +139,7 @@ def test_run_result_to_json_is_deterministic():
 
 def test_run_result_to_dataframe_uses_history_when_present(monkeypatch):
     result = make_result(7, 1.25)
-    result.history.append(EventRecord(event_index=0, event_type="generation", generation=0))
+    result.events.append(EventRecord(event_index=0, event_type="generation", generation=0))
 
     history_called = {}
 
@@ -139,7 +147,7 @@ def test_run_result_to_dataframe_uses_history_when_present(monkeypatch):
         history_called["called"] = True
         return "sentinel_dataframe"
 
-    monkeypatch.setattr(result.history, "to_dataframe", fake_history_df)
+    monkeypatch.setattr(result.events, "to_dataframe", fake_history_df)
 
     df = result.to_dataframe()
 
@@ -152,7 +160,7 @@ def test_run_result_to_dataframe_uses_history_when_present(monkeypatch):
 def test_multi_run_result_to_dict_preserves_run_order_and_excludes_runtime_by_default():
     r1 = make_result(1, 1.0)
     r2 = make_result(2, 3.0)
-    multi = MultiRunResult(
+    multi = OptimizationBatchResult(
         best=r2,
         all_runs=[r2, r1],
         n_runs=2,
@@ -162,7 +170,7 @@ def test_multi_run_result_to_dict_preserves_run_order_and_excludes_runtime_by_de
 
     payload = multi.to_dict()
 
-    assert payload["schema_version"] == 1
+    assert payload["schema_version"] == 2
     assert payload["direction"] == "maximize"
     assert [run["seed"] for run in payload["runs"]] == [2, 1]
     assert payload["best"]["seed"] == 2
@@ -172,7 +180,7 @@ def test_multi_run_result_to_dict_preserves_run_order_and_excludes_runtime_by_de
 def test_multi_run_result_to_json_and_dataframe_are_stable(monkeypatch):
     r1 = make_result(1, 1.0)
     r2 = make_result(2, 3.0)
-    multi = MultiRunResult(best=r2, all_runs=[r2, r1], n_runs=2, wall_time_seconds=0.05)
+    multi = OptimizationBatchResult(best=r2, all_runs=[r2, r1], n_runs=2, wall_time_seconds=0.05)
     captured_rows = {}
 
     class FakeDataFrame:
@@ -195,32 +203,44 @@ def test_multi_run_result_to_json_and_dataframe_are_stable(monkeypatch):
     multi.to_dataframe()
 
     assert captured_rows["rows"] == [
-        {"run_index": 0, "seed": 2, "best_fitness": 3.0, "best_score": 3.0, "n_evaluations": 1},
-        {"run_index": 1, "seed": 1, "best_fitness": 1.0, "best_score": 1.0, "n_evaluations": 1},
+        {
+            "run_index": 0,
+            "seed": 2,
+            "best_score": 3.0,
+            "best_observed_score": 3.0,
+            "n_evaluations": 1,
+        },
+        {
+            "run_index": 1,
+            "seed": 1,
+            "best_score": 1.0,
+            "best_observed_score": 1.0,
+            "n_evaluations": 1,
+        },
     ]
 
 
 def test_ga_engine_requires_gene_space():
     with pytest.raises(ConfigurationError, match="gene_space required"):
-        GAEngine(gene_space=None)
+        GeneticAlgorithmOptimizer(gene_space=None)
 
 
 def test_invalid_parallel_mode_rejected():
     with pytest.raises(ConfigurationError, match="parallel"):
-        GAEngine(gene_space=GeneSpace.uniform(-1.0, 1.0, 2), parallel="gpu")
+        GeneticAlgorithmOptimizer(gene_space=GeneSpace.uniform(-1.0, 1.0, 2), parallel="gpu")
 
 
 def test_invalid_mutation_individual_probability_rejected():
     with pytest.raises(ConfigurationError, match="mutation_individual_prob"):
-        GAEngine(
+        GeneticAlgorithmOptimizer(
             gene_space=GeneSpace.uniform(-1.0, 1.0, 2),
             mutation_individual_prob=1.5,
         )
 
 
 def test_binary_space_default_operators_work():
-    engine = GAEngine(
-        gene_space=GeneSpace([GeneDef("a", "bool"), GeneDef("b", "bool")]),
+    engine = GeneticAlgorithmOptimizer(
+        gene_space=GeneSpace([Gene("a", "bool"), Gene("b", "bool")]),
         crossover="one_point",
         mutation="bit_flip",
     )
@@ -230,8 +250,8 @@ def test_binary_space_default_operators_work():
 def test_large_int_without_sigma_warns_once():
     with warnings.catch_warnings(record=True) as caught:
         warnings.simplefilter("always")
-        GAEngine(
-            gene_space=GeneSpace([GeneDef("ema_slow", "int", 10, 500)]),
+        GeneticAlgorithmOptimizer(
+            gene_space=GeneSpace([Gene("ema_slow", "int", 10, 500)]),
             population_size=10,
             max_generations=2,
             mutation_sigma=0.2,
@@ -245,8 +265,10 @@ def test_large_int_without_sigma_warns_once():
 
 
 def test_tuple_fitness_stores_metrics():
-    engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, max_generations=1)
-    ind = Individual([0.5, 0.25])
+    engine = GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, max_generations=1
+    )
+    ind = Solution([0.5, 0.25])
 
     fitnesses, nan_count = engine._evaluate_all(
         [ind],
@@ -261,8 +283,10 @@ def test_tuple_fitness_stores_metrics():
 
 
 def test_non_finite_fitness_raises() -> None:
-    engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, max_generations=1)
-    ind = Individual([0.0, 0.0])
+    engine = GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, max_generations=1
+    )
+    ind = Solution([0.0, 0.0])
 
     with pytest.raises(FitnessError, match="finite"):
         engine._evaluate_all([ind], lambda _ind: float("nan"), gen=0)
@@ -272,14 +296,16 @@ def test_non_finite_fitness_raises() -> None:
 
 
 def test_fitness_exception_wrapped():
-    engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, max_generations=1)
+    engine = GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, max_generations=1
+    )
 
     with pytest.raises(FitnessError, match="ZeroDivisionError"):
-        engine._evaluate_all([Individual([0.0, 0.0])], lambda _ind: 1 / 0, gen=0)
+        engine._evaluate_all([Solution([0.0, 0.0])], lambda _ind: 1 / 0, gen=0)
 
 
 def test_ga_run_returns_result_with_evaluations():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-5.0, 5.0, 3), population_size=20, max_generations=5, seed=42
     )
 
@@ -288,8 +314,8 @@ def test_ga_run_returns_result_with_evaluations():
         policy=full_policy(20),
     )
 
-    assert result.best_fitness <= 0.0
-    assert len(result.final_population) == 20
+    assert result.best_score <= 0.0
+    assert len(result.final_solutions) == 20
     assert result.seed == 42
     assert result.n_evaluations == 20
 
@@ -297,11 +323,11 @@ def test_ga_run_returns_result_with_evaluations():
 def test_ga_run_accepts_uniform_crossover_for_mixed_numeric_space():
     space = GeneSpace(
         [
-            GeneDef("mode", "int", 0, 4),
-            GeneDef("threshold", "float", -1.0, 1.0),
+            Gene("mode", "int", 0, 4),
+            Gene("threshold", "float", -1.0, 1.0),
         ]
     )
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         space,
         population_size=8,
         max_generations=2,
@@ -319,7 +345,7 @@ def test_ga_run_accepts_uniform_crossover_for_mixed_numeric_space():
 
 
 def test_initial_population_uses_budget_cap_when_smaller_than_population():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=10,
         max_generations=5,
@@ -331,7 +357,7 @@ def test_initial_population_uses_budget_cap_when_smaller_than_population():
 
 
 def test_ga_run_reports_vnext_stop_diagnostics():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2), population_size=6, max_generations=2, seed=42
     )
 
@@ -348,20 +374,20 @@ def test_ga_run_reports_vnext_stop_diagnostics():
 
 def test_ga_vnext_run_attaches_history_and_reproducibility_metadata():
     space = GeneSpace.uniform(-1.0, 1.0, 2)
-    engine = GAEngine(space, population_size=4, max_generations=2, seed=42)
+    engine = GeneticAlgorithmOptimizer(space, population_size=4, max_generations=2, seed=42)
 
     result = engine.run(
         CallableEvaluator(lambda genes: -sum(float(v) ** 2 for v in genes)),
         policy=full_policy(4, batch_size=4),
     )
 
-    assert result.engine_type == "GAEngine"
+    assert result.optimizer_type == "GeneticAlgorithmOptimizer"
     assert result.direction == "maximize"
     assert result.best_candidate_id is not None
-    assert result.best_score == pytest.approx(result.best_fitness)
-    assert len(result.history) >= 8
+    assert result.best_observed_score is None
+    assert len(result.events) >= 8
     assert result.reproducibility is not None
-    assert result.reproducibility.engine_type == "GAEngine"
+    assert result.reproducibility.optimizer_type == "GeneticAlgorithmOptimizer"
     assert result.reproducibility.seed == 42
     assert result.reproducibility.direction == "maximize"
     assert result.reproducibility.gene_space_signature == space.signature()
@@ -372,7 +398,7 @@ def test_ga_vnext_run_attaches_history_and_reproducibility_metadata():
 
 
 def test_ga_generation_loop_result_includes_generation_history():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2), population_size=6, max_generations=2, seed=42
     )
 
@@ -382,14 +408,14 @@ def test_ga_generation_loop_result_includes_generation_history():
         start_generation=0,
     )
 
-    assert result.engine_type == "GAEngine"
-    assert result.best_score == pytest.approx(result.best_fitness)
-    assert [event.event_type for event in result.history] == [
+    assert result.optimizer_type == "GeneticAlgorithmOptimizer"
+    assert result.best_score == pytest.approx(result.best_solution.score)
+    assert [event.event_type for event in result.events] == [
         "generation",
         "generation",
         "run_stop",
     ]
-    assert result.history.to_rows()[0]["generation"] == 0
+    assert result.events.to_rows()[0]["generation"] == 0
 
 
 def test_ga_run_with_callback_generation_tracking():
@@ -403,7 +429,7 @@ def test_ga_run_with_callback_generation_tracking():
         def on_generation_end(self, gen, pop, info):
             received.append(info)
 
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=10,
         max_generations=3,
@@ -422,13 +448,13 @@ def test_ga_run_with_callback_generation_tracking():
 
 def test_track_diversity_via_internal_run():
     """Diversity tracking is a generation-loop feature on the old _run_from_population path."""
-    off = GAEngine(
+    off = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=10,
         max_generations=2,
         track_diversity=False,
     )
-    on = GAEngine(
+    on = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=10,
         max_generations=2,
@@ -441,13 +467,13 @@ def test_track_diversity_via_internal_run():
     off_result = off._run_from_population(off._initial_population(), sphere_fn, start_generation=0)
     on_result = on._run_from_population(on._initial_population(), sphere_fn, start_generation=0)
 
-    assert off_result.diversity_history == []
-    assert len(on_result.diversity_history) == 2
+    assert off_result.diversity_by_generation == []
+    assert len(on_result.diversity_by_generation) == 2
 
 
-def test_elitism_caches_best_individual_via_internal_run():
+def test_elitism_caches_best_solution_via_internal_run():
     """Elitism caching is a generation-loop feature on the old _run_from_population path."""
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2), population_size=12, max_generations=3, elitism=2, seed=7
     )
 
@@ -458,28 +484,28 @@ def test_elitism_caches_best_individual_via_internal_run():
         engine._initial_population(), sphere_fn, start_generation=0
     )
 
-    assert any(entry.cached_count == 2 for entry in result.logbook)
+    assert any(entry.cached_count == 2 for entry in result.generations)
 
 
 class ModuleSphereEvaluator:
     def evaluate(self, candidates, context):
         assert isinstance(context, EvaluationContext)
-        assert context.rung is not None
+        assert context.stage is not None
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
                 batch_id=candidate.batch_id,
                 score=-sum(float(v) ** 2 for v in candidate.genes),
-                confidence=context.rung.confidence,
-                rung=context.rung.name,
-                cost=context.rung.budget,
+                confidence=context.stage.confidence,
+                stage=context.stage.name,
+                cost=context.stage.budget,
             )
             for candidate in candidates
         ]
 
 
 def test_run_multiple_sequential_returns_sorted_runs():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2), population_size=10, max_generations=2, seed=42
     )
 
@@ -487,29 +513,29 @@ def test_run_multiple_sequential_returns_sorted_runs():
 
     assert multi.n_runs == 3
     assert len(multi.all_runs) == 3
-    assert multi.all_runs == sorted(multi.all_runs, key=lambda run: run.best_fitness, reverse=True)
+    assert multi.all_runs == sorted(multi.all_runs, key=lambda run: run.best_score, reverse=True)
     assert multi.wall_time_seconds > 0.0
 
 
 class ModuleMinimizeSphereEvaluator:
     def evaluate(self, candidates, context):
         assert isinstance(context, EvaluationContext)
-        assert context.rung is not None
+        assert context.stage is not None
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
                 batch_id=candidate.batch_id,
                 score=sum(float(v) ** 2 for v in candidate.genes),
-                confidence=context.rung.confidence,
-                rung=context.rung.name,
-                cost=context.rung.budget,
+                confidence=context.stage.confidence,
+                stage=context.stage.name,
+                cost=context.stage.budget,
             )
             for candidate in candidates
         ]
 
 
 def test_run_multiple_minimize_returns_lowest_scoring_run_as_best():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=10,
         max_generations=2,
@@ -519,14 +545,12 @@ def test_run_multiple_minimize_returns_lowest_scoring_run_as_best():
 
     multi = engine.run_multiple(ModuleMinimizeSphereEvaluator(), n_runs=3, run_parallel=False)
 
-    assert multi.best.best_fitness == pytest.approx(
-        min(run.best_fitness for run in multi.all_runs)
-    )
-    assert multi.all_runs == sorted(multi.all_runs, key=lambda run: run.best_fitness)
+    assert multi.best.best_score == pytest.approx(min(run.best_score for run in multi.all_runs))
+    assert multi.all_runs == sorted(multi.all_runs, key=lambda run: run.best_score)
 
 
 def test_run_multiple_parallel_rejects_lambda():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2), population_size=10, max_generations=2, seed=42
     )
 
@@ -535,7 +559,7 @@ def test_run_multiple_parallel_rejects_lambda():
 
 
 def test_run_multiple_applies_max_evaluations_per_child_run():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=6,
         max_generations=5,
@@ -555,7 +579,9 @@ def test_run_multiple_applies_max_evaluations_per_child_run():
 
 def test_resume_missing_checkpoint_lists_available(tmp_path):
     (tmp_path / "checkpoint_gen_1.pkl").write_bytes(b"bad")
-    engine = GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, max_generations=2)
+    engine = GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-1.0, 1.0, 2), population_size=4, max_generations=2
+    )
 
     with pytest.raises(CheckpointError, match="Available checkpoints"):
         engine.resume(lambda _ind: 1.0, str(tmp_path / "checkpoint_gen_9.pkl"))
@@ -564,13 +590,13 @@ def test_resume_missing_checkpoint_lists_available(tmp_path):
 def test_ga_run_preserves_fixed_numeric_genes_in_full_genome():
     space = GeneSpace(
         [
-            GeneDef("signal_mode", "int", 2, 2),
-            GeneDef("threshold", "float", 0.5, 0.5),
-            GeneDef("period", "int", 5, 20),
-            GeneDef("x", "float", -1.0, 1.0),
+            Gene("signal_mode", "int", 2, 2),
+            Gene("threshold", "float", 0.5, 0.5),
+            Gene("period", "int", 5, 20),
+            Gene("x", "float", -1.0, 1.0),
         ]
     )
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         space,
         population_size=20,
         max_generations=5,
@@ -586,13 +612,13 @@ def test_ga_run_preserves_fixed_numeric_genes_in_full_genome():
     )
 
     assert result.n_evaluations == 40
-    for individual in result.final_population:
-        assert individual.genes[0] == 2
-        assert individual.genes[1] == 0.5
+    for solution in result.final_solutions:
+        assert solution.genes[0] == 2
+        assert solution.genes[1] == 0.5
 
 
 def test_ga_max_evaluations_stops_at_budget():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=10,
         max_generations=5,
@@ -610,7 +636,7 @@ def test_ga_max_evaluations_stops_at_budget():
 
 
 def test_ga_max_evaluations_stops_exactly_at_partial_batch():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=6,
         max_generations=5,
@@ -625,16 +651,16 @@ def test_ga_max_evaluations_stops_exactly_at_partial_batch():
     assert result.n_evaluations == 11
     assert result.stop_reason == "max_evaluations"
     assert not hasattr(result, "budget_reached")
-    assert all(ind.fitness_valid for ind in result.final_population)
+    assert all(ind.fitness_valid for ind in result.final_solutions)
 
 
 def test_ga_rejects_non_positive_max_evaluations():
     with pytest.raises(ConfigurationError, match="max_evaluations"):
-        GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), max_evaluations=0)
+        GeneticAlgorithmOptimizer(GeneSpace.uniform(-1.0, 1.0, 2), max_evaluations=0)
 
 
 def test_ga_uses_max_generations_and_rejects_generations_keyword():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=4,
         max_generations=3,
@@ -645,11 +671,11 @@ def test_ga_uses_max_generations_and_rejects_generations_keyword():
     assert not hasattr(engine, "generations")
 
     with pytest.raises(ConfigurationError, match="max_generations"):
-        GAEngine(GeneSpace.uniform(-1.0, 1.0, 2), generations=3)
+        GeneticAlgorithmOptimizer(GeneSpace.uniform(-1.0, 1.0, 2), generations=3)
 
 
 def test_ga_generation_loop_reports_max_generations_and_run_stop_event():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=6,
         max_generations=2,
@@ -664,8 +690,8 @@ def test_ga_generation_loop_reports_max_generations_and_run_stop_event():
 
     assert result.max_generations == 2
     assert result.stop_reason == "max_generations"
-    assert [event.event_type for event in result.history][-1] == "run_stop"
-    assert result.history.to_rows()[-1]["metadata"] == {
+    assert [event.event_type for event in result.events][-1] == "run_stop"
+    assert result.events.to_rows()[-1]["metadata"] == {
         "max_evaluations": None,
         "max_generations": 2,
         "n_evaluations": result.n_evaluations,
@@ -678,7 +704,7 @@ def test_ga_callback_stop_precedes_max_evaluations():
         def on_generation_end(self, gen, pop, info):
             self.should_stop = True
 
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-1.0, 1.0, 2),
         population_size=4,
         max_generations=5,
@@ -694,4 +720,4 @@ def test_ga_callback_stop_precedes_max_evaluations():
     )
 
     assert result.stop_reason == "callback"
-    assert result.history.to_rows()[-1]["metadata"]["stop_reason"] == "callback"
+    assert result.events.to_rows()[-1]["metadata"]["stop_reason"] == "callback"

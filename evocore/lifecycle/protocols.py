@@ -5,14 +5,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Protocol, runtime_checkable
 
-from evocore.evaluation import (
-    Candidate,
-    Direction,
-    EngineStateSummary,
-    EvaluationContext,
-    EvaluationRecord,
-    TellResult,
-)
+from evocore.lifecycle.records import Candidate, Direction, EvaluationContext, EvaluationRecord
+from evocore.lifecycle.telemetry import OptimizerStateSummary, UpdateResult
 
 
 @runtime_checkable
@@ -25,11 +19,11 @@ class Optimizer(Protocol):
         """Return candidates for external evaluation."""
         ...
 
-    def tell(self, records: Sequence[EvaluationRecord]) -> TellResult:
+    def tell(self, records: Sequence[EvaluationRecord]) -> UpdateResult:
         """Apply evaluation records and return a summary of accepted records."""
         ...
 
-    def state_summary(self) -> EngineStateSummary:
+    def state_summary(self) -> OptimizerStateSummary:
         """Return a read-only optimizer state summary."""
         ...
 

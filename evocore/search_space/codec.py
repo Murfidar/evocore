@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from evocore.exceptions import ConfigurationError
-from evocore.gene_space import GeneSpace
-from evocore.individual import Individual
+from evocore.core.errors import ConfigurationError
+from evocore.search_space.genes import GeneSpace
+from evocore.search_space.solutions import Solution
 
 NUMERIC_CROSSOVERS = {"sbx", "blx", "uniform"}
 BINARY_CROSSOVERS = {"one_point", "two_point", "uniform"}
@@ -14,8 +14,8 @@ NUMERIC_MUTATIONS = {"gaussian", "uniform"}
 BINARY_MUTATIONS = {"bit_flip"}
 
 
-class OperatorSet:
-    """Validate operators and translate genes across the PyO3 boundary."""
+class OperatorCodec:
+    """Validate operators and translate values across the PyO3 boundary."""
 
     def __init__(self, gene_space: GeneSpace, crossover: str, mutation: str) -> None:
         self.gene_space = gene_space
@@ -58,12 +58,12 @@ class OperatorSet:
         """Return the Rust-facing floating-point bounds."""
         return self.gene_space.rust_bounds
 
-    def encode_genes(self, genes: Sequence[float | int | bool]) -> list[float]:
-        """Encode Python gene values into the float vector used by Rust."""
-        self.gene_space.validate_genes(genes)
+    def encode_values(self, values: Sequence[float | int | bool]) -> list[float]:
+        """Encode Python values into the float vector used by Rust."""
+        self.gene_space.validate_genes(values)
 
         encoded: list[float] = []
-        for value, gene in zip(genes, self.gene_space.genes):
+        for value, gene in zip(values, self.gene_space.genes):
             if gene.kind == "bool":
                 encoded.append(1.0 if bool(value) else 0.0)
             elif gene.kind == "int":
@@ -72,7 +72,7 @@ class OperatorSet:
                 encoded.append(float(value))
         return encoded
 
-    def decode_genes(self, genes_f64: Sequence[float]) -> list[float | int | bool]:
+    def decode_values(self, genes_f64: Sequence[float]) -> list[float | int | bool]:
         """Decode Rust float vectors back into Python gene values."""
         if len(genes_f64) != self.gene_space.length:
             raise ConfigurationError(
@@ -89,9 +89,33 @@ class OperatorSet:
                 decoded.append(float(value))
         return decoded
 
-    def encode_population(self, population: Sequence[Individual]) -> list[list[float]]:
-        """Encode a population of individuals for Rust calls."""
-        return [self.encode_genes(individual.genes) for individual in population]
+    encode_genes = encode_values
+    decode_genes = decode_values
+
+    def encode_population(self, solutions: Sequence[Solution]) -> list[list[float]]:
+        """Encode a SolutionSet of solutions for Rust calls."""
+        return [self.encode_values(solution.values) for solution in solutions]
+
+    def decode_solution(
+        self,
+        genes_f64: Sequence[float],
+        *,
+        score: float | None = None,
+        score_valid: bool = False,
+        metadata: dict | None = None,
+    ) -> Solution:
+        """Decode one Rust-side genome into a `Solution`."""
+        values = self.decode_values(genes_f64)
+        solution_metadata = dict(metadata or {})
+        params = self.gene_space.params_for(values)
+        if params is not None:
+            solution_metadata["params"] = params
+        return Solution(
+            list(values),
+            score=score,
+            score_valid=score_valid,
+            metadata=solution_metadata,
+        )
 
     def decode_individual(
         self,
@@ -100,23 +124,18 @@ class OperatorSet:
         fitness: float | None = None,
         fitness_valid: bool = False,
         metadata: dict | None = None,
-    ) -> Individual:
-        """Decode one Rust-side genome into an `Individual`."""
-        genes = self.decode_genes(genes_f64)
-        individual_metadata = dict(metadata or {})
-        params = self.gene_space.params_for(genes)
-        if params is not None:
-            individual_metadata["params"] = params
-        return Individual(
-            list(genes),
-            fitness=fitness,
-            fitness_valid=fitness_valid,
-            metadata=individual_metadata,
+    ) -> Solution:
+        """Decode one Rust-side genome for internal migration compatibility."""
+        return self.decode_solution(
+            genes_f64,
+            score=fitness,
+            score_valid=fitness_valid,
+            metadata=metadata,
         )
 
-    def decode_population(self, population_f64: Sequence[Sequence[float]]) -> list[Individual]:
-        """Decode a Rust-side population into Python individuals."""
-        return [self.decode_individual(genes_f64) for genes_f64 in population_f64]
+    def decode_population(self, population_f64: Sequence[Sequence[float]]) -> list[Solution]:
+        """Decode a Rust-side SolutionSet into Python solutions."""
+        return [self.decode_solution(genes_f64) for genes_f64 in population_f64]
 
     def sigma_abs_list(self, global_sigma_fraction: float) -> list[float]:
         """Return per-gene absolute mutation sigmas for Rust operators."""

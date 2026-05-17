@@ -1,12 +1,12 @@
 import pytest
 
-from evocore import GeneDef, GeneSpace
-from evocore.exceptions import ConfigurationError
-from evocore.stats import (
+from evocore import Gene, GeneSpace
+from evocore.core.errors import ConfigurationError
+from evocore.results import (
     EventHistory,
     EventRecord,
-    Logbook,
-    LogEntry,
+    GenerationHistory,
+    GenerationRecord,
     ReproducibilityMetadata,
     append_run_stop_event,
     gene_space_hash,
@@ -15,8 +15,8 @@ from evocore.stats import (
 
 
 def test_logbook_append_len_iter_getitem():
-    book = Logbook()
-    entry = LogEntry(0, 1.0, 0.5, 0.1, 12.0, 10, 0, 2, [], {"sharpe": 1.2})
+    book = GenerationHistory()
+    entry = GenerationRecord(0, 1.0, 0.5, 0.1, 12.0, 10, 0, 2, [], {"sharpe": 1.2})
     book.append(entry)
     assert len(book) == 1
     assert list(book) == [entry]
@@ -24,16 +24,16 @@ def test_logbook_append_len_iter_getitem():
 
 
 def test_logbook_fitness_lists():
-    book = Logbook()
-    book.append(LogEntry(0, 1.0, 0.5, 0.1, 12.0, 10, 0, 0, [], {}))
-    book.append(LogEntry(1, 2.0, 1.0, 0.2, 15.0, 10, 1, 0, [], {}))
-    assert book.best_fitnesses() == [1.0, 2.0]
+    book = GenerationHistory()
+    book.append(GenerationRecord(0, 1.0, 0.5, 0.1, 12.0, 10, 0, 0, [], {}))
+    book.append(GenerationRecord(1, 2.0, 1.0, 0.2, 15.0, 10, 1, 0, [], {}))
+    assert book.best_scores() == [1.0, 2.0]
     assert book.nan_counts() == [0, 1]
 
 
 def test_to_dataframe_missing_pandas_message(monkeypatch):
-    book = Logbook()
-    book.append(LogEntry(0, 1.0, 0.5, 0.1, 12.0, 10, 0, 0, [], {}))
+    book = GenerationHistory()
+    book.append(GenerationRecord(0, 1.0, 0.5, 0.1, 12.0, 10, 0, 0, [], {}))
     real_import = __import__
 
     def fake_import(name, *args, **kwargs):
@@ -47,14 +47,14 @@ def test_to_dataframe_missing_pandas_message(monkeypatch):
 
 
 def test_log_entry_to_dict_is_json_safe_and_preserves_custom_metrics():
-    entry = LogEntry(
+    entry = GenerationRecord(
         gen=2,
-        best_fitness=1.5,
-        mean_fitness=1.0,
-        std_fitness=0.25,
+        best_score=1.5,
+        mean_score=1.0,
+        std_score=0.25,
         wall_time_ms=12.0,
         n_evaluations=8,
-        nan_fitness_count=0,
+        nan_score_count=0,
         cached_count=1,
         diversity=[0.1, 0.2],
         custom={"loss": 0.4, "tags": {"b", "a"}},
@@ -62,12 +62,12 @@ def test_log_entry_to_dict_is_json_safe_and_preserves_custom_metrics():
 
     assert entry.to_dict() == {
         "gen": 2,
-        "best_fitness": 1.5,
-        "mean_fitness": 1.0,
-        "std_fitness": 0.25,
+        "best_score": 1.5,
+        "mean_score": 1.0,
+        "std_score": 0.25,
         "wall_time_ms": 12.0,
         "n_evaluations": 8,
-        "nan_fitness_count": 0,
+        "nan_score_count": 0,
         "cached_count": 1,
         "diversity": [0.1, 0.2],
         "loss": 0.4,
@@ -76,18 +76,18 @@ def test_log_entry_to_dict_is_json_safe_and_preserves_custom_metrics():
 
 
 def test_logbook_to_dict_and_json_are_stable():
-    book = Logbook()
-    book.append(LogEntry(0, 1.0, 0.5, 0.1, 12.0, 10, 0, 0, [], {"z": 2, "a": 1}))
+    book = GenerationHistory()
+    book.append(GenerationRecord(0, 1.0, 0.5, 0.1, 12.0, 10, 0, 0, [], {"z": 2, "a": 1}))
 
     assert book.to_dict() == [
         {
             "gen": 0,
-            "best_fitness": 1.0,
-            "mean_fitness": 0.5,
-            "std_fitness": 0.1,
+            "best_score": 1.0,
+            "mean_score": 0.5,
+            "std_score": 0.1,
             "wall_time_ms": 12.0,
             "n_evaluations": 10,
-            "nan_fitness_count": 0,
+            "nan_score_count": 0,
             "cached_count": 0,
             "diversity": [],
             "a": 1,
@@ -142,7 +142,7 @@ def test_event_history_to_rows_preserves_append_order():
             "candidate_id": "c-1",
             "candidate_hash": "hash-1",
             "generation": None,
-            "rung": None,
+            "stage": None,
             "confidence": None,
             "raw_score": None,
             "comparison_score": None,
@@ -162,7 +162,7 @@ def test_event_history_to_rows_preserves_append_order():
             "candidate_id": "c-1",
             "candidate_hash": "hash-1",
             "generation": None,
-            "rung": None,
+            "stage": None,
             "confidence": "trusted_full",
             "raw_score": 4.0,
             "comparison_score": 4.0,
@@ -225,9 +225,9 @@ def test_event_history_to_dataframe_missing_pandas_message(monkeypatch):
 def test_gene_space_signature_preserves_gene_order_and_fields():
     space = GeneSpace(
         [
-            GeneDef("x", "float", -1.0, 1.0, sigma=0.2),
-            GeneDef("period", "int", 2, 20),
-            GeneDef("enabled", "bool"),
+            Gene("x", "float", -1.0, 1.0, sigma=0.2),
+            Gene("period", "int", 2, 20),
+            Gene("enabled", "bool"),
         ]
     )
 
@@ -268,8 +268,8 @@ def test_gene_space_signature_preserves_gene_order_and_fields():
 
 
 def test_gene_space_hash_is_stable_for_equivalent_spaces():
-    left = GeneSpace([GeneDef("x", "float", -1.0, 1.0)])
-    right = GeneSpace([GeneDef("x", "float", -1.0, 1.0)])
+    left = GeneSpace([Gene("x", "float", -1.0, 1.0)])
+    right = GeneSpace([Gene("x", "float", -1.0, 1.0)])
 
     assert gene_space_hash(gene_space_signature(left)) == gene_space_hash(
         gene_space_signature(right)
@@ -279,7 +279,7 @@ def test_gene_space_hash_is_stable_for_equivalent_spaces():
 def test_reproducibility_metadata_to_dict_is_json_safe():
     metadata = ReproducibilityMetadata(
         evocore_version="0.7.0",
-        engine_type="GAEngine",
+        optimizer_type="GeneticAlgorithmOptimizer",
         seed=42,
         direction="maximize",
         gene_space_signature={"genes": [{"name": "x", "kind": "float"}]},
@@ -289,7 +289,7 @@ def test_reproducibility_metadata_to_dict_is_json_safe():
 
     assert metadata.to_dict() == {
         "evocore_version": "0.7.0",
-        "engine_type": "GAEngine",
+        "optimizer_type": "GeneticAlgorithmOptimizer",
         "seed": 42,
         "direction": "maximize",
         "gene_space_signature": {"genes": [{"kind": "float", "name": "x"}]},

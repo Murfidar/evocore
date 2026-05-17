@@ -6,7 +6,7 @@ to inherit from a base class; it satisfies `Optimizer` when it exposes `directio
 
 `ask()` returns `Candidate` objects with stable `candidate_id` values, decoded genes,
 optional params, and one shared `batch_id` for the ask event. `tell()` accepts only
-`EvaluationRecord` values and returns `TellResult`.
+`EvaluationRecord` values and returns `UpdateResult`.
 
 Evaluators satisfy the structural `Evaluator` protocol by implementing:
 
@@ -15,11 +15,11 @@ def evaluate(candidates, context):
     return []
 ```
 
-`EvaluationContext` carries the rung, batch ID, event index, direction, budget, and
+`EvaluationContext` carries the evaluation stage, batch ID, event index, direction, budget, and
 metadata for the evaluator call.
 
 `tell()` is asynchronous-friendly: callers may report any subset of a batch, in any
-order, as long as each candidate/rung pair is reported at most once. `tell([])` is a
+order, as long as each candidate/stage pair is reported at most once. `tell([])` is a
 valid no-op for queue polling integrations.
 
 Confidence values are explicit:
@@ -37,11 +37,11 @@ Raw user scores are preserved. Optimizers use `direction="maximize"` or
 `direction="minimize"` to compare candidates without rewriting the score stored in
 `EvaluationRecord`. State best-candidate tracking compares only state-eligible
 `trusted_full` and `cached` scores, so partial and surrogate scores cannot become the
-reported optimizer best. `EngineStateSummary.trusted_count` counts candidates with
+reported optimizer best. `OptimizerStateSummary.trusted_count` counts candidates with
 state-eligible records.
 
 Invalid records raise `FitnessError`: unknown candidates, unknown explicit batch IDs,
-batch mismatches, duplicate candidate/rung records, non-finite non-rejected scores, and
+batch mismatches, duplicate candidate/stage records, non-finite non-rejected scores, and
 scored `rejected` records are rejected.
 
 ## Event History
@@ -49,7 +49,7 @@ scored `rejected` records are rejected.
 Ask/tell engines record append-only lifecycle events. Every proposed candidate receives
 an `ask` event with its batch ID, candidate ID, genome hash, origin, genes, params, and
 metadata. Every accepted evaluation record receives a `tell` event with the raw score,
-direction-aware comparison score, confidence, rung, cost, resulting status, metrics, and
+direction-aware comparison score, confidence, stage, cost, resulting status, metrics, and
 record metadata.
 
 ```python
@@ -60,14 +60,14 @@ records = [
         batch_id=candidate.batch_id,
         score=score_candidate(candidate),
         confidence="trusted_full",
-        rung="full",
+        stage="full",
         cost=1.0,
     )
     for candidate in candidates
 ]
 engine.tell(records)
 
-rows = engine.history.to_rows()
+rows = engine.events.to_rows()
 ```
 
 Raw user scores are stored under `raw_score`. EvoCore stores the value used for

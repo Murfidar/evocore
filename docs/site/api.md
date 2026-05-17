@@ -1,53 +1,53 @@
 # API Reference
 
-::: evocore.gene_space
+::: evocore.search_space.GeneSpace
 
-::: evocore.individual
+::: evocore.Solution
 
-::: evocore.operators
+::: evocore.search_space.OperatorCodec
 
-::: evocore.stats
+::: evocore.results.GenerationHistory
 
-::: evocore.parallel
+::: evocore.core.parallel
 
-::: evocore.exceptions
+::: evocore.core.errors
 
 ## Optimizer Lifecycle
 
 `Optimizer` and `Evaluator` are structural protocols. Engines and evaluators conform by
 shape, without subclassing.
 
-::: evocore.protocols.Optimizer
+::: evocore.lifecycle.Optimizer
 
-::: evocore.protocols.Evaluator
+::: evocore.lifecycle.Evaluator
 
-::: evocore.evaluation.Candidate
+::: evocore.lifecycle.Candidate
 
-::: evocore.evaluation.EvaluationRecord
+::: evocore.lifecycle.EvaluationRecord
 
-::: evocore.evaluation.EvaluationContext
+::: evocore.lifecycle.EvaluationContext
 
-::: evocore.evaluation.TellResult
+::: evocore.lifecycle.UpdateResult
 
-::: evocore.evaluation.EngineStateSummary
+::: evocore.lifecycle.OptimizerStateSummary
 
-::: evocore.evaluation.Rung
+::: evocore.lifecycle.EvaluationStage
 
-::: evocore.evaluation.OptimizationTelemetry
+::: evocore.lifecycle.OptimizationTelemetry
 
-::: evocore.stats.EventRecord
+::: evocore.results.EventRecord
 
-::: evocore.stats.EventHistory
+::: evocore.results.EventHistory
 
-::: evocore.stats.ReproducibilityMetadata
+::: evocore.results.ReproducibilityMetadata
 
-::: evocore.policies.MultiFidelityPolicy
+::: evocore.lifecycle.BudgetPolicy
 
-::: evocore.scheduler.EvaluationScheduler
+::: evocore.lifecycle.BudgetScheduler
 
-::: evocore.advisors.InverseDistanceSurrogateAdvisor
+::: evocore.surrogates.InverseDistanceAdvisor
 
-::: evocore.mixed_cma.IntegerMargin
+::: evocore.optimizers.cmaes.IntegerMarginDistribution
 
-::: evocore.mixed_cma.CategoricalState
+::: evocore.optimizers.cmaes.CategoricalDistributionState
 

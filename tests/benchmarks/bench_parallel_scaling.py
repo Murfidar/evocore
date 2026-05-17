@@ -1,6 +1,6 @@
 import time
 
-from evocore import GAEngine, GeneSpace
+from evocore import GeneSpace, GeneticAlgorithmOptimizer
 from tests.vnext_helpers import IndividualEvaluator
 
 
@@ -9,7 +9,7 @@ def sphere(ind):
 
 
 def test_run_multiple_parallel_scaling_smoke():
-    engine = GAEngine(
+    engine = GeneticAlgorithmOptimizer(
         GeneSpace.uniform(-5.0, 5.0, 10), population_size=60, max_generations=20, seed=42
     )
 

@@ -1,5 +1,5 @@
-from evocore import EvaluationContext, EvaluationRecord, MultiFidelityPolicy, Rung
-from evocore.individual import Individual
+from evocore import BudgetPolicy, EvaluationContext, EvaluationRecord, EvaluationStage
+from evocore.search_space import Solution
 
 
 class IndividualEvaluator:
@@ -8,10 +8,10 @@ class IndividualEvaluator:
 
     def evaluate(self, candidates, context):
         assert isinstance(context, EvaluationContext)
-        assert context.rung is not None
+        assert context.stage is not None
         records = []
         for candidate in candidates:
-            individual = Individual(
+            solution = Solution(
                 list(candidate.genes),
                 metadata={
                     "params": candidate.params,
@@ -22,18 +22,20 @@ class IndividualEvaluator:
                 EvaluationRecord(
                     candidate_id=candidate.candidate_id,
                     batch_id=candidate.batch_id,
-                    score=float(self.fn(individual)),
-                    confidence=context.rung.confidence,
-                    rung=context.rung.name,
-                    cost=context.rung.budget,
+                    score=float(self.fn(solution)),
+                    confidence=context.stage.confidence,
+                    stage=context.stage.name,
+                    cost=context.stage.budget,
                 )
             )
         return records
 
 
-def full_policy(max_evaluations: int, batch_size: int = 8) -> MultiFidelityPolicy:
-    return MultiFidelityPolicy(
-        rungs=[Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")],
+def full_policy(max_evaluations: int, batch_size: int = 8) -> BudgetPolicy:
+    return BudgetPolicy(
+        stages=[
+            EvaluationStage("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full")
+        ],
         max_evaluations=max_evaluations,
         batch_size=batch_size,
     )

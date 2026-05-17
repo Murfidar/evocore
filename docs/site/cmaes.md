@@ -1,6 +1,6 @@
 # CMA-ES
 
-`CMAESEngine` provides covariance matrix adaptation backed by Rust and nalgebra.
+`CMAESOptimizer` provides covariance matrix adaptation backed by Rust and nalgebra.
 
 CMA-ES supports `parallel="none"` and `parallel="thread"`. It rejects `parallel="process"`
 because the Rust covariance state is not picklable.
@@ -13,18 +13,18 @@ reuse trusted previous full observations and do not spend fresh full-evaluation 
 
 ## Result Export
 
-Generation-oriented CMA runs attach generation events to `RunResult.history` and keep
-generation summaries in `RunResult.logbook`.
+Generation-oriented CMA runs attach generation events to `OptimizationResult.events` and keep
+generation summaries in `OptimizationResult.generations`.
 
 ```python
 result = engine.run(fitness_fn)
 payload = result.to_dict()
-events = result.history.to_rows()
+events = result.events.to_rows()
 ```
 
-Ask/tell CMA usage records `ask` and `tell` events on `engine.history`.
+Ask/tell CMA usage records `ask` and `tell` events on `engine.events`.
 
-::: evocore.cmaes.CMAESEngine
+::: evocore.optimizers.cmaes.CMAESOptimizer
     options:
       members:
         - run

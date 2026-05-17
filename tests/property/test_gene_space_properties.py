@@ -3,9 +3,7 @@ import json
 from hypothesis import given
 from hypothesis import strategies as st
 
-from evocore.gene_space import GeneDef, GeneSpace
-from evocore.individual import Individual
-from evocore.operators import OperatorSet
+from evocore.search_space import Gene, GeneSpace, OperatorCodec, Solution
 
 GENE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -44,7 +42,7 @@ def valid_numeric_gene_specs(draw):
             allow_infinity=False,
         )
     )
-    return GeneDef(name, kind, low, high, sigma=sigma)
+    return Gene(name, kind, low, high, sigma=sigma)
 
 
 @given(valid_numeric_gene_specs())
@@ -72,13 +70,13 @@ def test_named_params_match_gene_order(kinds):
     for index, kind in enumerate(kinds):
         name = f"gene_{index}"
         if kind == "float":
-            genes.append(GeneDef(name, "float", -10.0, 10.0))
+            genes.append(Gene(name, "float", -10.0, 10.0))
             values.append(float(index) / 10.0)
         elif kind == "int":
-            genes.append(GeneDef(name, "int", -10, 10))
+            genes.append(Gene(name, "int", -10, 10))
             values.append(index - 5)
         else:
-            genes.append(GeneDef(name, "bool"))
+            genes.append(Gene(name, "bool"))
             values.append(index % 2 == 0)
 
     space = GeneSpace(genes)
@@ -88,7 +86,7 @@ def test_named_params_match_gene_order(kinds):
 
 @given(st.lists(st.integers(min_value=-20, max_value=20), min_size=1, max_size=10))
 def test_individual_clone_preserves_genes_and_metadata(values):
-    ind = Individual(
+    ind = Solution(
         list(values),
         fitness=1.25,
         fitness_valid=True,
@@ -111,11 +109,11 @@ def test_individual_clone_preserves_genes_and_metadata(values):
 def test_operator_decode_restores_named_params(period, threshold):
     space = GeneSpace(
         [
-            GeneDef("period", "int", 0, 100),
-            GeneDef("threshold", "float", -1.0, 1.0),
+            Gene("period", "int", 0, 100),
+            Gene("threshold", "float", -1.0, 1.0),
         ]
     )
-    ops = OperatorSet(space, "sbx", "gaussian")
+    ops = OperatorCodec(space, "sbx", "gaussian")
 
     ind = ops.decode_individual([float(period), threshold])
 
@@ -151,14 +149,14 @@ def valid_flat_gene_spaces(draw):
                     )
                 )
                 high = low + span
-            genes.append(GeneDef(name, "float", low, high))
+            genes.append(Gene(name, "float", low, high))
         elif kind == "int":
             low = draw(st.integers(min_value=-1000, max_value=999))
             fixed = draw(st.booleans())
             high = low if fixed else draw(st.integers(min_value=low + 1, max_value=low + 1000))
-            genes.append(GeneDef(name, "int", low, high))
+            genes.append(Gene(name, "int", low, high))
         else:
-            genes.append(GeneDef(name, "bool"))
+            genes.append(Gene(name, "bool"))
     return GeneSpace(genes)
 
 
