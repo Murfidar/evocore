@@ -6,9 +6,6 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-import matplotlib.pyplot as plt
-import pandas as pd
-
 from evocore.evaluation import CandidateOrigin, CandidateStatus, Direction, EvaluationConfidence
 from evocore.exceptions import ConfigurationError
 from evocore.exporting import canonical_json_hash, json_safe, stable_json_dumps
@@ -105,10 +102,22 @@ class Logbook:
 
     def to_dataframe(self):
         """Convert the logbook into a pandas DataFrame."""
+        try:
+            import pandas as pd
+        except ImportError as exc:
+            raise ImportError(
+                "Logbook.to_dataframe() requires pandas; pip install pandas."
+            ) from exc
         return pd.DataFrame(self.to_rows())
 
     def plot(self, metrics: list[str] | None = None):
         """Plot selected logbook metrics with matplotlib."""
+        try:
+            import matplotlib.pyplot as plt
+        except ImportError as exc:
+            raise ImportError(
+                "Logbook.plot() requires matplotlib; pip install matplotlib."
+            ) from exc
         metric_names = metrics or ["best_fitness", "mean_fitness"]
         rows = self.to_rows()
         xs = [row["gen"] for row in rows]
@@ -202,6 +211,12 @@ class EventHistory:
 
     def to_dataframe(self):
         """Convert event rows into a pandas DataFrame."""
+        try:
+            import pandas as pd
+        except ImportError as exc:
+            raise ImportError(
+                "EventHistory.to_dataframe() requires pandas; pip install pandas."
+            ) from exc
         return pd.DataFrame(self.to_rows())
 
 

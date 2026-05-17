@@ -15,8 +15,6 @@ from dataclasses import dataclass, field
 from statistics import mean, stdev
 from typing import Any
 
-import pandas as pd
-
 from evocore import _core
 from evocore.batches import CandidateBatch, batch_id_from_seed
 from evocore.callbacks import Callback, GenerationInfo
@@ -176,6 +174,12 @@ class MultiRunResult:
 
     def to_dataframe(self):
         """Return one pandas DataFrame row per child run."""
+        try:
+            import pandas as pd
+        except ImportError as exc:
+            raise ImportError(
+                "MultiRunResult.to_dataframe() requires pandas; pip install pandas."
+            ) from exc
         rows = [
             {
                 "run_index": index,
@@ -228,7 +232,7 @@ class GAEngine:
         ConfigurationError: If engine configuration is invalid.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0915
         self,
         gene_space: GeneSpace,
         population_size: int = 100,

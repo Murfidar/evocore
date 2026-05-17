@@ -182,7 +182,14 @@ def test_multi_run_result_to_json_and_dataframe_are_stable(monkeypatch):
     class FakePandas:
         DataFrame = FakeDataFrame
 
-    monkeypatch.setattr("evocore.ga.pd", FakePandas)
+    real_import = __import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "pandas":
+            return FakePandas
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", fake_import)
 
     assert multi.to_json() == multi.to_json()
     multi.to_dataframe()
