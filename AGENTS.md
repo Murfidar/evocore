@@ -28,6 +28,64 @@ Important surfaces:
 - User docs in `docs/site/` with MkDocs config in `mkdocs.yml`.
 - Release workflow and PyPI publication in `.github/workflows/`.
 
+## Target Package Architecture
+
+EvoCore is migrating from a flat Python package to domain-oriented modules.
+New source changes should follow this architecture and avoid recreating old flat
+modules such as `evocore.ga`, `evocore.cmaes`, `evocore.gene_space`,
+`evocore.evaluation`, `evocore.policies`, `evocore.scheduler`, or
+`evocore.stats`.
+
+Target tree:
+
+```text
+evocore/
+  __init__.py                  # top-level convenience exports, new names only
+  _core.pyi                    # Rust extension type stubs
+  core/
+    errors.py                  # EvocoreError, ConfigurationError, FitnessError, warnings
+    serialization.py           # JSON-safe export and stable hashing helpers
+    parallel.py                # Thread/process evaluation helpers
+  search_space/
+    genes.py                   # Gene, GeneSpace, GeneKind, GeneValue
+    solutions.py               # Solution, SolutionSet
+    codec.py                   # OperatorCodec and Rust boundary encoding
+  lifecycle/
+    records.py                 # Candidate, EvaluationRecord, EvaluationContext, ScoreObservation
+    policies.py                # BudgetPolicy, EvaluationStage
+    scheduler.py               # BudgetScheduler
+    protocols.py               # Optimizer, Evaluator
+    telemetry.py               # OptimizationTelemetry, UpdateResult, OptimizerStateSummary
+    events.py                  # EventRecord, EventHistory, StopReason
+  results/
+    generation.py              # GenerationRecord, GenerationHistory
+    reproducibility.py         # ReproducibilityMetadata
+    run.py                     # OptimizationResult, OptimizationBatchResult
+  optimizers/
+    ga/
+      engine.py                # GeneticAlgorithmOptimizer public class
+      ask_tell.py              # GA ask/tell lifecycle helpers
+      generation_loop.py       # GA generation-loop execution
+      checkpointing.py         # GA checkpoint resume helpers
+      reproduction.py          # GA reproduction helpers
+    cmaes/
+      engine.py                # CMAESOptimizer public class
+      ask_tell.py              # CMA-ES ask/tell lifecycle helpers
+      mixed.py                 # IntegerMarginDistribution, CategoricalDistributionState
+  callbacks/
+    __init__.py                # Callback hooks and built-in callbacks
+  surrogates/
+    __init__.py                # InverseDistanceAdvisor, SurrogateScore
+```
+
+Public convenience imports from `evocore` should remain available, but should use
+the new domain vocabulary. Prefer names such as `GeneticAlgorithmOptimizer`,
+`CMAESOptimizer`, `Gene`, `Solution`, `OptimizationResult`, `BudgetPolicy`,
+`EvaluationStage`, `UpdateResult`, and `OptimizerStateSummary`. Do not introduce
+new public APIs with the old `Engine`, `RunResult`, `MultiRunResult`, `Rung`,
+`TellResult`, `Individual`, `Population`, or public `fitness` naming unless a
+compatibility requirement is explicitly approved.
+
 ## Branch Workflow
 
 Before editing code or project setup:
