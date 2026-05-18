@@ -28,6 +28,21 @@ Important surfaces:
 - User docs in `docs/site/` with MkDocs config in `mkdocs.yml`.
 - Release workflow and PyPI publication in `.github/workflows/`.
 
+## Local Environment
+
+Use the repository-local virtual environment for Python work whenever it exists.
+When verification, build, install, docs, or script instructions show
+`python -m ...`, run them through the `.venv` interpreter instead of a global
+Python:
+
+- Windows/PowerShell: `.\.venv\Scripts\python.exe -m ...`
+- POSIX shells: `./.venv/bin/python -m ...`
+
+Install Python dependencies into `.venv` unless the user explicitly asks for a
+different environment. If `.venv` is missing, broken, or points to an unavailable
+interpreter, report that before falling back to another Python or recreating the
+environment. Do not commit `.venv/` or other virtual environments.
+
 ## Target Package Architecture
 
 EvoCore uses a domain-oriented Python package layout. New source changes should
