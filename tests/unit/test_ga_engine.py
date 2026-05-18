@@ -381,6 +381,8 @@ def test_ga_vnext_run_attaches_history_and_reproducibility_metadata():
         policy=full_policy(4, batch_size=4),
     )
 
+    payload = result.to_dict()
+
     assert result.optimizer_type == "GeneticAlgorithmOptimizer"
     assert result.direction == "maximize"
     assert result.best_candidate_id is not None
@@ -398,6 +400,8 @@ def test_ga_vnext_run_attaches_history_and_reproducibility_metadata():
     assert result.reproducibility.optimizer_config["parameters"]["population_size"] == 4
     assert result.reproducibility.optimizer_config["parameters"]["max_generations"] == 2
     assert "generations" not in result.reproducibility.optimizer_config["parameters"]
+    assert payload["reproducibility"]["optimizer_config_hash"] == engine.config_hash()
+    assert payload["reproducibility"]["reproducibility_status"] == "full"
 
 
 def test_ga_generation_loop_result_includes_generation_history():

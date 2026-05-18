@@ -59,6 +59,12 @@ from evocore.lifecycle import (
     ScoreObservation,
     UpdateResult,
 )
+from evocore.optimizers import (
+    ConfigurableComponent,
+    OptimizerConfig,
+    RuntimeHookSignature,
+    config_hash,
+)
 from evocore.optimizers.cmaes import (
     CategoricalDistributionState,
     CMAESOptimizer,
@@ -104,6 +110,7 @@ __all__ = [
     "CategoricalDistributionState",
     "CheckpointCallback",
     "CheckpointError",
+    "ConfigurableComponent",
     "ConfigurationError",
     "ConfigurationWarning",
     "ConvergenceError",
@@ -137,11 +144,13 @@ __all__ = [
     "OptimizationResult",
     "OptimizationTelemetry",
     "Optimizer",
+    "OptimizerConfig",
     "OptimizerStateSummary",
     "ParallelError",
     "ProcessParallel",
     "ProgressBar",
     "ReproducibilityMetadata",
+    "RuntimeHookSignature",
     "ScoreObservation",
     "Solution",
     "SolutionSet",
@@ -150,5 +159,6 @@ __all__ = [
     "UpdateResult",
     "__version__",
     "_core",
+    "config_hash",
     "py_derive_seed",
 ]

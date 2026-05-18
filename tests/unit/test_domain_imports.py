@@ -27,6 +27,9 @@ def test_new_domain_imports_are_available():
         "evocore.optimizers",
         "evocore.optimizers.ga",
         "evocore.optimizers.cmaes",
+        "evocore.optimizers.config",
+        "evocore.optimizers.ga.config",
+        "evocore.optimizers.cmaes.config",
         "evocore.callbacks",
         "evocore.surrogates",
     ]
@@ -36,13 +39,21 @@ def test_new_domain_imports_are_available():
 
 
 def test_new_domain_symbols_are_importable():
+    from evocore import OptimizerConfig as TopLevelOptimizerConfig
+    from evocore import RuntimeHookSignature as TopLevelRuntimeHookSignature
     from evocore.lifecycle import BudgetPolicy, BudgetScheduler, EvaluationStage
+    from evocore.optimizers import ConfigurableComponent, OptimizerConfig, RuntimeHookSignature
     from evocore.optimizers.cmaes import CMAESOptimizer
     from evocore.optimizers.ga import GeneticAlgorithmOptimizer
     from evocore.results import OptimizationBatchResult, OptimizationResult
     from evocore.search_space import Gene, GeneSpace, Solution, SolutionSet
     from evocore.surrogates import InverseDistanceAdvisor, SurrogateScore
 
+    assert TopLevelOptimizerConfig is OptimizerConfig
+    assert TopLevelRuntimeHookSignature is RuntimeHookSignature
+    assert ConfigurableComponent is not None
+    assert OptimizerConfig is not None
+    assert RuntimeHookSignature is not None
     assert BudgetPolicy is not None
     assert BudgetScheduler is not None
     assert EvaluationStage is not None
@@ -69,7 +80,9 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
     )
     from evocore.lifecycle import OptimizationTelemetry, OptimizerStateSummary, UpdateResult
     from evocore.lifecycle.events import EventHistory, EventRecord, append_run_stop_event
+    from evocore.optimizers import OptimizerConfig, RuntimeHookSignature, config_hash
     from evocore.optimizers.cmaes import CMAESAskTellMixin, CMAESOptimizer
+    from evocore.optimizers.config import ConfigurableComponent
     from evocore.optimizers.ga import (
         GeneticAlgorithmAskTellMixin,
         GeneticAlgorithmCheckpointingMixin,
@@ -103,6 +116,11 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
     assert ReproducibilityMetadata.__module__ == "evocore.results.reproducibility"
     assert gene_space_signature.__module__ == "evocore.results.reproducibility"
     assert gene_space_hash.__module__ == "evocore.results.reproducibility"
+
+    assert OptimizerConfig.__module__ == "evocore.optimizers.config"
+    assert RuntimeHookSignature.__module__ == "evocore.optimizers.config"
+    assert ConfigurableComponent.__module__ == "evocore.optimizers.config"
+    assert config_hash.__module__ == "evocore.optimizers.config"
 
     assert GeneticAlgorithmAskTellMixin in GeneticAlgorithmOptimizer.__mro__
     assert GeneticAlgorithmGenerationLoopMixin in GeneticAlgorithmOptimizer.__mro__

@@ -54,6 +54,7 @@ def test_cma_generation_loop_result_attaches_history_and_reproducibility():
     engine = CMAESOptimizer(space, population_size=6, max_generations=2, seed=42)
 
     result = engine.run(lambda ind: -sum(float(v) ** 2 for v in ind.values))
+    payload = result.to_dict()
 
     assert result.optimizer_type == "CMAESOptimizer"
     assert result.direction == "maximize"
@@ -73,6 +74,8 @@ def test_cma_generation_loop_result_attaches_history_and_reproducibility():
     assert result.reproducibility.optimizer_config["parameters"]["population_size"] == 6
     assert result.reproducibility.optimizer_config["parameters"]["max_generations"] == 2
     assert "generations" not in result.reproducibility.optimizer_config["parameters"]
+    assert payload["reproducibility"]["optimizer_config_hash"] == engine.config_hash()
+    assert payload["reproducibility"]["reproducibility_status"] == "full"
 
 
 def test_cmaes_run_minimize_direction_returns_lowest_raw_fitness():
