@@ -1,5 +1,8 @@
 import json
 
+import pytest
+
+from evocore import ConfigurationError, Gene, GeneSpace, GeneticAlgorithmOptimizer
 from evocore.callbacks import Callback, EarlyStopping, MetricsLogger, ProgressBar
 from evocore.optimizers.config import (
     OptimizerConfig,
@@ -116,3 +119,154 @@ def test_reproducibility_from_hooks_reports_partial_notes():
 
     assert status == "partial"
     assert notes == ("process_initializer is opaque.",)
+
+
+def test_ga_default_and_explicit_default_configs_match():
+    space = GeneSpace.uniform(-1.0, 1.0, 2)
+    default = GeneticAlgorithmOptimizer(space)
+    explicit = GeneticAlgorithmOptimizer(
+        space,
+        population_size=100,
+        max_generations=100,
+        crossover="sbx",
+        crossover_prob=0.9,
+        crossover_eta=2.0,
+        crossover_alpha=0.5,
+        mutation="gaussian",
+        mutation_prob=0.1,
+        mutation_individual_prob=1.0,
+        mutation_sigma=0.2,
+        mutation_sigma_schedule="constant",
+        mutation_sigma_end=0.02,
+        selection="tournament",
+        tournament_size=3,
+        elitism=1,
+        parallel="none",
+        n_workers=None,
+        seed=0,
+        direction="maximize",
+        max_evaluations=None,
+        track_diversity=False,
+    )
+
+    assert default.config_signature() == explicit.config_signature()
+    assert default.config_hash() == explicit.config_hash()
+    assert default.config().hash() == default.config_hash()
+
+
+def test_ga_config_signature_uses_nested_component_shape():
+    engine = GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        population_size=8,
+        max_generations=5,
+        seed=42,
+    )
+
+    assert engine.config_signature() == {
+        "schema_version": 1,
+        "optimizer_type": "GeneticAlgorithmOptimizer",
+        "parameters": {
+            "direction": "maximize",
+            "elitism": 1,
+            "max_evaluations": None,
+            "max_generations": 5,
+            "n_workers": None,
+            "parallel": "none",
+            "population_size": 8,
+            "seed": 42,
+            "track_diversity": False,
+        },
+        "components": {
+            "crossover": {
+                "type": "sbx",
+                "parameters": {"alpha": 0.5, "eta": 2.0, "probability": 0.9},
+            },
+            "mutation": {
+                "type": "gaussian",
+                "parameters": {
+                    "individual_probability": 1.0,
+                    "probability": 0.1,
+                    "sigma": 0.2,
+                },
+            },
+            "mutation_schedule": {
+                "type": "constant",
+                "parameters": {"sigma_end": 0.02},
+            },
+            "selection": {
+                "type": "tournament",
+                "parameters": {"tournament_size": 3},
+            },
+        },
+    }
+
+
+def test_ga_algorithm_component_change_alters_hash():
+    space = GeneSpace.uniform(-1.0, 1.0, 2)
+    gaussian = GeneticAlgorithmOptimizer(space, mutation="gaussian")
+    uniform = GeneticAlgorithmOptimizer(space, mutation="uniform")
+
+    assert gaussian.config_hash() != uniform.config_hash()
+
+
+def test_ga_artifact_hook_path_does_not_change_config_hash(tmp_path):
+    space = GeneSpace.uniform(-1.0, 1.0, 2)
+    left = GeneticAlgorithmOptimizer(space, callbacks=[MetricsLogger(str(tmp_path / "a.jsonl"))])
+    right = GeneticAlgorithmOptimizer(space, callbacks=[MetricsLogger(str(tmp_path / "b.jsonl"))])
+
+    assert left.config_hash() == right.config_hash()
+
+
+def test_ga_termination_hook_is_visible_in_reproducibility():
+    engine = GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        callbacks=[EarlyStopping(patience=4, min_delta=0.25)],
+    )
+
+    payload = engine._reproducibility_metadata().to_dict()
+
+    assert payload["reproducibility_status"] == "full"
+    assert payload["runtime_hooks"] == [
+        {
+            "hook_type": "termination",
+            "identity": "evocore.callbacks.stopping.EarlyStopping",
+            "config": {"patience": 4, "min_delta": 0.25},
+            "reproducibility": "configured",
+            "notes": [],
+        }
+    ]
+
+
+def test_ga_process_initializer_marks_reproducibility_partial():
+    def init_worker() -> None:
+        return None
+
+    engine = GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        parallel="process",
+        process_initializer=init_worker,
+    )
+
+    payload = engine._reproducibility_metadata().to_dict()
+
+    assert payload["reproducibility_status"] == "partial"
+    assert payload["runtime_hooks"][0]["hook_type"] == "environment"
+    assert payload["runtime_hooks"][0]["reproducibility"] == "partial"
+    assert "process_initializer is opaque." in payload["reproducibility_notes"]
+
+
+def test_ga_validate_compatibility_is_public():
+    engine = GeneticAlgorithmOptimizer(
+        GeneSpace([Gene("a", "bool"), Gene("b", "bool")]),
+        crossover="one_point",
+        mutation="bit_flip",
+    )
+
+    assert engine.validate_compatibility() is None
+
+    with pytest.raises(ConfigurationError, match="binary GeneSpace"):
+        GeneticAlgorithmOptimizer(
+            GeneSpace([Gene("a", "bool"), Gene("b", "bool")]),
+            crossover="sbx",
+            mutation="bit_flip",
+        )

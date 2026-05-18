@@ -21,8 +21,15 @@ from evocore.lifecycle import (
     OptimizerStateSummary,
     score_for_direction,
 )
+from evocore.optimizers.config import OptimizerConfig
 from evocore.optimizers.ga.ask_tell import GeneticAlgorithmAskTellMixin
 from evocore.optimizers.ga.checkpointing import GeneticAlgorithmCheckpointingMixin
+from evocore.optimizers.ga.config import (
+    build_ga_config,
+    ga_reproducibility_status,
+    ga_runtime_hooks,
+    validate_ga_compatibility,
+)
 from evocore.optimizers.ga.generation_loop import GeneticAlgorithmGenerationLoopMixin
 from evocore.optimizers.ga.multi_run import GeneticAlgorithmMultiRunMixin
 from evocore.optimizers.ga.reproduction import GeneticAlgorithmReproductionMixin
@@ -220,6 +227,22 @@ class GeneticAlgorithmOptimizer(
             telemetry=self.vnext_telemetry,
         )
 
+    def config(self) -> OptimizerConfig:
+        """Return the public optimizer configuration object."""
+        return build_ga_config(self)
+
+    def config_signature(self) -> dict[str, Any]:
+        """Return the canonical JSON-safe optimizer configuration signature."""
+        return self.config().to_dict()
+
+    def config_hash(self) -> str:
+        """Return the stable hash for this optimizer configuration."""
+        return self.config().hash()
+
+    def validate_compatibility(self) -> None:
+        """Validate optimizer, operator, and gene-space compatibility."""
+        validate_ga_compatibility(self)
+
     def _warn_if_large_int_gene_without_sigma(self) -> None:
         for gene in self.gene_space.genes:
             if gene.kind == "int" and gene.sigma is None and (gene.high - gene.low) > 100:
@@ -234,33 +257,12 @@ class GeneticAlgorithmOptimizer(
 
     def _optimizer_config(self) -> dict[str, Any]:
         """Return public serializable GA constructor configuration."""
-        return json_safe(
-            {
-                "population_size": self.population_size,
-                "max_generations": self.max_generations,
-                "crossover": self.crossover,
-                "crossover_prob": self.crossover_prob,
-                "crossover_eta": self.crossover_eta,
-                "crossover_alpha": self.crossover_alpha,
-                "mutation": self.mutation,
-                "mutation_prob": self.mutation_prob,
-                "mutation_individual_prob": self.mutation_individual_prob,
-                "mutation_sigma": self.mutation_sigma,
-                "mutation_sigma_schedule": self.mutation_sigma_schedule,
-                "mutation_sigma_end": self.mutation_sigma_end,
-                "selection": self.selection,
-                "tournament_size": self.tournament_size,
-                "elitism": self.elitism,
-                "parallel": self.parallel,
-                "n_workers": self.n_workers,
-                "max_evaluations": self.max_evaluations,
-                "track_diversity": self.track_diversity,
-            }
-        )
+        return self.config_signature()
 
     def _reproducibility_metadata(self) -> ReproducibilityMetadata:
         """Return deterministic reproducibility metadata for this engine."""
         signature = self.gene_space.signature()
+        status, notes = ga_reproducibility_status(self)
         return ReproducibilityMetadata(
             evocore_version=package_version(),
             optimizer_type="GeneticAlgorithmOptimizer",
@@ -269,6 +271,10 @@ class GeneticAlgorithmOptimizer(
             gene_space_signature=signature,
             gene_space_hash=self.gene_space.hash(),
             optimizer_config=self._optimizer_config(),
+            optimizer_config_hash=self.config_hash(),
+            reproducibility_status=status,
+            reproducibility_notes=notes,
+            runtime_hooks=ga_runtime_hooks(self),
         )
 
     def _generation_history(self, generation_history: GenerationHistory) -> EventHistory:
