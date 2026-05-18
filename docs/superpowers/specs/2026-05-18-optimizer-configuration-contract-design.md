@@ -132,6 +132,38 @@ The exact class names can adjust during implementation, but the stable public id
 remain: canonical config signature, config hash, explicit hook signatures, and explicit
 compatibility validation.
 
+## Implementation Structure
+
+Keep this slice out of already-busy engine files. The optimizer classes should expose the
+public methods, but focused sibling modules should own config assembly, hook signatures,
+and compatibility helpers.
+
+Recommended file layout:
+
+```text
+evocore/optimizers/config.py          # shared protocols, config values, hashing helpers
+evocore/optimizers/ga/config.py       # GA config assembly and GA hook classification
+evocore/optimizers/cmaes/config.py    # CMA-ES config assembly and CMA hook classification
+```
+
+`evocore/optimizers/ga/engine.py` and `evocore/optimizers/cmaes/engine.py` should stay as
+thin public optimizer classes. They may delegate `config()`, `config_signature()`,
+`config_hash()`, and `validate_compatibility()` to helper modules or mixins, but they
+should not absorb hundreds of lines of config-specific code.
+
+Prefer splitting before a module becomes hard to scan. If a config module starts combining
+multiple responsibilities, split it by responsibility rather than letting it grow into a
+large 1000+ line file. Good split points are:
+
+- shared protocol and hashing helpers
+- built-in component signature helpers
+- hook classification
+- optimizer-specific config assembly
+- optimizer-specific compatibility validation
+
+The design goal is small modules with clear ownership, not a single central config file
+that becomes a second engine.
+
 ## Canonical Config Signature
 
 The canonical optimizer config payload should be JSON-safe and stable:
@@ -542,9 +574,11 @@ For this design document itself, a spec review and `git diff --check` are suffic
 Recommended implementation slices:
 
 1. Add shared config protocol, signature, hash, hook signature, and reproducibility-status
-   helpers.
-2. Make `GeneticAlgorithmOptimizer` export the new config shape.
-3. Make `CMAESOptimizer` export the new config shape.
+   helpers in `evocore/optimizers/config.py`.
+2. Add GA config assembly in `evocore/optimizers/ga/config.py`, with the GA optimizer
+   delegating to it.
+3. Add CMA-ES config assembly in `evocore/optimizers/cmaes/config.py`, with the CMA-ES
+   optimizer delegating to it.
 4. Extend `ReproducibilityMetadata` with `optimizer_config_hash`,
    `reproducibility_status`, `reproducibility_notes`, and runtime hook signatures.
 5. Move current compatibility checks behind explicit public `validate_compatibility()`
@@ -568,6 +602,10 @@ Recommended implementation slices:
   partial.
 - `OptimizationResult.reproducibility` includes config hash and hook-aware status.
 - Existing GA and CMA-ES compatibility errors remain clear.
+- Config and compatibility implementation stays in focused helper modules rather than
+  bloating optimizer engine files.
+- No new or touched implementation file grows into a large multi-responsibility module;
+  split before approaching 1000+ lines.
 - The slice does not add custom operator behavior, config loaders, replay semantics, or
   broad plugin architecture.
 
