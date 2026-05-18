@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from evocore import ConfigurationError, Gene, GeneSpace, GeneticAlgorithmOptimizer
+from evocore import CMAESOptimizer, ConfigurationError, Gene, GeneSpace, GeneticAlgorithmOptimizer
 from evocore.callbacks import Callback, EarlyStopping, MetricsLogger, ProgressBar
 from evocore.optimizers.config import (
     OptimizerConfig,
@@ -270,3 +270,89 @@ def test_ga_validate_compatibility_is_public():
             crossover="sbx",
             mutation="bit_flip",
         )
+
+
+from evocore import CMAESOptimizer
+
+
+def test_cmaes_default_and_explicit_default_configs_match():
+    space = GeneSpace.uniform(-2.0, 2.0, 3)
+    default = CMAESOptimizer(space)
+    explicit = CMAESOptimizer(
+        space,
+        population_size=50,
+        initial_mean=None,
+        initial_sigma=0.3,
+        max_generations=300,
+        parallel="none",
+        n_workers=None,
+        callbacks=None,
+        seed=0,
+        direction="maximize",
+        track_diversity=False,
+    )
+
+    assert default.config_signature() == explicit.config_signature()
+    assert default.config_hash() == explicit.config_hash()
+    assert default.config().hash() == default.config_hash()
+
+
+def test_cmaes_config_signature_uses_nested_component_shape():
+    engine = CMAESOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        initial_mean=[0.0, 0.1, 0.2],
+        initial_sigma=0.4,
+        max_generations=8,
+        seed=42,
+    )
+
+    assert engine.config_signature() == {
+        "schema_version": 1,
+        "optimizer_type": "CMAESOptimizer",
+        "parameters": {
+            "direction": "maximize",
+            "initial_mean": [0.0, 0.1, 0.2],
+            "initial_sigma": 0.4,
+            "max_generations": 8,
+            "n_workers": None,
+            "parallel": "none",
+            "population_size": 6,
+            "seed": 42,
+            "track_diversity": False,
+        },
+        "components": {
+            "distribution": {
+                "type": "cma_es",
+                "parameters": {"initial_sigma": 0.4},
+            }
+        },
+    }
+
+
+def test_cmaes_strategy_parameter_change_alters_hash():
+    space = GeneSpace.uniform(-2.0, 2.0, 3)
+    small_sigma = CMAESOptimizer(space, initial_sigma=0.2)
+    large_sigma = CMAESOptimizer(space, initial_sigma=0.4)
+
+    assert small_sigma.config_hash() != large_sigma.config_hash()
+
+
+def test_cmaes_callback_hook_is_visible_in_reproducibility(tmp_path):
+    engine = CMAESOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        callbacks=[MetricsLogger(str(tmp_path / "metrics.jsonl"))],
+    )
+
+    payload = engine._reproducibility_metadata().to_dict()
+
+    assert payload["reproducibility_status"] == "full"
+    assert payload["runtime_hooks"] == [
+        {
+            "hook_type": "artifact",
+            "identity": "evocore.callbacks.metrics.MetricsLogger",
+            "config": {"path": str(tmp_path / "metrics.jsonl")},
+            "reproducibility": "configured",
+            "notes": [],
+        }
+    ]

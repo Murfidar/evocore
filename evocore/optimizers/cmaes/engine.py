@@ -23,6 +23,13 @@ from evocore.lifecycle import (
     score_for_direction,
 )
 from evocore.optimizers.cmaes.ask_tell import CMAESAskTellMixin
+from evocore.optimizers.cmaes.config import (
+    build_cmaes_config,
+    cmaes_reproducibility_status,
+    cmaes_runtime_hooks,
+    validate_cmaes_compatibility,
+)
+from evocore.optimizers.config import OptimizerConfig
 from evocore.results import (
     EventHistory,
     EventRecord,
@@ -172,6 +179,22 @@ class CMAESOptimizer(CMAESAskTellMixin):
             telemetry=self.vnext_telemetry,
         )
 
+    def config(self) -> OptimizerConfig:
+        """Return the public optimizer configuration object."""
+        return build_cmaes_config(self)
+
+    def config_signature(self) -> dict[str, Any]:
+        """Return the canonical JSON-safe optimizer configuration signature."""
+        return self.config().to_dict()
+
+    def config_hash(self) -> str:
+        """Return the stable hash for this optimizer configuration."""
+        return self.config().hash()
+
+    def validate_compatibility(self) -> None:
+        """Validate optimizer and gene-space compatibility."""
+        validate_cmaes_compatibility(self)
+
     @property
     def _bounds_list(self) -> list[tuple[float, float]]:
         return self.operators.gene_bounds
@@ -311,21 +334,12 @@ class CMAESOptimizer(CMAESAskTellMixin):
 
     def _optimizer_config(self) -> dict[str, Any]:
         """Return public serializable CMA constructor configuration."""
-        return json_safe(
-            {
-                "population_size": self.population_size,
-                "initial_mean": self.initial_mean,
-                "initial_sigma": self.initial_sigma,
-                "max_generations": self.max_generations,
-                "parallel": self.parallel,
-                "n_workers": self.n_workers,
-                "track_diversity": self.track_diversity,
-            }
-        )
+        return self.config_signature()
 
     def _reproducibility_metadata(self) -> ReproducibilityMetadata:
         """Return deterministic reproducibility metadata for this engine."""
         signature = self.gene_space.signature()
+        status, notes = cmaes_reproducibility_status(self)
         return ReproducibilityMetadata(
             evocore_version=package_version(),
             optimizer_type="CMAESOptimizer",
@@ -334,6 +348,10 @@ class CMAESOptimizer(CMAESAskTellMixin):
             gene_space_signature=signature,
             gene_space_hash=self.gene_space.hash(),
             optimizer_config=self._optimizer_config(),
+            optimizer_config_hash=self.config_hash(),
+            reproducibility_status=status,
+            reproducibility_notes=notes,
+            runtime_hooks=cmaes_runtime_hooks(self),
         )
 
     def _generation_history(self, generation_history: GenerationHistory) -> EventHistory:

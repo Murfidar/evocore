@@ -67,9 +67,12 @@ def test_cma_generation_loop_result_attaches_history_and_reproducibility():
     assert result.reproducibility.optimizer_type == "CMAESOptimizer"
     assert result.reproducibility.gene_space_signature == space.signature()
     assert result.reproducibility.gene_space_hash == space.hash()
-    assert result.reproducibility.optimizer_config["population_size"] == 6
-    assert result.reproducibility.optimizer_config["max_generations"] == 2
-    assert "generations" not in result.reproducibility.optimizer_config
+    assert result.reproducibility.optimizer_config_hash == engine.config_hash()
+    assert result.reproducibility.reproducibility_status == "full"
+    assert result.reproducibility.runtime_hooks == ()
+    assert result.reproducibility.optimizer_config["parameters"]["population_size"] == 6
+    assert result.reproducibility.optimizer_config["parameters"]["max_generations"] == 2
+    assert "generations" not in result.reproducibility.optimizer_config["parameters"]
 
 
 def test_cmaes_run_minimize_direction_returns_lowest_raw_fitness():
