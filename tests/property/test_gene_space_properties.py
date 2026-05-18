@@ -1,9 +1,9 @@
+import json
+
 from hypothesis import given
 from hypothesis import strategies as st
 
-from evocore.gene_space import GeneDef, GeneSpace
-from evocore.individual import Individual
-from evocore.operators import OperatorSet
+from evocore.search_space import Gene, GeneSpace, OperatorCodec, Solution
 
 GENE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
@@ -42,7 +42,7 @@ def valid_numeric_gene_specs(draw):
             allow_infinity=False,
         )
     )
-    return GeneDef(name, kind, low, high, sigma=sigma)
+    return Gene(name, kind, low, high, sigma=sigma)
 
 
 @given(valid_numeric_gene_specs())
@@ -70,13 +70,13 @@ def test_named_params_match_gene_order(kinds):
     for index, kind in enumerate(kinds):
         name = f"gene_{index}"
         if kind == "float":
-            genes.append(GeneDef(name, "float", -10.0, 10.0))
+            genes.append(Gene(name, "float", -10.0, 10.0))
             values.append(float(index) / 10.0)
         elif kind == "int":
-            genes.append(GeneDef(name, "int", -10, 10))
+            genes.append(Gene(name, "int", -10, 10))
             values.append(index - 5)
         else:
-            genes.append(GeneDef(name, "bool"))
+            genes.append(Gene(name, "bool"))
             values.append(index % 2 == 0)
 
     space = GeneSpace(genes)
@@ -86,18 +86,18 @@ def test_named_params_match_gene_order(kinds):
 
 @given(st.lists(st.integers(min_value=-20, max_value=20), min_size=1, max_size=10))
 def test_individual_clone_preserves_genes_and_metadata(values):
-    ind = Individual(
+    ind = Solution(
         list(values),
-        fitness=1.25,
-        fitness_valid=True,
+        score=1.25,
+        score_valid=True,
         metadata={"params": {"x": 1}},
     )
 
     cloned = ind.clone()
 
-    assert cloned.genes == ind.genes
-    assert cloned.fitness == ind.fitness
-    assert cloned.fitness_valid is True
+    assert cloned.values == ind.values
+    assert cloned.score == ind.score
+    assert cloned.score_valid is True
     assert cloned.metadata == ind.metadata
     assert cloned is not ind
 
@@ -109,13 +109,68 @@ def test_individual_clone_preserves_genes_and_metadata(values):
 def test_operator_decode_restores_named_params(period, threshold):
     space = GeneSpace(
         [
-            GeneDef("period", "int", 0, 100),
-            GeneDef("threshold", "float", -1.0, 1.0),
+            Gene("period", "int", 0, 100),
+            Gene("threshold", "float", -1.0, 1.0),
         ]
     )
-    ops = OperatorSet(space, "sbx", "gaussian")
+    ops = OperatorCodec(space, "sbx", "gaussian")
 
-    ind = ops.decode_individual([float(period), threshold])
+    ind = ops.decode_solution([float(period), threshold])
 
-    assert ind.genes == [period, threshold]
+    assert ind.values == [period, threshold]
     assert ind.params == {"period": period, "threshold": threshold}
+
+
+@st.composite
+def valid_flat_gene_spaces(draw):
+    kinds = draw(st.lists(st.sampled_from(["float", "int", "bool"]), min_size=1, max_size=8))
+    genes = []
+    for index, kind in enumerate(kinds):
+        name = f"gene_{index}"
+        if kind == "float":
+            low = draw(
+                st.floats(
+                    min_value=-1000.0,
+                    max_value=999.0,
+                    allow_nan=False,
+                    allow_infinity=False,
+                )
+            )
+            fixed = draw(st.booleans())
+            if fixed:
+                high = low
+            else:
+                span = draw(
+                    st.floats(
+                        min_value=1e-6,
+                        max_value=1000.0,
+                        allow_nan=False,
+                        allow_infinity=False,
+                    )
+                )
+                high = low + span
+            genes.append(Gene(name, "float", low, high))
+        elif kind == "int":
+            low = draw(st.integers(min_value=-1000, max_value=999))
+            fixed = draw(st.booleans())
+            high = low if fixed else draw(st.integers(min_value=low + 1, max_value=low + 1000))
+            genes.append(Gene(name, "int", low, high))
+        else:
+            genes.append(Gene(name, "bool"))
+    return GeneSpace(genes)
+
+
+@given(valid_flat_gene_spaces())
+def test_gene_space_signature_json_round_trips(space):
+    signature = space.signature()
+
+    assert json.loads(space.to_json()) == signature
+    assert space.to_dict() == signature
+
+
+@given(valid_flat_gene_spaces())
+def test_gene_space_hash_is_stable_for_equivalent_flat_spaces(space):
+    equivalent = GeneSpace(list(space.genes), has_names=space.has_names)
+
+    assert equivalent.signature() == space.signature()
+    assert equivalent.hash() == space.hash()

@@ -1,39 +1,60 @@
 # API Reference
 
-::: evocore.gene_space
+::: evocore.search_space.GeneSpace
 
-::: evocore.individual
+::: evocore.Solution
 
-::: evocore.operators
+::: evocore.search_space.OperatorCodec
 
-::: evocore.stats
+::: evocore.results.GenerationHistory
 
-::: evocore.parallel
+::: evocore.core.parallel
 
-::: evocore.exceptions
+::: evocore.core.errors
 
-## vNext Expensive Optimization
+## Optimizer Lifecycle
 
-`Candidate.batch_id` groups candidates that came from the same `ask()` event.
-`EvaluationRecord.batch_id` may be supplied to make asynchronous evaluators explicit;
-when present, it must match the candidate batch. Batch IDs are especially useful when
-trusted records arrive in multiple `tell()` calls.
+`Optimizer` and `Evaluator` are structural protocols. Engines and evaluators conform by
+shape, without subclassing.
 
-::: evocore.evaluation.Candidate
+::: evocore.lifecycle.Optimizer
 
-::: evocore.evaluation.EvaluationRecord
+::: evocore.lifecycle.Evaluator
 
-::: evocore.evaluation.Rung
+::: evocore.lifecycle.Candidate
 
-::: evocore.evaluation.OptimizationTelemetry
+::: evocore.lifecycle.EvaluationRecord
 
-::: evocore.policies.MultiFidelityPolicy
+::: evocore.lifecycle.EvaluationContext
 
-::: evocore.scheduler.EvaluationScheduler
+::: evocore.lifecycle.UpdateResult
 
-::: evocore.advisors.InverseDistanceSurrogateAdvisor
+::: evocore.lifecycle.OptimizerStateSummary
 
-::: evocore.mixed_cma.IntegerMargin
+::: evocore.lifecycle.EvaluationStage
 
-::: evocore.mixed_cma.CategoricalState
+::: evocore.lifecycle.OptimizationTelemetry
 
+::: evocore.results.EventRecord
+
+::: evocore.results.EventHistory
+
+::: evocore.results.ReproducibilityMetadata
+
+::: evocore.lifecycle.BudgetPolicy
+
+::: evocore.lifecycle.BudgetScheduler
+
+::: evocore.surrogates.InverseDistanceAdvisor
+
+::: evocore.optimizers.cmaes.IntegerMarginDistribution
+
+::: evocore.optimizers.cmaes.CategoricalDistributionState
+
+::: evocore.optimizers.OptimizerConfig
+
+::: evocore.optimizers.RuntimeHookSignature
+
+::: evocore.optimizers.ConfigurableComponent
+
+::: evocore.optimizers.config_hash

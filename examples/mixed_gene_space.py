@@ -1,18 +1,22 @@
-from evocore import EvaluationRecord, Evaluator, GAEngine, GeneDef, GeneSpace
+from evocore import EvaluationRecord, Gene, GeneSpace, GeneticAlgorithmOptimizer
 
 
-class MixedEvaluator(Evaluator):
-    def evaluate(self, candidates, rung):
+class MixedEvaluator:
+    def evaluate(self, candidates, context):
+        stage = context.stage
+        if stage is None:
+            raise ValueError("MixedEvaluator requires a scheduled stage.")
         records = []
         for candidate in candidates:
             params = candidate.params or {}
             records.append(
                 EvaluationRecord(
                     candidate_id=candidate.candidate_id,
+                    batch_id=candidate.batch_id,
                     score=-abs(params["period"] - 21) - abs(params["threshold"] - 0.35),
-                    confidence=rung.confidence,
-                    rung=rung.name,
-                    cost=rung.budget,
+                    confidence=stage.confidence,
+                    stage=stage.name,
+                    cost=stage.budget,
                 )
             )
         return records
@@ -20,9 +24,11 @@ class MixedEvaluator(Evaluator):
 
 space = GeneSpace(
     [
-        GeneDef("period", "int", 5, 50, sigma=0.05),
-        GeneDef("threshold", "float", 0.0, 1.0),
+        Gene("period", "int", 5, 50, sigma=0.05),
+        Gene("threshold", "float", 0.0, 1.0),
     ]
 )
-result = GAEngine(space, population_size=60, generations=50, seed=7).run(MixedEvaluator())
-print(result.best_fitness, result.best_individual.params)
+result = GeneticAlgorithmOptimizer(space, population_size=60, max_generations=50, seed=7).run(
+    MixedEvaluator()
+)
+print(result.best_score, result.best_solution.params)

@@ -1,15 +1,17 @@
 from evocore import (
+    BudgetPolicy,
+    EvaluationContext,
     EvaluationRecord,
-    Evaluator,
-    GAEngine,
+    EvaluationStage,
     GeneSpace,
-    MultiFidelityPolicy,
-    Rung,
+    GeneticAlgorithmOptimizer,
 )
 
 
-class DeceptiveSphere(Evaluator):
-    def evaluate(self, candidates, rung):
+class DeceptiveSphere:
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.stage is not None
         records = []
         for candidate in candidates:
             true_score = -sum(float(value) ** 2 for value in candidate.genes)
@@ -17,30 +19,33 @@ class DeceptiveSphere(Evaluator):
             records.append(
                 EvaluationRecord(
                     candidate_id=candidate.candidate_id,
-                    score=cheap_score if rung.name == "cheap" else true_score,
-                    confidence=rung.confidence,
-                    rung=rung.name,
-                    cost=rung.budget,
+                    batch_id=candidate.batch_id,
+                    score=cheap_score if context.stage.name == "cheap" else true_score,
+                    confidence=context.stage.confidence,
+                    stage=context.stage.name,
+                    cost=context.stage.budget,
                 )
             )
         return records
 
 
 def test_vnext_multifidelity_benchmark_smoke() -> None:
-    policy = MultiFidelityPolicy(
-        rungs=[
-            Rung("cheap", budget=0.1, promote_fraction=0.5, confidence="partial"),
-            Rung("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+    policy = BudgetPolicy(
+        stages=[
+            EvaluationStage("cheap", budget=0.1, promote_fraction=0.5, confidence="partial"),
+            EvaluationStage("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
         ],
-        full_evaluation_budget=16,
+        max_evaluations=16,
         batch_size=8,
         audit_fraction=0.25,
     )
-    result = GAEngine(GeneSpace.uniform(-5.0, 5.0, 3), population_size=8, seed=11).run(
+    result = GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-5.0, 5.0, 3), population_size=8, seed=11
+    ).run(
         DeceptiveSphere(),
         policy=policy,
     )
 
     assert result.telemetry.candidates_full_evaluated == 16
     assert result.telemetry.candidates_partial_evaluated >= 16
-    assert result.best_individual.fitness_valid
+    assert result.best_solution.score_valid

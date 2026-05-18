@@ -1,0 +1,17 @@
+colorama>=0.4.6
+hypothesis>=6.152.7
+iniconfig>=2.3.0
+maturin>=1.13.1
+matplotlib>=3.10.9
+mkdocs>=1.6.1
+mkdocs-material>=9.7.6
+mkdocstrings>=1.0.4
+mkdocstrings-python>=2.0.3
+numpy>=2.4.4
+packaging>=26.2
+pandas>=3.0.3
+pluggy>=1.6.0
+pre-commit>=4.6.0
+pygments>=2.20.0
+pytest>=9.0.3
+ruff>=0.15.13

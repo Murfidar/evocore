@@ -28,6 +28,92 @@ Important surfaces:
 - User docs in `docs/site/` with MkDocs config in `mkdocs.yml`.
 - Release workflow and PyPI publication in `.github/workflows/`.
 
+## Local Environment
+
+Use the repository-local virtual environment for Python work whenever it exists.
+When verification, build, install, docs, or script instructions show
+`python -m ...`, run them through the `.venv` interpreter instead of a global
+Python:
+
+- Windows/PowerShell: `.\.venv\Scripts\python.exe -m ...`
+- POSIX shells: `./.venv/bin/python -m ...`
+
+Install Python dependencies into `.venv` unless the user explicitly asks for a
+different environment. If `.venv` is missing, broken, or points to an unavailable
+interpreter, report that before falling back to another Python or recreating the
+environment. Do not commit `.venv/` or other virtual environments.
+
+## Target Package Architecture
+
+EvoCore uses a domain-oriented Python package layout. New source changes should
+follow this architecture and avoid recreating old flat
+modules such as `evocore.ga`, `evocore.cmaes`, `evocore.gene_space`,
+`evocore.evaluation`, `evocore.policies`, `evocore.scheduler`, or
+`evocore.stats`.
+
+Target tree:
+
+```text
+evocore/
+  __init__.py                  # top-level convenience exports, new names only
+  _core.pyi                    # Rust extension type stubs
+  core/
+    errors.py                  # EvocoreError, ConfigurationError, FitnessError, warnings
+    serialization.py           # JSON-safe export and stable hashing helpers
+    parallel.py                # Thread/process evaluation helpers
+  search_space/
+    genes.py                   # Gene, GeneSpace, GeneKind, GeneValue
+    solutions.py               # Solution, SolutionSet
+    codec.py                   # OperatorCodec and Rust boundary encoding
+  lifecycle/
+    records.py                 # Candidate, EvaluationRecord, EvaluationContext, ScoreObservation
+    policies.py                # BudgetPolicy, EvaluationStage
+    scheduler.py               # BudgetScheduler
+    protocols.py               # Optimizer, Evaluator
+    telemetry.py               # OptimizationTelemetry, UpdateResult, OptimizerStateSummary
+    events.py                  # EventRecord, EventHistory, StopReason
+  results/
+    generation.py              # GenerationRecord, GenerationHistory
+    reproducibility.py         # ReproducibilityMetadata
+    run.py                     # OptimizationResult, OptimizationBatchResult
+  optimizers/
+    ga/
+      engine.py                # GeneticAlgorithmOptimizer public class
+      ask_tell.py              # GA ask/tell lifecycle and policy-driven execution
+      generation_loop.py       # GA generation-loop execution helpers
+      checkpointing.py         # GA checkpoint resume helpers
+      multi_run.py             # GA child seed derivation and multi-run execution
+      reproduction.py          # GA initialization, mutation, crossover, and selection helpers
+    cmaes/
+      engine.py                # CMAESOptimizer public class
+      ask_tell.py              # CMA-ES ask/tell lifecycle helpers
+      mixed.py                 # IntegerMarginDistribution, CategoricalDistributionState
+  callbacks/
+    __init__.py                # callback convenience exports only
+    base.py                    # Callback, GenerationInfo
+    checkpointing.py           # CheckpointCallback
+    metrics.py                 # MetricsLogger
+    progress.py                # ProgressBar
+    stopping.py                # EarlyStopping
+  surrogates/
+    __init__.py                # surrogate convenience exports only
+    inverse_distance.py        # InverseDistanceAdvisor
+    scoring.py                 # SurrogateScore
+```
+
+Public convenience imports from `evocore` should remain available, but should use
+the domain vocabulary. Prefer names such as `GeneticAlgorithmOptimizer`,
+`CMAESOptimizer`, `Gene`, `Solution`, `OptimizationResult`, `BudgetPolicy`,
+`EvaluationStage`, `UpdateResult`, and `OptimizerStateSummary`. Use `stage` for
+candidate/evaluation context fields, `events` for append-only event logs, and
+`optimizer_type` for optimizer identity. Do not introduce new public APIs with the
+old `Engine`, `RunResult`, `MultiRunResult`, `Rung`, `TellResult`, `Individual`,
+`Population`, `history`, `engine_type`, or public `fitness` naming unless a
+compatibility requirement is explicitly approved.
+
+Package `__init__.py` files are entrance/export surfaces. Put implementation in a
+focused sibling module and re-export it from `__init__.py`.
+
 ## Branch Workflow
 
 Before editing code or project setup:
@@ -131,6 +217,11 @@ Update `evocore/_core.pyi` whenever public Rust-backed exports or signatures cha
 - Follow the existing Python and Rust architecture and naming.
 - Prefer local helpers and established patterns over new abstractions.
 - Keep changes scoped to the task.
+- Keep implementation files focused and easy to review. When adding features or
+  changing behavior, avoid bloated modules; if a file is approaching roughly
+  1,000 lines or is mixing unrelated responsibilities, split the new code into
+  a focused sibling module and re-export it from the appropriate package surface
+  when needed.
 - Preserve deterministic seed behavior and checkpoint compatibility unless the task
   explicitly changes them.
 - Add or update tests for behavior changes.

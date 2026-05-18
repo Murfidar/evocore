@@ -11,7 +11,7 @@ fitness calls. The main differences were operator semantics:
 - Trading-Algo's DEAP path used uniform crossover, while the EvoCore adapter used SBX.
   SBX is useful for continuous real-coded search, but it averages parent alleles and is a poor
   semantic match for mixed float, integer, and categorical-by-integer chromosomes.
-- DEAP applied an outer per-individual mutation decision before its per-gene mutation decision.
+- DEAP applied an outer per-Solution mutation decision before its per-gene mutation decision.
   EvoCore only had the per-gene probability, so the Trading benchmark over-mutated offspring.
 - DEAP tournament selection samples aspirants with replacement. EvoCore sampled without
   replacement, increasing selection pressure and encouraging premature convergence.
@@ -25,7 +25,7 @@ Fresh standard snapshot command:
 ```bash
 python -m research_engine.main benchmark-ga \
   --mode snapshot \
-  --population-size 80 \
+  --SolutionSet-size 80 \
   --evaluation-budget 500 \
   --seed 42 \
   --gene-profile default \

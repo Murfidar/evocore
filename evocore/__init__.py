@@ -7,6 +7,7 @@ try:
 except _metadata.PackageNotFoundError:
     __version__ = "0.7.0"
 
+from evocore import _core
 from evocore._core import (
     OP_CMAES_ASK,
     OP_CROSSOVER,
@@ -20,7 +21,6 @@ from evocore._core import (
     IntegerIndividual,
     py_derive_seed,
 )
-from evocore.advisors import AdvisorScore, InverseDistanceSurrogateAdvisor
 from evocore.callbacks import (
     Callback,
     CheckpointCallback,
@@ -29,16 +29,7 @@ from evocore.callbacks import (
     MetricsLogger,
     ProgressBar,
 )
-from evocore.cmaes import CMAESEngine
-from evocore.evaluation import (
-    Candidate,
-    CandidateScore,
-    EvaluationRecord,
-    Evaluator,
-    OptimizationTelemetry,
-    Rung,
-)
-from evocore.exceptions import (
+from evocore.core import (
     CheckpointError,
     ConfigurationError,
     ConfigurationWarning,
@@ -47,19 +38,60 @@ from evocore.exceptions import (
     FitnessError,
     FitnessWarning,
     ParallelError,
+    ProcessParallel,
+    ThreadParallel,
 )
-from evocore.ga import EngineStateSummary, GAEngine, MultiRunResult, RunResult
-from evocore.gene_space import GeneDef, GeneSpace
-from evocore.individual import Individual, Population
-from evocore.mixed_cma import CategoricalState, IntegerMargin
-from evocore.operators import OperatorSet
-from evocore.parallel import ProcessParallel, ThreadParallel
-from evocore.policies import MultiFidelityPolicy
-from evocore.scheduler import EvaluationScheduler
-from evocore.stats import Logbook, LogEntry
+from evocore.lifecycle import (
+    BudgetPolicy,
+    BudgetScheduler,
+    Candidate,
+    CandidateOrigin,
+    CandidateStatus,
+    Direction,
+    EvaluationConfidence,
+    EvaluationContext,
+    EvaluationRecord,
+    EvaluationStage,
+    Evaluator,
+    OptimizationTelemetry,
+    Optimizer,
+    OptimizerStateSummary,
+    ScoreObservation,
+    UpdateResult,
+)
+from evocore.optimizers import (
+    ConfigurableComponent,
+    OptimizerConfig,
+    RuntimeHookSignature,
+    config_hash,
+)
+from evocore.optimizers.cmaes import (
+    CategoricalDistributionState,
+    CMAESOptimizer,
+    IntegerMarginDistribution,
+)
+from evocore.optimizers.ga import GeneticAlgorithmOptimizer
+from evocore.results import (
+    EventHistory,
+    EventRecord,
+    GenerationHistory,
+    GenerationRecord,
+    OptimizationBatchResult,
+    OptimizationResult,
+    ReproducibilityMetadata,
+)
+from evocore.search_space import (
+    Gene,
+    GeneKind,
+    GeneSpace,
+    GeneValue,
+    OperatorCodec,
+    Solution,
+    SolutionSet,
+)
+from evocore.surrogates import InverseDistanceAdvisor, SurrogateScore
 
 __all__ = [
-    # 1. SCREAMING_SNAKE_CASE (Constants)
     "OP_CMAES_ASK",
     "OP_CROSSOVER",
     "OP_CROSSOVER_PROB",
@@ -67,51 +99,66 @@ __all__ = [
     "OP_MULTI_RUN",
     "OP_MUTATION",
     "OP_SELECTION",
-    # 2. CamelCase (Classes)
-    "AdvisorScore",
     "BinaryIndividual",
-    "CMAESEngine",
+    "BudgetPolicy",
+    "BudgetScheduler",
+    "CMAESOptimizer",
     "Callback",
     "Candidate",
-    "CandidateScore",
-    "CategoricalState",
+    "CandidateOrigin",
+    "CandidateStatus",
+    "CategoricalDistributionState",
     "CheckpointCallback",
     "CheckpointError",
+    "ConfigurableComponent",
     "ConfigurationError",
     "ConfigurationWarning",
     "ConvergenceError",
+    "Direction",
     "EarlyStopping",
-    "EngineStateSummary",
+    "EvaluationConfidence",
+    "EvaluationContext",
     "EvaluationRecord",
-    "EvaluationScheduler",
+    "EvaluationStage",
     "Evaluator",
+    "EventHistory",
+    "EventRecord",
     "EvocoreError",
     "FitnessError",
     "FitnessWarning",
     "FloatIndividual",
-    "GAEngine",
-    "GeneDef",
+    "Gene",
+    "GeneKind",
     "GeneSpace",
+    "GeneValue",
+    "GenerationHistory",
     "GenerationInfo",
-    "Individual",
+    "GenerationRecord",
+    "GeneticAlgorithmOptimizer",
     "IntegerIndividual",
-    "IntegerMargin",
-    "InverseDistanceSurrogateAdvisor",
-    "LogEntry",
-    "Logbook",
+    "IntegerMarginDistribution",
+    "InverseDistanceAdvisor",
     "MetricsLogger",
-    "MultiFidelityPolicy",
-    "MultiRunResult",
-    "OperatorSet",
+    "OperatorCodec",
+    "OptimizationBatchResult",
+    "OptimizationResult",
     "OptimizationTelemetry",
+    "Optimizer",
+    "OptimizerConfig",
+    "OptimizerStateSummary",
     "ParallelError",
-    "Population",
     "ProcessParallel",
     "ProgressBar",
-    "RunResult",
-    "Rung",
+    "ReproducibilityMetadata",
+    "RuntimeHookSignature",
+    "ScoreObservation",
+    "Solution",
+    "SolutionSet",
+    "SurrogateScore",
     "ThreadParallel",
-    # 3. snake_case / dunders
+    "UpdateResult",
     "__version__",
+    "_core",
+    "config_hash",
     "py_derive_seed",
 ]
