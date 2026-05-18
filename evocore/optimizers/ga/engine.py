@@ -12,7 +12,7 @@ from evocore.core.errors import (
     ConfigurationError,
     ConfigurationWarning,
 )
-from evocore.core.serialization import json_safe, package_version
+from evocore.core.serialization import package_version
 from evocore.lifecycle import (
     Candidate,
     CandidateBatch,

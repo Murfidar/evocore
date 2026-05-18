@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Sequence
+from typing import Protocol
 
 from evocore.core.errors import ConfigurationError
 from evocore.optimizers.config import (
@@ -12,9 +13,24 @@ from evocore.optimizers.config import (
     callback_hook_signatures,
     reproducibility_from_hooks,
 )
+from evocore.search_space import GeneSpace
 
 
-def build_cmaes_config(optimizer: Any) -> OptimizerConfig:
+class _CMAESOptimizerLike(Protocol):
+    population_size: int
+    initial_mean: Sequence[float] | None
+    initial_sigma: float
+    max_generations: int
+    seed: int | None
+    direction: str
+    parallel: str
+    n_workers: int
+    track_diversity: bool
+    callbacks: Sequence[object]
+    gene_space: GeneSpace | None
+
+
+def build_cmaes_config(optimizer: _CMAESOptimizerLike) -> OptimizerConfig:
     """Build the canonical CMA-ES optimizer config."""
     return OptimizerConfig(
         optimizer_type="CMAESOptimizer",
@@ -38,19 +54,19 @@ def build_cmaes_config(optimizer: Any) -> OptimizerConfig:
     )
 
 
-def cmaes_runtime_hooks(optimizer: Any) -> tuple[RuntimeHookSignature, ...]:
+def cmaes_runtime_hooks(optimizer: _CMAESOptimizerLike) -> tuple[RuntimeHookSignature, ...]:
     """Return runtime hook signatures for a CMA-ES optimizer."""
     return callback_hook_signatures(optimizer.callbacks)
 
 
 def cmaes_reproducibility_status(
-    optimizer: Any,
+    optimizer: _CMAESOptimizerLike,
 ) -> tuple[ReproducibilityStatus, tuple[str, ...]]:
     """Return reproducibility status and notes for a CMA-ES optimizer."""
     return reproducibility_from_hooks(cmaes_runtime_hooks(optimizer))
 
 
-def validate_cmaes_compatibility(optimizer: Any) -> None:
+def validate_cmaes_compatibility(optimizer: _CMAESOptimizerLike) -> None:
     """Validate CMA-ES optimizer and gene-space compatibility."""
     if optimizer.gene_space is None:
         raise ConfigurationError(

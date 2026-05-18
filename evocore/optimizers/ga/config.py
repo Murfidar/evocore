@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Sequence
+from typing import Protocol
 
 from evocore.core.errors import ConfigurationError
 from evocore.optimizers.config import (
@@ -13,10 +14,38 @@ from evocore.optimizers.config import (
     reproducibility_from_hooks,
     stable_object_identity,
 )
-from evocore.search_space import OperatorCodec
+from evocore.search_space import GeneSpace, OperatorCodec
 
 
-def build_ga_config(optimizer: Any) -> OptimizerConfig:
+class _GAOptimizerLike(Protocol):
+    population_size: int
+    max_generations: int
+    seed: int | None
+    direction: str
+    elitism: int
+    max_evaluations: int | None
+    track_diversity: bool
+    parallel: str
+    n_workers: int
+    crossover: str
+    crossover_prob: float
+    crossover_eta: float
+    crossover_alpha: float
+    mutation: str
+    mutation_prob: float
+    mutation_individual_prob: float
+    mutation_sigma: float
+    mutation_sigma_schedule: str
+    mutation_sigma_end: float
+    selection: str
+    tournament_size: int
+    callbacks: Sequence[object]
+    process_initializer: object | None
+    process_initargs: Sequence[object]
+    gene_space: GeneSpace | None
+
+
+def build_ga_config(optimizer: _GAOptimizerLike) -> OptimizerConfig:
     """Build the canonical GA optimizer config."""
     return OptimizerConfig(
         optimizer_type="GeneticAlgorithmOptimizer",
@@ -60,7 +89,7 @@ def build_ga_config(optimizer: Any) -> OptimizerConfig:
     )
 
 
-def ga_runtime_hooks(optimizer: Any) -> tuple[RuntimeHookSignature, ...]:
+def ga_runtime_hooks(optimizer: _GAOptimizerLike) -> tuple[RuntimeHookSignature, ...]:
     """Return runtime hook signatures for a GA optimizer."""
     hooks = list(callback_hook_signatures(optimizer.callbacks))
     if optimizer.process_initializer is not None:
@@ -77,13 +106,13 @@ def ga_runtime_hooks(optimizer: Any) -> tuple[RuntimeHookSignature, ...]:
 
 
 def ga_reproducibility_status(
-    optimizer: Any,
+    optimizer: _GAOptimizerLike,
 ) -> tuple[ReproducibilityStatus, tuple[str, ...]]:
     """Return reproducibility status and notes for a GA optimizer."""
     return reproducibility_from_hooks(ga_runtime_hooks(optimizer))
 
 
-def validate_ga_compatibility(optimizer: Any) -> None:
+def validate_ga_compatibility(optimizer: _GAOptimizerLike) -> None:
     """Validate GA optimizer, operator, and gene-space compatibility."""
     if optimizer.gene_space is None:
         raise ConfigurationError(

@@ -272,9 +272,6 @@ def test_ga_validate_compatibility_is_public():
         )
 
 
-from evocore import CMAESOptimizer
-
-
 def test_cmaes_default_and_explicit_default_configs_match():
     space = GeneSpace.uniform(-2.0, 2.0, 3)
     default = CMAESOptimizer(space)

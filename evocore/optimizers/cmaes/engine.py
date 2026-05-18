@@ -12,7 +12,7 @@ from evocore import _core
 from evocore.callbacks import Callback, GenerationInfo
 from evocore.core.errors import ConfigurationError, FitnessError
 from evocore.core.parallel import ThreadParallel
-from evocore.core.serialization import json_safe, package_version
+from evocore.core.serialization import package_version
 from evocore.lifecycle import (
     Candidate,
     CandidateBatch,
