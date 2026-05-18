@@ -7,6 +7,11 @@ from typing import Any
 
 from evocore.core.serialization import canonical_json_hash, json_safe
 from evocore.lifecycle.records import Direction
+from evocore.optimizers.config import (
+    ReproducibilityStatus,
+    RuntimeHookSignature,
+    config_hash,
+)
 from evocore.search_space import GeneSpace
 
 
@@ -21,7 +26,19 @@ class ReproducibilityMetadata:
     gene_space_signature: dict[str, Any]
     gene_space_hash: str
     optimizer_config: dict[str, Any]
+    optimizer_config_hash: str | None = None
+    reproducibility_status: ReproducibilityStatus = "full"
+    reproducibility_notes: tuple[str, ...] = ()
+    runtime_hooks: tuple[RuntimeHookSignature, ...] = ()
     extension: dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.optimizer_config_hash is None:
+            object.__setattr__(
+                self,
+                "optimizer_config_hash",
+                config_hash(self.optimizer_config),
+            )
 
     def to_dict(self) -> dict[str, Any]:
         """Export reproducibility metadata as JSON-safe stable fields."""
@@ -34,6 +51,10 @@ class ReproducibilityMetadata:
                 "gene_space_signature": self.gene_space_signature,
                 "gene_space_hash": self.gene_space_hash,
                 "optimizer_config": self.optimizer_config,
+                "optimizer_config_hash": self.optimizer_config_hash,
+                "reproducibility_status": self.reproducibility_status,
+                "reproducibility_notes": self.reproducibility_notes,
+                "runtime_hooks": [hook.to_dict() for hook in self.runtime_hooks],
                 "extension": self.extension,
             }
         )

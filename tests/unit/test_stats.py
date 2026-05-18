@@ -2,6 +2,7 @@ import pytest
 
 from evocore import Gene, GeneSpace
 from evocore.core.errors import ConfigurationError
+from evocore.optimizers.config import RuntimeHookSignature, config_hash
 from evocore.results import (
     EventHistory,
     EventRecord,
@@ -277,6 +278,18 @@ def test_gene_space_hash_is_stable_for_equivalent_spaces():
 
 
 def test_reproducibility_metadata_to_dict_is_json_safe():
+    optimizer_config = {
+        "schema_version": 1,
+        "optimizer_type": "GeneticAlgorithmOptimizer",
+        "parameters": {"population_size": 8},
+        "components": {"callbacks": {"not", "serialized"}},
+    }
+    hook = RuntimeHookSignature(
+        hook_type="artifact",
+        identity="evocore.callbacks.MetricsLogger",
+        config={"path": {"b", "a"}},
+        reproducibility="configured",
+    )
     metadata = ReproducibilityMetadata(
         evocore_version="0.7.0",
         optimizer_type="GeneticAlgorithmOptimizer",
@@ -284,7 +297,8 @@ def test_reproducibility_metadata_to_dict_is_json_safe():
         direction="maximize",
         gene_space_signature={"genes": [{"name": "x", "kind": "float"}]},
         gene_space_hash="abc123",
-        optimizer_config={"population_size": 8, "callbacks": {"not", "serialized"}},
+        optimizer_config=optimizer_config,
+        runtime_hooks=(hook,),
     )
 
     assert metadata.to_dict() == {
@@ -294,6 +308,44 @@ def test_reproducibility_metadata_to_dict_is_json_safe():
         "direction": "maximize",
         "gene_space_signature": {"genes": [{"kind": "float", "name": "x"}]},
         "gene_space_hash": "abc123",
-        "optimizer_config": {"callbacks": ["not", "serialized"], "population_size": 8},
+        "optimizer_config": {
+            "components": {"callbacks": ["not", "serialized"]},
+            "optimizer_type": "GeneticAlgorithmOptimizer",
+            "parameters": {"population_size": 8},
+            "schema_version": 1,
+        },
+        "optimizer_config_hash": config_hash(optimizer_config),
+        "reproducibility_status": "full",
+        "reproducibility_notes": [],
+        "runtime_hooks": [
+            {
+                "hook_type": "artifact",
+                "identity": "evocore.callbacks.MetricsLogger",
+                "config": {"path": ["a", "b"]},
+                "reproducibility": "configured",
+                "notes": [],
+            }
+        ],
         "extension": {},
     }
+
+
+def test_reproducibility_metadata_accepts_explicit_partial_status():
+    metadata = ReproducibilityMetadata(
+        evocore_version="0.7.0",
+        optimizer_type="GeneticAlgorithmOptimizer",
+        seed=42,
+        direction="maximize",
+        gene_space_signature={"genes": []},
+        gene_space_hash="abc123",
+        optimizer_config={"schema_version": 1},
+        optimizer_config_hash="explicit-hash",
+        reproducibility_status="partial",
+        reproducibility_notes=("process_initializer is opaque.",),
+    )
+
+    payload = metadata.to_dict()
+
+    assert payload["optimizer_config_hash"] == "explicit-hash"
+    assert payload["reproducibility_status"] == "partial"
+    assert payload["reproducibility_notes"] == ["process_initializer is opaque."]
