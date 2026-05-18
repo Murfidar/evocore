@@ -217,6 +217,11 @@ Update `evocore/_core.pyi` whenever public Rust-backed exports or signatures cha
 - Follow the existing Python and Rust architecture and naming.
 - Prefer local helpers and established patterns over new abstractions.
 - Keep changes scoped to the task.
+- Keep implementation files focused and easy to review. When adding features or
+  changing behavior, avoid bloated modules; if a file is approaching roughly
+  1,000 lines or is mixing unrelated responsibilities, split the new code into
+  a focused sibling module and re-export it from the appropriate package surface
+  when needed.
 - Preserve deterministic seed behavior and checkpoint compatibility unless the task
   explicitly changes them.
 - Add or update tests for behavior changes.
