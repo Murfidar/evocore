@@ -74,3 +74,19 @@ json_text = space.to_json(indent=2)
 
 This contract is intentionally flat. Categorical, permutation, conditional, and
 multi-variable spaces are not part of this slice.
+
+## Gene-Space Hash Versus Optimizer Config Hash
+
+`GeneSpace.hash()` identifies the search-space structure: gene order, names, kinds,
+bounds, sigma values, fixed-gene metadata, and naming mode. Optimizers expose a separate
+`config_hash()` for algorithm configuration.
+
+Use both hashes when comparing runs:
+
+```python
+same_space = left_result.reproducibility.gene_space_hash == right_result.reproducibility.gene_space_hash
+same_optimizer = (
+    left_result.reproducibility.optimizer_config_hash
+    == right_result.reproducibility.optimizer_config_hash
+)
+```

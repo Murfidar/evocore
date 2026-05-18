@@ -51,3 +51,10 @@ shape, without subclassing.
 
 ::: evocore.optimizers.cmaes.CategoricalDistributionState
 
+::: evocore.optimizers.OptimizerConfig
+
+::: evocore.optimizers.RuntimeHookSignature
+
+::: evocore.optimizers.ConfigurableComponent
+
+::: evocore.optimizers.config_hash

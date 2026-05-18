@@ -22,6 +22,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   gene-space signature/hash, and serializable optimizer configuration.
 - `GeneSpace` now owns stable `signature()`, `hash()`, `to_dict()`, `to_json()`,
   and `validate_genes(...)` helpers for the flat search-space contract.
+- Public optimizer configuration signatures and hashes for `GeneticAlgorithmOptimizer`
+  and `CMAESOptimizer`, with hook-aware reproducibility metadata.
 
 ### Changed
 
@@ -72,6 +74,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   callers pass `include_runtime=True`.
 - Run reproducibility metadata now uses the canonical `GeneSpace` signature and hash,
   including `schema_version` and per-gene `is_fixed` metadata.
+- Run reproducibility metadata now separates optimizer config hash, gene-space hash,
+  reproducibility status, notes, and runtime hook signatures.
 
 ### Fixed
 

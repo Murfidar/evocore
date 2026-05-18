@@ -60,3 +60,25 @@ Runtime timing is excluded from deterministic exports by default. Pass
 ::: evocore.results.OptimizationResult
 
 ::: evocore.results.OptimizationBatchResult
+
+## Configuration Identity
+
+`GeneticAlgorithmOptimizer` exposes a stable configuration signature for comparing
+reproducible optimizer setup:
+
+```python
+from evocore import GeneSpace, GeneticAlgorithmOptimizer
+
+space = GeneSpace.uniform(-5.0, 5.0, 4)
+optimizer = GeneticAlgorithmOptimizer(space, population_size=64, seed=42)
+
+signature = optimizer.config_signature()
+config_hash = optimizer.config_hash()
+optimizer.validate_compatibility()
+```
+
+The config hash covers algorithm-defining fields such as seed, direction, population
+size, crossover, mutation, mutation schedule, selection, elitism, and budget caps.
+Runtime hooks such as progress bars, metrics paths, checkpoint paths, and process
+initializers are recorded in reproducibility metadata rather than mixed into the core
+config hash.

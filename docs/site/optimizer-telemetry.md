@@ -22,3 +22,24 @@ payload or `to_json()` for deterministic JSON with sorted keys.
 Cached evaluation records are state-eligible but do not count as fresh full evaluations.
 They are visible through `OptimizationTelemetry.candidates_cached`,
 `UpdateResult.cached_count`, and event history rows with `confidence="cached"`.
+
+## Optimizer Config Reproducibility
+
+Run results include hook-aware optimizer configuration metadata:
+
+```python
+result = optimizer.run(evaluator)
+metadata = result.reproducibility
+
+metadata.optimizer_config
+metadata.optimizer_config_hash
+metadata.reproducibility_status
+metadata.reproducibility_notes
+metadata.runtime_hooks
+```
+
+`optimizer_config_hash` hashes only the canonical optimizer configuration. Runtime hooks
+are listed separately. Known artifact hooks such as metrics loggers and progress bars are
+recorded as configured hooks. Opaque environment hooks such as process initializers mark
+the metadata as partially reproducible because EvoCore cannot prove their behavior from
+configuration alone.
