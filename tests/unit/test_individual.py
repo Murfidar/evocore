@@ -9,18 +9,18 @@ def test_individual_params_property():
 def test_population_best_ignores_none_fitness():
     pop = SolutionSet(
         [
-            Solution([1.0], fitness=None),
-            Solution([2.0], fitness=5.0),
-            Solution([3.0], fitness=2.0),
+            Solution([1.0], score=None),
+            Solution([2.0], score=5.0),
+            Solution([3.0], score=2.0),
         ]
     )
-    assert pop.best()[0].genes == [2.0]
+    assert pop.best()[0].values == [2.0]
 
 
 def test_population_mean_and_std():
-    pop = SolutionSet([Solution([0], fitness=1.0), Solution([1], fitness=3.0)])
-    assert pop.mean_fitness() == 2.0
-    assert pop.std_fitness() == 1.0
+    pop = SolutionSet([Solution([0], score=1.0), Solution([1], score=3.0)])
+    assert pop.mean_score() == 2.0
+    assert pop.std_score() == 1.0
 
 
 def test_population_diversity_bool_as_numeric():

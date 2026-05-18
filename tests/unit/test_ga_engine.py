@@ -57,7 +57,7 @@ def full_policy(max_evaluations: int, batch_size: int = 8) -> BudgetPolicy:
 
 
 def make_result(seed: int, fitness: float) -> OptimizationResult:
-    ind = Solution([fitness], fitness=fitness, fitness_valid=True)
+    ind = Solution([fitness], score=fitness, score_valid=True)
     return OptimizationResult(
         best_solution=ind,
         best_score=fitness,
@@ -279,7 +279,7 @@ def test_tuple_fitness_stores_metrics():
     assert fitnesses == [1.5]
     assert nan_count == 0
     assert ind.metadata["metrics"] == {"sharpe": 2.0}
-    assert ind.fitness_valid is True
+    assert ind.score_valid is True
 
 
 def test_non_finite_fitness_raises() -> None:
@@ -291,8 +291,8 @@ def test_non_finite_fitness_raises() -> None:
     with pytest.raises(FitnessError, match="finite"):
         engine._evaluate_all([ind], lambda _ind: float("nan"), gen=0)
 
-    assert ind.fitness is None
-    assert ind.fitness_valid is False
+    assert ind.score is None
+    assert ind.score_valid is False
 
 
 def test_fitness_exception_wrapped():
@@ -404,7 +404,7 @@ def test_ga_generation_loop_result_includes_generation_history():
 
     result = engine._run_from_population(
         engine._initial_population(),
-        lambda ind: -sum(float(v) ** 2 for v in ind.genes),
+        lambda ind: -sum(float(v) ** 2 for v in ind.values),
         start_generation=0,
     )
 
@@ -437,7 +437,7 @@ def test_ga_run_with_callback_generation_tracking():
     )
 
     def sphere_fn(ind):
-        return -sum(x * x for x in ind.genes)
+        return -sum(x * x for x in ind.values)
 
     pop = engine._initial_population()
     engine._run_from_population(pop, sphere_fn, start_generation=0)
@@ -462,7 +462,7 @@ def test_track_diversity_via_internal_run():
     )
 
     def sphere_fn(ind):
-        return -sum(x * x for x in ind.genes)
+        return -sum(x * x for x in ind.values)
 
     off_result = off._run_from_population(off._initial_population(), sphere_fn, start_generation=0)
     on_result = on._run_from_population(on._initial_population(), sphere_fn, start_generation=0)
@@ -478,7 +478,7 @@ def test_elitism_caches_best_solution_via_internal_run():
     )
 
     def sphere_fn(ind):
-        return -sum(x * x for x in ind.genes)
+        return -sum(x * x for x in ind.values)
 
     result = engine._run_from_population(
         engine._initial_population(), sphere_fn, start_generation=0
@@ -613,8 +613,8 @@ def test_ga_run_preserves_fixed_numeric_genes_in_full_genome():
 
     assert result.n_evaluations == 40
     for solution in result.final_solutions:
-        assert solution.genes[0] == 2
-        assert solution.genes[1] == 0.5
+        assert solution.values[0] == 2
+        assert solution.values[1] == 0.5
 
 
 def test_ga_max_evaluations_stops_at_budget():
@@ -651,7 +651,7 @@ def test_ga_max_evaluations_stops_exactly_at_partial_batch():
     assert result.n_evaluations == 11
     assert result.stop_reason == "max_evaluations"
     assert not hasattr(result, "budget_reached")
-    assert all(ind.fitness_valid for ind in result.final_solutions)
+    assert all(ind.score_valid for ind in result.final_solutions)
 
 
 def test_ga_rejects_non_positive_max_evaluations():
@@ -684,7 +684,7 @@ def test_ga_generation_loop_reports_max_generations_and_run_stop_event():
 
     result = engine._run_from_population(
         engine._initial_population(),
-        lambda ind: -sum(float(v) ** 2 for v in ind.genes),
+        lambda ind: -sum(float(v) ** 2 for v in ind.values),
         start_generation=0,
     )
 
@@ -715,7 +715,7 @@ def test_ga_callback_stop_precedes_max_evaluations():
 
     result = engine._run_from_population(
         engine._initial_population(),
-        lambda ind: -sum(float(v) ** 2 for v in ind.genes),
+        lambda ind: -sum(float(v) ** 2 for v in ind.values),
         start_generation=0,
     )
 

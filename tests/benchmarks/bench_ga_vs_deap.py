@@ -7,7 +7,7 @@ from tests.vnext_helpers import IndividualEvaluator
 
 
 def sphere(ind):
-    return -sum(x * x for x in ind.genes)
+    return -sum(x * x for x in ind.values)
 
 
 def test_evocore_ga_wall_time_smoke():

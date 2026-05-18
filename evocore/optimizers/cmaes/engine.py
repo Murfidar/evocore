@@ -17,14 +17,12 @@ from evocore.lifecycle import (
     Candidate,
     CandidateBatch,
     Direction,
-    EvaluationRecord,
     OptimizationTelemetry,
     OptimizerStateSummary,
-    UpdateResult,
-    batch_id_from_seed,
     is_state_update_confidence,
     score_for_direction,
 )
+from evocore.optimizers.cmaes.ask_tell import CMAESAskTellMixin
 from evocore.results import (
     EventHistory,
     EventRecord,
@@ -40,7 +38,7 @@ from evocore.search_space import GeneSpace, OperatorCodec, Solution, SolutionSet
 logger = logging.getLogger(__name__)
 
 
-class CMAESOptimizer:
+class CMAESOptimizer(CMAESAskTellMixin):
     """Run covariance matrix adaptation evolution strategy optimization.
 
     Args:
@@ -96,7 +94,7 @@ class CMAESOptimizer:
             raise ConfigurationError(
                 "CMAESOptimizer does not support parallel='process'.\n"
                 "  Reason: the internal CMA-ES covariance state (a PyO3 Rust object) is not picklable.\n"
-                "  Fix: use parallel='thread' if your fitness function releases the GIL, or parallel='none'.\n"
+                "  Fix: use parallel='thread' if your objective function releases the GIL, or parallel='none'.\n"
                 "  Note: parallel='process' is supported by GeneticAlgorithmOptimizer, not CMAESOptimizer."
             )
         if parallel not in ("none", "thread"):
@@ -197,15 +195,15 @@ class CMAESOptimizer:
             rounded.append(clamped)
         return rounded
 
-    def _decode_individual(
+    def _decode_solution(
         self,
         genes_f64: Sequence[float],
-        fitness: float | None = None,
+        score: float | None = None,
     ) -> Solution:
-        return self.operators.decode_individual(
+        return self.operators.decode_solution(
             genes_f64,
-            fitness=fitness,
-            fitness_valid=fitness is not None,
+            score=score,
+            score_valid=score is not None,
         )
 
     def _normalise_fitness_result(
@@ -218,25 +216,25 @@ class CMAESOptimizer:
         metrics = {}
         if isinstance(result, tuple):
             if len(result) != 2 or not isinstance(result[1], dict):
-                raise FitnessError("fitness_fn tuple return must be (float, dict).")
+                raise FitnessError("objective_fn tuple return must be (float, dict).")
             result, metrics = result
 
         try:
             fitness = float(result)
         except (TypeError, ValueError) as exc:
             raise FitnessError(
-                f"fitness_fn must return a float, got {type(result)!r} at generation {gen}, index {idx}."
+                f"objective_fn must return a float, got {type(result)!r} at generation {gen}, index {idx}."
             ) from exc
 
         ind.metadata["metrics"] = dict(metrics)
         if not math.isfinite(fitness):
             raise FitnessError(
-                f"fitness_fn must return a finite float at generation {gen}, index {idx}; "
+                f"objective_fn must return a finite float at generation {gen}, index {idx}; "
                 f"got {fitness!r}."
             )
 
-        ind.fitness = fitness
-        ind.fitness_valid = True
+        ind.score = fitness
+        ind.score_valid = True
         return fitness, 0
 
     def _fitness_comparison_score(self, fitness: float | None) -> float:
@@ -250,13 +248,13 @@ class CMAESOptimizer:
     def _best_population_individual(self, solutions: SolutionSet) -> Solution:
         return max(
             solutions,
-            key=lambda solution: self._fitness_comparison_score(solution.fitness),
+            key=lambda solution: self._fitness_comparison_score(solution.score),
         )
 
     def _evaluate_all(
         self,
         individuals: Sequence[Solution],
-        fitness_fn: Callable[[Solution], float | tuple[float, dict]],
+        objective_fn: Callable[[Solution], float | tuple[float, dict]],
         gen: int,
     ) -> tuple[list[float], int]:
         if self.parallel == "thread":
@@ -267,20 +265,20 @@ class CMAESOptimizer:
                 len(individuals),
             )
             try:
-                raw_results = ThreadParallel(self.n_workers).evaluate(individuals, fitness_fn)
+                raw_results = ThreadParallel(self.n_workers).evaluate(individuals, objective_fn)
             except Exception as exc:
                 raise FitnessError(
-                    f"fitness_fn raised {type(exc).__name__} during thread evaluation at generation {gen}. "
+                    f"objective_fn raised {type(exc).__name__} during thread evaluation at generation {gen}. "
                     f"Original error: {exc}"
                 ) from exc
         else:
             raw_results = []
             for idx, ind in enumerate(individuals):
                 try:
-                    raw_results.append(fitness_fn(ind))
+                    raw_results.append(objective_fn(ind))
                 except Exception as exc:
                     raise FitnessError(
-                        f"fitness_fn raised {type(exc).__name__} for Solution at generation {gen}, index {idx}. "
+                        f"objective_fn raised {type(exc).__name__} for Solution at generation {gen}, index {idx}. "
                         f"Original error: {exc}"
                     ) from exc
 
@@ -310,192 +308,6 @@ class CMAESOptimizer:
                 self._bounds_list,
             )
         return self._state
-
-    def _candidate_and_batch_for_record(
-        self, record: EvaluationRecord
-    ) -> tuple[Candidate, CandidateBatch]:
-        candidate = self._candidates_by_id.get(record.candidate_id)
-        if candidate is None:
-            raise FitnessError(f"tell() received unknown candidate_id: {record.candidate_id!r}")
-        if record.batch_id is not None and record.batch_id not in self._batches_by_id:
-            raise FitnessError(f"tell() received unknown batch_id: {record.batch_id!r}")
-        batch = self._batches_by_id.get(candidate.batch_id)
-        if batch is None:
-            raise FitnessError(f"tell() received unknown batch_id: {candidate.batch_id!r}")
-        return candidate, batch
-
-    def _apply_record_confidence(
-        self,
-        candidate: Candidate,
-        record: EvaluationRecord,
-        trusted_records: list[EvaluationRecord],
-    ) -> str:
-        if is_state_update_confidence(record.confidence) and (
-            self.best_candidate is None
-            or candidate.state_comparison_score(self.direction)
-            > self.best_candidate.state_comparison_score(self.direction)
-        ):
-            self.best_candidate = candidate
-        if record.confidence == "trusted_full":
-            trusted_records.append(record)
-            self.vnext_telemetry.record_full(1, stage=record.stage, cost=record.cost)
-            return "trusted"
-        if record.confidence == "cached":
-            self.vnext_telemetry.record_cached(1, stage=record.stage, cost=record.cost)
-            return "cached"
-        if record.confidence == "partial":
-            self.vnext_telemetry.record_partial(1, stage=record.stage, cost=record.cost)
-            return "partial"
-        if record.confidence == "surrogate":
-            self.vnext_telemetry.record_screened(1)
-            return "surrogate"
-        self.vnext_telemetry.record_eliminated(1, stage=record.stage)
-        return "rejected"
-
-    def _consume_complete_batch(self, batch: CandidateBatch) -> bool:
-        ordered_records = batch.ordered_state_update_records()
-        if ordered_records is None or batch.consumed:
-            return False
-        samples = []
-        fitnesses = []
-        for record in ordered_records:
-            sample = batch.continuous_samples_by_id.get(record.candidate_id)
-            if sample is None:
-                raise FitnessError(
-                    f"missing continuous sample for candidate_id {record.candidate_id!r}."
-                )
-            samples.append(sample)
-            if record.score is None:
-                raise FitnessError(
-                    f"trusted_full record for candidate_id {record.candidate_id!r} is missing score."
-                )
-            fitnesses.append(score_for_direction(float(record.score), self.direction))
-        self._ensure_state().tell(samples, fitnesses)
-        batch.consumed = True
-        return True
-
-    def _append_ask_events(self, candidates: Sequence[Candidate]) -> None:
-        """Record ask events for proposed CMA candidates."""
-        for candidate in candidates:
-            self.events.append(
-                EventRecord(
-                    event_index=len(self.events),
-                    event_type="ask",
-                    batch_id=candidate.batch_id,
-                    candidate_id=candidate.candidate_id,
-                    candidate_hash=candidate.candidate_hash(),
-                    generation=candidate.generation,
-                    origin=candidate.origin,
-                    parents=tuple(candidate.parents),
-                    genes=tuple(candidate.genes),
-                    params=dict(candidate.params) if candidate.params is not None else None,
-                    metadata=dict(candidate.metadata),
-                )
-            )
-
-    def _append_tell_event(self, candidate: Candidate, record: EvaluationRecord) -> None:
-        """Record a tell event after candidate state has been updated."""
-        raw_score = float(record.score) if record.score is not None else None
-        comparison_score = (
-            score_for_direction(raw_score, self.direction)
-            if raw_score is not None and math.isfinite(raw_score)
-            else None
-        )
-        self.events.append(
-            EventRecord(
-                event_index=len(self.events),
-                event_type="tell",
-                batch_id=candidate.batch_id,
-                candidate_id=candidate.candidate_id,
-                candidate_hash=candidate.candidate_hash(),
-                generation=candidate.generation,
-                stage=record.stage,
-                confidence=record.confidence,
-                raw_score=raw_score,
-                comparison_score=comparison_score,
-                cost=record.cost,
-                status=candidate.status,
-                origin=candidate.origin,
-                parents=tuple(candidate.parents),
-                genes=tuple(candidate.genes),
-                params=dict(candidate.params) if candidate.params is not None else None,
-                metrics=dict(record.metrics),
-                metadata=dict(record.metadata),
-            )
-        )
-
-    def ask(self, n: int | None = None) -> list[Candidate]:
-        """Return a CMA candidate batch."""
-        if n is not None and int(n) != self.population_size:
-            raise ConfigurationError(
-                "CMAESOptimizer.ask currently requires n to equal population_size."
-            )
-        state = self._ensure_state()
-        event_index = self._event_index
-        batch_id = batch_id_from_seed(self.seed, event_index)
-        samples_continuous = state.ask(self.seed, event_index)
-        samples_discrete = [self._apply_bounds_and_round(sample) for sample in samples_continuous]
-        candidates: list[Candidate] = []
-        continuous_samples_by_id: dict[str, list[float]] = {}
-        for index, sample in enumerate(samples_discrete):
-            solution = self._decode_individual(sample)
-            candidate_id = _core.candidate_id(self.seed, event_index, index)
-            candidate = Candidate(
-                candidate_id=candidate_id,
-                genes=list(solution.genes),
-                batch_id=batch_id,
-                params=solution.params,
-                origin="cma_sample",
-                event_index=event_index,
-            )
-            continuous_samples_by_id[candidate_id] = list(samples_continuous[index])
-            self._candidates_by_id[candidate_id] = candidate
-            candidates.append(candidate)
-        self._batches_by_id[batch_id] = CandidateBatch(
-            batch_id=batch_id,
-            candidate_ids=tuple(candidate.candidate_id for candidate in candidates),
-            continuous_samples_by_id=continuous_samples_by_id,
-        )
-        self._event_index += 1
-        self.vnext_telemetry.record_proposed_candidates(candidates)
-        self._append_ask_events(candidates)
-        return candidates
-
-    def tell(self, records: Sequence[EvaluationRecord]) -> UpdateResult:
-        """Update CMA state from trusted evaluation records."""
-        trusted_records: list[EvaluationRecord] = []
-        counts = {"partial": 0, "surrogate": 0, "cached": 0, "rejected": 0}
-        touched_batch_ids: set[str] = set()
-        consumed_batch_ids: set[str] = set()
-        for record in records:
-            candidate, batch = self._candidate_and_batch_for_record(record)
-            batch.accept_record(record, reject_consumed_state_record=True)
-            touched_batch_ids.add(batch.batch_id)
-            candidate.apply_record(record)
-            self._append_tell_event(candidate, record)
-            confidence = self._apply_record_confidence(candidate, record, trusted_records)
-            if confidence in counts:
-                counts[confidence] += 1
-
-        for batch_id in touched_batch_ids:
-            batch = self._batches_by_id[batch_id]
-            if self._consume_complete_batch(batch):
-                consumed_batch_ids.add(batch.batch_id)
-
-        best_candidate_id, best_score = self._best_candidate_id_and_score()
-        return UpdateResult(
-            accepted_count=len(records),
-            trusted_count=len(trusted_records),
-            partial_count=counts["partial"],
-            surrogate_count=counts["surrogate"],
-            cached_count=counts["cached"],
-            rejected_count=counts["rejected"],
-            best_candidate_id=best_candidate_id,
-            best_score=best_score,
-            consumed_batch_ids=tuple(sorted(consumed_batch_ids)),
-            pending_batch_ids=self._pending_batch_ids(),
-            telemetry=self.vnext_telemetry,
-        )
 
     def _optimizer_config(self) -> dict[str, Any]:
         """Return public serializable CMA constructor configuration."""
@@ -541,22 +353,22 @@ class CMAESOptimizer:
         return history
 
     def run(
-        self, fitness_fn: Callable[[Solution], float | tuple[float, dict]]
+        self, objective_fn: Callable[[Solution], float | tuple[float, dict]]
     ) -> OptimizationResult:
         """Run one CMA-ES optimization.
 
         Args:
-            fitness_fn: Callable receiving an `Solution` and returning either a fitness
-                float or `(fitness, metrics_dict)`.
+            objective_fn: Callable receiving a `Solution` and returning either a score
+                float or `(score, metrics_dict)`.
 
         Returns:
             Run result containing the best Solution, final SolutionSet, GenerationHistory, and timing.
 
         Raises:
-            FitnessError: If the fitness function raises or returns an invalid value.
+            FitnessError: If the objective function raises or returns an invalid value.
 
         Warns:
-            FitnessWarning: When NaN or Inf fitness values are assigned `-inf`.
+            FitnessWarning: When NaN or Inf score values are assigned `-inf`.
         """
         self._fitness_warning_emitted = False
         self._bind_callbacks()
@@ -587,8 +399,8 @@ class CMAESOptimizer:
             samples_discrete = [
                 self._apply_bounds_and_round(sample) for sample in samples_continuous
             ]
-            individuals = [self._decode_individual(sample) for sample in samples_discrete]
-            fitnesses, nan_count = self._evaluate_all(individuals, fitness_fn, gen)
+            individuals = [self._decode_solution(sample) for sample in samples_discrete]
+            fitnesses, nan_count = self._evaluate_all(individuals, objective_fn, gen)
             n_evaluations += len(individuals)
             state.tell(
                 samples_continuous,
@@ -605,9 +417,9 @@ class CMAESOptimizer:
             generation_history.append(
                 GenerationRecord(
                     gen=gen,
-                    best_score=float(best.fitness),
-                    mean_score=final_solutions.mean_fitness(),
-                    std_score=final_solutions.std_fitness(),
+                    best_score=float(best.score),
+                    mean_score=final_solutions.mean_score(),
+                    std_score=final_solutions.std_score(),
                     wall_time_ms=(time.perf_counter() - gen_start) * 1000.0,
                     n_evaluations=len(individuals),
                     nan_score_count=nan_count,
@@ -617,10 +429,10 @@ class CMAESOptimizer:
                 )
             )
             logger.info(
-                "CMA-ES generation=%s best_score=%s mean_fitness=%s nan_fitness_count=%s",
+                "CMA-ES generation=%s best_score=%s mean_score=%s nan_score_count=%s",
                 gen,
-                float(best.fitness),
-                final_solutions.mean_fitness(),
+                float(best.score),
+                final_solutions.mean_score(),
                 nan_count,
             )
             for callback in self.callbacks:
@@ -632,9 +444,9 @@ class CMAESOptimizer:
         if len(final_solutions):
             best = self._best_population_individual(final_solutions)
             best_solution = best.clone()
-            best_score = float(best.fitness)
+            best_score = float(best.score)
         else:
-            best_solution = Solution([], fitness=float("-inf"), fitness_valid=True)
+            best_solution = Solution([], score=float("-inf"), score_valid=True)
             best_score = float("-inf")
 
         result = OptimizationResult(

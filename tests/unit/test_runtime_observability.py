@@ -7,7 +7,7 @@ from evocore import CMAESOptimizer, FitnessError, GeneSpace, GeneticAlgorithmOpt
 
 
 def sphere(ind):
-    return -sum(x * x for x in ind.genes)
+    return -sum(x * x for x in ind.values)
 
 
 def non_finite_once(_ind):
@@ -34,7 +34,7 @@ def test_ga_logs_generation_progress(caplog):
     messages = [
         record.getMessage()
         for record in caplog.records
-        if record.name == "evocore.optimizers.ga.engine"
+        if record.name == "evocore.optimizers.ga.generation_loop"
     ]
     assert any("GA generation=0" in message for message in messages)
 

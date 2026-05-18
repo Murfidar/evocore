@@ -279,7 +279,7 @@ def test_ga_run_uses_policy_and_returns_vnext_telemetry() -> None:
     result = engine.run(SphereEvaluator(), policy=policy)
 
     assert result.n_evaluations == 12
-    assert result.best_solution.fitness_valid
+    assert result.best_solution.score_valid
     assert result.telemetry.candidates_full_evaluated == 12
     assert result.stop_reason == "max_evaluations"
 

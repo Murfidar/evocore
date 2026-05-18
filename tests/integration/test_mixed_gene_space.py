@@ -18,5 +18,5 @@ def test_mixed_gene_space_keeps_ints_typed():
 
     result = engine.run(IndividualEvaluator(mixed_target))
 
-    assert isinstance(result.best_solution.genes[0], int)
+    assert isinstance(result.best_solution.values[0], int)
     assert result.best_score > -10.0

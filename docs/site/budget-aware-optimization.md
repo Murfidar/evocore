@@ -1,6 +1,6 @@
 # Budget-Aware Optimization
 
-EvoCore vNext treats full fitness calls as scarce resources.
+EvoCore vNext treats full objective calls as scarce resources.
 
 Use `BudgetPolicy` and `EvaluationStage` to describe cheap, partial, and full evaluation
 levels. Engines ask for candidates, schedulers assign stages, evaluators return

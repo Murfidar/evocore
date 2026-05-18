@@ -3,7 +3,7 @@ from tests.vnext_helpers import IndividualEvaluator
 
 
 def onemax(ind):
-    return sum(1 for value in ind.genes if value)
+    return sum(1 for value in ind.values if value)
 
 
 def test_binary_onemax_smoke():

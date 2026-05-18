@@ -5,11 +5,11 @@ from tests.vnext_helpers import IndividualEvaluator
 
 
 def sphere(ind):
-    return -sum(x * x for x in ind.genes)
+    return -sum(x * x for x in ind.values)
 
 
 def numpy_sphere(ind):
-    arr = np.array(ind.genes)
+    arr = np.array(ind.values)
     return float(-np.sum(arr * arr))
 
 
@@ -26,7 +26,7 @@ def test_same_seed_engines_return_identical_results():
     r2 = right.run(evaluator)
 
     assert r1.best_score == r2.best_score
-    assert r1.best_solution.genes == r2.best_solution.genes
+    assert r1.best_solution.values == r2.best_solution.values
 
 
 def test_sequential_and_thread_parallel_identical():
@@ -51,7 +51,7 @@ def test_sequential_and_thread_parallel_identical():
     r_thr = thr.run(evaluator)
 
     assert r_seq.best_score == r_thr.best_score
-    assert r_seq.best_solution.genes == r_thr.best_solution.genes
+    assert r_seq.best_solution.values == r_thr.best_solution.values
 
 
 def test_n_workers_does_not_affect_results():
@@ -65,7 +65,7 @@ def test_n_workers_does_not_affect_results():
             n_workers=n_workers,
             seed=123,
         )
-        results.append(engine.run(IndividualEvaluator(numpy_sphere)).best_solution.genes)
+        results.append(engine.run(IndividualEvaluator(numpy_sphere)).best_solution.values)
 
     assert results[0] == results[1] == results[2]
 
@@ -80,7 +80,7 @@ def test_different_seeds_diverge():
 
     evaluator = IndividualEvaluator(sphere)
 
-    assert e1.run(evaluator).best_solution.genes != e2.run(evaluator).best_solution.genes
+    assert e1.run(evaluator).best_solution.values != e2.run(evaluator).best_solution.values
 
 
 def test_multi_run_child_seeds_are_independent():
@@ -90,4 +90,4 @@ def test_multi_run_child_seeds_are_independent():
 
     multi = engine.run_multiple(IndividualEvaluator(sphere), n_runs=5)
 
-    assert len({tuple(run.best_solution.genes) for run in multi.all_runs}) > 1
+    assert len({tuple(run.best_solution.values) for run in multi.all_runs}) > 1

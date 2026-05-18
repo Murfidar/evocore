@@ -64,18 +64,26 @@ evocore/
   optimizers/
     ga/
       engine.py                # GeneticAlgorithmOptimizer public class
-      ask_tell.py              # GA ask/tell lifecycle helpers
-      generation_loop.py       # GA generation-loop execution
+      ask_tell.py              # GA ask/tell lifecycle and policy-driven execution
+      generation_loop.py       # GA generation-loop execution helpers
       checkpointing.py         # GA checkpoint resume helpers
-      reproduction.py          # GA reproduction helpers
+      multi_run.py             # GA child seed derivation and multi-run execution
+      reproduction.py          # GA initialization, mutation, crossover, and selection helpers
     cmaes/
       engine.py                # CMAESOptimizer public class
       ask_tell.py              # CMA-ES ask/tell lifecycle helpers
       mixed.py                 # IntegerMarginDistribution, CategoricalDistributionState
   callbacks/
-    __init__.py                # Callback hooks and built-in callbacks
+    __init__.py                # callback convenience exports only
+    base.py                    # Callback, GenerationInfo
+    checkpointing.py           # CheckpointCallback
+    metrics.py                 # MetricsLogger
+    progress.py                # ProgressBar
+    stopping.py                # EarlyStopping
   surrogates/
-    __init__.py                # InverseDistanceAdvisor, SurrogateScore
+    __init__.py                # surrogate convenience exports only
+    inverse_distance.py        # InverseDistanceAdvisor
+    scoring.py                 # SurrogateScore
 ```
 
 Public convenience imports from `evocore` should remain available, but should use
@@ -87,6 +95,9 @@ candidate/evaluation context fields, `events` for append-only event logs, and
 old `Engine`, `RunResult`, `MultiRunResult`, `Rung`, `TellResult`, `Individual`,
 `Population`, `history`, `engine_type`, or public `fitness` naming unless a
 compatibility requirement is explicitly approved.
+
+Package `__init__.py` files are entrance/export surfaces. Put implementation in a
+focused sibling module and re-export it from `__init__.py`.
 
 ## Branch Workflow
 

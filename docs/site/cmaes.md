@@ -5,7 +5,7 @@
 CMA-ES supports `parallel="none"` and `parallel="thread"`. It rejects `parallel="process"`
 because the Rust covariance state is not picklable.
 
-`direction="maximize"` and `direction="minimize"` preserve raw user fitness values in
+`direction="maximize"` and `direction="minimize"` preserve raw user scores in
 results while using direction-aware comparison internally. In ask/tell mode, complete
 batches of `trusted_full` or `cached` records update the covariance state. Cached records
 reuse trusted previous full observations and do not spend fresh full-evaluation budget.
@@ -17,7 +17,7 @@ Generation-oriented CMA runs attach generation events to `OptimizationResult.eve
 generation summaries in `OptimizationResult.generations`.
 
 ```python
-result = engine.run(fitness_fn)
+result = engine.run(objective_fn)
 payload = result.to_dict()
 events = result.events.to_rows()
 ```

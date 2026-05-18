@@ -11,7 +11,7 @@ from contextlib import suppress
 from typing import Self
 
 from evocore.core.errors import ConfigurationError
-from evocore.search_space import Solution
+from evocore.search_space.solutions import Solution
 
 
 def ensure_picklable(obj, *, context: str) -> None:
@@ -20,9 +20,9 @@ def ensure_picklable(obj, *, context: str) -> None:
         pickle.dumps(obj)
     except (pickle.PicklingError, AttributeError, TypeError) as exc:
         raise ConfigurationError(
-            f"fitness_fn cannot be pickled, required for {context}.\n"
+            f"objective_fn cannot be pickled, required for {context}.\n"
             f"  Error: {exc}\n"
-            "  Fix: define fitness_fn at module level, not as a lambda or nested function."
+            "  Fix: define objective_fn at module level, not as a lambda or nested function."
         ) from exc
 
 
@@ -33,14 +33,14 @@ class ThreadParallel:
         self.n_workers = n_workers or os.cpu_count() or 1
 
     def evaluate(
-        self, solutions: Sequence[Solution], fitness_fn: Callable[[Solution], object]
+        self, solutions: Sequence[Solution], objective_fn: Callable[[Solution], object]
     ) -> list[object]:
         """Evaluate a SolutionSet with a thread pool."""
         if not solutions:
             return []
 
         with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_workers) as pool:
-            return list(pool.map(fitness_fn, solutions))
+            return list(pool.map(objective_fn, solutions))
 
 
 class ProcessParallel:
@@ -81,11 +81,11 @@ class ProcessParallel:
         self._pool = None
 
     def evaluate(
-        self, solutions: Sequence[Solution], fitness_fn: Callable[[Solution], object]
+        self, solutions: Sequence[Solution], objective_fn: Callable[[Solution], object]
     ) -> list[object]:
         """Evaluate a SolutionSet with a process pool."""
         if not solutions:
             return []
 
-        ensure_picklable(fitness_fn, context="parallel='process'")
-        return list(self._executor().map(fitness_fn, solutions))
+        ensure_picklable(objective_fn, context="parallel='process'")
+        return list(self._executor().map(objective_fn, solutions))

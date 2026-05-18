@@ -9,7 +9,7 @@ from evocore.search_space import Solution
 
 
 def module_level_fitness(ind):
-    return sum(ind.genes)
+    return sum(ind.values)
 
 
 def test_ensure_picklable_rejects_lambda():
@@ -49,8 +49,8 @@ def test_process_parallel_reuses_executor_until_closed(monkeypatch):
             self.kwargs = kwargs
             created.append(self)
 
-        def map(self, fitness_fn, solutions):
-            return [fitness_fn(solution) for solution in solutions]
+        def map(self, objective_fn, solutions):
+            return [objective_fn(solution) for solution in solutions]
 
         def shutdown(self, *, cancel_futures=False, wait=True):
             shutdowns.append((cancel_futures, wait))
@@ -79,8 +79,8 @@ def test_process_parallel_context_manager_closes_executor(monkeypatch):
         def __init__(self, **_kwargs):
             pass
 
-        def map(self, fitness_fn, solutions):
-            return [fitness_fn(solution) for solution in solutions]
+        def map(self, objective_fn, solutions):
+            return [objective_fn(solution) for solution in solutions]
 
         def shutdown(self, *, cancel_futures=False, wait=True):
             shutdowns.append((cancel_futures, wait))

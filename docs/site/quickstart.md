@@ -31,5 +31,5 @@ engine = GeneticAlgorithmOptimizer(
 result = engine.run(SphereEvaluator())
 
 print(result.best_score)
-print(result.best_solution.genes)
+print(result.best_solution.values)
 ```

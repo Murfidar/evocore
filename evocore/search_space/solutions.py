@@ -26,37 +26,11 @@ class Solution:
         score: float | None = None,
         score_valid: bool = False,
         metadata: dict[str, Any] | None = None,
-        *,
-        fitness: float | None = None,
-        fitness_valid: bool | None = None,
     ) -> None:
         self.values = list(values)
-        self.score = score if fitness is None else fitness
-        self.score_valid = score_valid if fitness_valid is None else fitness_valid
+        self.score = score
+        self.score_valid = score_valid
         self.metadata = dict(metadata or {})
-
-    @property
-    def genes(self) -> list[GeneValue]:
-        """Return decoded values for internal Rust-boundary compatibility."""
-        return self.values
-
-    @property
-    def fitness(self) -> float | None:
-        """Return score for internal GA/CMA compatibility during migration."""
-        return self.score
-
-    @fitness.setter
-    def fitness(self, value: float | None) -> None:
-        self.score = value
-
-    @property
-    def fitness_valid(self) -> bool:
-        """Return score_valid for internal GA/CMA compatibility during migration."""
-        return self.score_valid
-
-    @fitness_valid.setter
-    def fitness_valid(self, value: bool) -> None:
-        self.score_valid = value
 
     @property
     def params(self) -> dict[str, GeneValue] | None:
@@ -123,14 +97,6 @@ class SolutionSet(Sequence[Solution]):
         """Return the solution-set standard deviation of finite scores."""
         values = self._finite_scores()
         return pstdev(values) if len(values) > 1 else 0.0
-
-    def mean_fitness(self) -> float:
-        """Return mean_score for internal GA/CMA compatibility during migration."""
-        return self.mean_score()
-
-    def std_fitness(self) -> float:
-        """Return std_score for internal GA/CMA compatibility during migration."""
-        return self.std_score()
 
     def diversity(self) -> list[float]:
         """Return per-value diversity as SolutionSet standard deviation."""

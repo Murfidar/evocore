@@ -89,9 +89,6 @@ class OperatorCodec:
                 decoded.append(float(value))
         return decoded
 
-    encode_genes = encode_values
-    decode_genes = decode_values
-
     def encode_population(self, solutions: Sequence[Solution]) -> list[list[float]]:
         """Encode a SolutionSet of solutions for Rust calls."""
         return [self.encode_values(solution.values) for solution in solutions]
@@ -115,22 +112,6 @@ class OperatorCodec:
             score=score,
             score_valid=score_valid,
             metadata=solution_metadata,
-        )
-
-    def decode_individual(
-        self,
-        genes_f64: Sequence[float],
-        *,
-        fitness: float | None = None,
-        fitness_valid: bool = False,
-        metadata: dict | None = None,
-    ) -> Solution:
-        """Decode one Rust-side genome for internal migration compatibility."""
-        return self.decode_solution(
-            genes_f64,
-            score=fitness,
-            score_valid=fitness_valid,
-            metadata=metadata,
         )
 
     def decode_population(self, population_f64: Sequence[Sequence[float]]) -> list[Solution]:

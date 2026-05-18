@@ -8,7 +8,7 @@ inside that evaluator.
 
 The legacy generation-loop helpers still support three local modes:
 
-- `parallel="none"`: simplest mode for cheap Python fitness functions.
+- `parallel="none"`: simplest mode for cheap Python objective functions.
 - `parallel="thread"`: useful when the callable releases the GIL.
 - `parallel="process"`: useful for CPU-bound module-level callables that are pickle-safe.
 

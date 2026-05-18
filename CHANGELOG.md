@@ -37,8 +37,21 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   `events`, `elite_solutions`, and `diversity_by_generation`.
 - Public search-space names are now `Gene`, `Solution`, `SolutionSet`, and
   `OperatorCodec`.
+- Compatibility aliases for `Solution.genes`, `Solution.fitness`,
+  `Solution.fitness_valid`, `SolutionSet.mean_fitness()`,
+  `SolutionSet.std_fitness()`, `OperatorCodec.encode_genes()`,
+  `OperatorCodec.decode_genes()`, and `OperatorCodec.decode_individual()` were
+  removed. Use `values`, `score`, `score_valid`, `mean_score()`, `std_score()`,
+  `encode_values()`, `decode_values()`, and `decode_solution()`.
 - Evaluator context and record fields now use `stage`; telemetry exports now use
   `promoted_by_stage`, `eliminated_by_stage`, and `cost_by_stage`.
+- `callbacks`, `surrogates`, `lifecycle.events`, `lifecycle.telemetry`, and
+  `results.reproducibility` now own their implementations in focused modules instead
+  of using implementation-heavy `__init__.py` files or re-export shims.
+- `evocore.optimizers.ga` now splits ask/tell, generation-loop execution,
+  checkpoint resume, multi-run handling, and reproduction into separate modules.
+  `evocore.optimizers.cmaes` now keeps CMA-ES ask/tell state handling in its own
+  module.
 - `GeneticAlgorithmOptimizer` and `CMAESOptimizer` now expose `direction` and preserve raw scores while
   using direction-aware comparisons for best-candidate tracking.
 - Policy-driven evaluators now receive `EvaluationContext` instead of a bare rung.
@@ -76,7 +89,7 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - GA and CMA best-candidate tracking now ignores partial and surrogate observations when
   selecting the optimizer state best candidate.
 - `CMAESOptimizer(direction="minimize").run(...)` now optimizes and reports the lowest raw
-  fitness instead of treating larger values as better.
+  score instead of treating larger values as better.
 - `GeneticAlgorithmOptimizer.run_multiple(...)` now chooses the best child run using the engine direction.
 - Positional `EvaluationRecord(..., metrics, batch_id)` construction again preserves the
   supplied batch ID after adding record metadata.

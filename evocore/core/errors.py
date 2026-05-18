@@ -10,7 +10,7 @@ class ConfigurationError(EvocoreError):
 
 
 class FitnessError(EvocoreError):
-    """Raised when a fitness function fails or returns an invalid type."""
+    """Raised when an objective function fails or returns an invalid type."""
 
 
 class ConvergenceError(EvocoreError):
@@ -26,7 +26,7 @@ class CheckpointError(EvocoreError):
 
 
 class FitnessWarning(UserWarning):
-    """Warning emitted when NaN or Inf fitness values are encountered."""
+    """Warning emitted when NaN or Inf score values are encountered."""
 
 
 class ConfigurationWarning(UserWarning):

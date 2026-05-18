@@ -88,16 +88,16 @@ def test_named_params_match_gene_order(kinds):
 def test_individual_clone_preserves_genes_and_metadata(values):
     ind = Solution(
         list(values),
-        fitness=1.25,
-        fitness_valid=True,
+        score=1.25,
+        score_valid=True,
         metadata={"params": {"x": 1}},
     )
 
     cloned = ind.clone()
 
-    assert cloned.genes == ind.genes
-    assert cloned.fitness == ind.fitness
-    assert cloned.fitness_valid is True
+    assert cloned.values == ind.values
+    assert cloned.score == ind.score
+    assert cloned.score_valid is True
     assert cloned.metadata == ind.metadata
     assert cloned is not ind
 
@@ -115,9 +115,9 @@ def test_operator_decode_restores_named_params(period, threshold):
     )
     ops = OperatorCodec(space, "sbx", "gaussian")
 
-    ind = ops.decode_individual([float(period), threshold])
+    ind = ops.decode_solution([float(period), threshold])
 
-    assert ind.genes == [period, threshold]
+    assert ind.values == [period, threshold]
     assert ind.params == {"period": period, "threshold": threshold}
 
 

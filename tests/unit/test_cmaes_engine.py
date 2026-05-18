@@ -5,7 +5,7 @@ from evocore.optimizers.cmaes import CMAESOptimizer
 
 
 def sphere(ind):
-    return -sum(x * x for x in ind.genes)
+    return -sum(x * x for x in ind.values)
 
 
 def test_cmaes_requires_gene_space():
@@ -33,7 +33,7 @@ def test_apply_bounds_and_round_for_int_genes():
     engine = CMAESOptimizer(space, population_size=6, max_generations=1, seed=42)
 
     assert engine._apply_bounds_and_round([20.8, 1.5]) == [20.0, 1.0]
-    assert engine._decode_individual([10.2, 0.25]).genes == [10, 0.25]
+    assert engine._decode_solution([10.2, 0.25]).values == [10, 0.25]
 
 
 def test_cmaes_run_returns_result():
@@ -53,7 +53,7 @@ def test_cma_generation_loop_result_attaches_history_and_reproducibility():
     space = GeneSpace.uniform(-2.0, 2.0, 3)
     engine = CMAESOptimizer(space, population_size=6, max_generations=2, seed=42)
 
-    result = engine.run(lambda ind: -sum(float(v) ** 2 for v in ind.genes))
+    result = engine.run(lambda ind: -sum(float(v) ** 2 for v in ind.values))
 
     assert result.optimizer_type == "CMAESOptimizer"
     assert result.direction == "maximize"
@@ -81,7 +81,7 @@ def test_cmaes_run_minimize_direction_returns_lowest_raw_fitness():
         direction="minimize",
     )
 
-    result = engine.run(lambda ind: sum(float(x) ** 2 for x in ind.genes))
+    result = engine.run(lambda ind: sum(float(x) ** 2 for x in ind.values))
 
     population_scores = [solution.score for solution in result.final_solutions]
     assert result.best_score == pytest.approx(min(population_scores))
@@ -103,8 +103,8 @@ def test_cmaes_integer_fitness_receives_ints():
     space = GeneSpace([Gene("period", "int", 5, 20), Gene("x", "float", -1.0, 1.0)])
 
     def fitness(ind):
-        seen_types.append(type(ind.genes[0]))
-        return -abs(ind.genes[0] - 10) - ind.genes[1] ** 2
+        seen_types.append(type(ind.values[0]))
+        return -abs(ind.values[0] - 10) - ind.values[1] ** 2
 
     CMAESOptimizer(space, population_size=12, max_generations=3, seed=42).run(fitness)
 

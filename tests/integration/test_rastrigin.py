@@ -5,8 +5,8 @@ from tests.vnext_helpers import IndividualEvaluator
 
 
 def rastrigin(ind):
-    n = len(ind.genes)
-    value = 10 * n + sum(x * x - 10 * math.cos(2 * math.pi * x) for x in ind.genes)
+    n = len(ind.values)
+    value = 10 * n + sum(x * x - 10 * math.cos(2 * math.pi * x) for x in ind.values)
     return -value
 
 

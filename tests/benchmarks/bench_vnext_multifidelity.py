@@ -48,4 +48,4 @@ def test_vnext_multifidelity_benchmark_smoke() -> None:
 
     assert result.telemetry.candidates_full_evaluated == 16
     assert result.telemetry.candidates_partial_evaluated >= 16
-    assert result.best_solution.fitness_valid
+    assert result.best_solution.score_valid
