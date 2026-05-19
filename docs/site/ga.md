@@ -36,6 +36,43 @@ class Objective:
         ]
 ```
 
+## Checkpoint Resume
+
+GA generation-loop callback hooks can write stable JSON checkpoints with
+`CheckpointCallback(format="stable")`:
+
+```python
+from evocore import CheckpointCallback, GeneSpace, GeneticAlgorithmOptimizer
+
+space = GeneSpace.uniform(-1.0, 1.0, 3)
+optimizer = GeneticAlgorithmOptimizer(
+    space,
+    population_size=20,
+    max_generations=10,
+    seed=42,
+    callbacks=[CheckpointCallback(path="./checkpoints", every=1, format="stable")],
+)
+```
+
+Resume with a matching optimizer:
+
+```python
+resumed = GeneticAlgorithmOptimizer(
+    space,
+    population_size=20,
+    max_generations=10,
+    seed=42,
+).resume_from_checkpoint(
+    lambda solution: -sum(float(value) ** 2 for value in solution.values),
+    "./checkpoints/checkpoint_gen_3.evocore-checkpoint.json",
+)
+```
+
+The receiving optimizer must match the checkpoint seed, direction, gene space,
+and optimizer configuration. Policy-driven `run(evaluator)` and manual ask/tell
+checkpointing are not part of checkpoint v1. Result JSON and event rows are not
+checkpoint files.
+
 ## Result Export
 
 `OptimizationResult` is the stable envelope for a completed run:
@@ -56,6 +93,10 @@ Runtime timing is excluded from deterministic exports by default. Pass
         - run
         - run_multiple
         - resume
+        - resume_from_checkpoint
+        - checkpoint
+        - save_checkpoint
+        - load_checkpoint
 
 ::: evocore.results.OptimizationResult
 

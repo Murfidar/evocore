@@ -10,6 +10,15 @@ results while using direction-aware comparison internally. In ask/tell mode, com
 batches of `trusted_full` or `cached` records update the covariance state. Cached records
 reuse trusted previous full observations and do not spend fresh full-evaluation budget.
 
+## Checkpoint Resume
+
+`CMAESOptimizer` checkpoint/resume is unsupported in checkpoint v1. The Rust-backed
+CMA-ES state must expose stable serializable fields before EvoCore can continue
+the same covariance trajectory from a checkpoint.
+
+Use `OptimizationResult.to_dict()` for completed-run export and `engine.events`
+for ask/tell audit rows. Those exports are not checkpoint files and are not
+replayed to rebuild CMA-ES state.
 
 ## Result Export
 

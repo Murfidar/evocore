@@ -43,3 +43,13 @@ are listed separately. Known artifact hooks such as metrics loggers and progress
 recorded as configured hooks. Opaque environment hooks such as process initializers mark
 the metadata as partially reproducible because EvoCore cannot prove their behavior from
 configuration alone.
+
+## Telemetry And Checkpoints
+
+Checkpoint files may include telemetry for audit continuity, but telemetry is not
+the source of optimizer state. Resume uses the checkpoint state payload and
+validates optimizer identity before mutating the optimizer.
+
+`OptimizationResult.to_dict()`, `OptimizationTelemetry.to_dict()`, and
+`EventHistory.to_rows()` are export surfaces for analysis and inspection. They are
+not accepted as checkpoint resume files.

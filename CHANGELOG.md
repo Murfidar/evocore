@@ -30,6 +30,9 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   and `CMAESOptimizer`, with hook-aware reproducibility metadata.
 - Public GA operator contract specs for crossover, mutation, selection, bounds policy,
   compatibility validation, sigma semantics, and custom operator extension.
+- Stable JSON checkpoint envelope helpers and GA generation-loop checkpoint/resume
+  support with optimizer, gene-space, config, seed, direction, and seed-derivation
+  validation.
 
 ### Changed
 
@@ -85,6 +88,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Ask/tell event history and telemetry now use GeneSpace-backed candidate hashes in
   optimizer internals while preserving the zero-argument `Candidate.candidate_hash()`
   compatibility fallback.
+- `CheckpointCallback` now supports `format="stable"` for JSON checkpoint files
+  while keeping the legacy pickle population format as the checkpoint v1 default.
 
 ### Fixed
 
