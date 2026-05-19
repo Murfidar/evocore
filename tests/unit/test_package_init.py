@@ -54,12 +54,14 @@ def test_optimizer_exports_accessible_from_top_level():
 
 def test_result_exports_accessible_from_top_level():
     from evocore import (
+        CheckpointSnapshot,
         GenerationHistory,
         GenerationRecord,
         OptimizationBatchResult,
         OptimizationResult,
     )
 
+    assert CheckpointSnapshot is not None
     assert GenerationHistory is not None
     assert GenerationRecord is not None
     assert OptimizationBatchResult is not None

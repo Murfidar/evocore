@@ -21,6 +21,7 @@ def test_new_domain_imports_are_available():
         "evocore.lifecycle.telemetry",
         "evocore.lifecycle.events",
         "evocore.results",
+        "evocore.results.checkpointing",
         "evocore.results.generation",
         "evocore.results.reproducibility",
         "evocore.results.run",
@@ -39,18 +40,21 @@ def test_new_domain_imports_are_available():
 
 
 def test_new_domain_symbols_are_importable():
+    from evocore import CheckpointSnapshot as TopLevelCheckpointSnapshot
     from evocore import OptimizerConfig as TopLevelOptimizerConfig
     from evocore import RuntimeHookSignature as TopLevelRuntimeHookSignature
     from evocore.lifecycle import BudgetPolicy, BudgetScheduler, EvaluationStage
     from evocore.optimizers import ConfigurableComponent, OptimizerConfig, RuntimeHookSignature
     from evocore.optimizers.cmaes import CMAESOptimizer
     from evocore.optimizers.ga import GeneticAlgorithmOptimizer
-    from evocore.results import OptimizationBatchResult, OptimizationResult
+    from evocore.results import CheckpointSnapshot, OptimizationBatchResult, OptimizationResult
     from evocore.search_space import Gene, GeneSpace, Solution, SolutionSet
     from evocore.surrogates import InverseDistanceAdvisor, SurrogateScore
 
+    assert TopLevelCheckpointSnapshot is CheckpointSnapshot
     assert TopLevelOptimizerConfig is OptimizerConfig
     assert TopLevelRuntimeHookSignature is RuntimeHookSignature
+    assert CheckpointSnapshot is not None
     assert ConfigurableComponent is not None
     assert OptimizerConfig is not None
     assert RuntimeHookSignature is not None
@@ -96,6 +100,12 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
         GeneticAlgorithmMultiRunMixin,
         GeneticAlgorithmOptimizer,
     )
+    from evocore.results.checkpointing import (
+        CheckpointSnapshot,
+        load_checkpoint,
+        save_checkpoint,
+        validate_checkpoint_identity,
+    )
     from evocore.results.reproducibility import (
         ReproducibilityMetadata,
         gene_space_hash,
@@ -121,6 +131,10 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
     assert OptimizationTelemetry.__module__ == "evocore.lifecycle.telemetry"
     assert UpdateResult.__module__ == "evocore.lifecycle.telemetry"
     assert OptimizerStateSummary.__module__ == "evocore.lifecycle.telemetry"
+    assert CheckpointSnapshot.__module__ == "evocore.results.checkpointing"
+    assert load_checkpoint.__module__ == "evocore.results.checkpointing"
+    assert save_checkpoint.__module__ == "evocore.results.checkpointing"
+    assert validate_checkpoint_identity.__module__ == "evocore.results.checkpointing"
     assert ReproducibilityMetadata.__module__ == "evocore.results.reproducibility"
     assert gene_space_signature.__module__ == "evocore.results.reproducibility"
     assert gene_space_hash.__module__ == "evocore.results.reproducibility"

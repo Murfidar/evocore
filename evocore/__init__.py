@@ -76,6 +76,9 @@ from evocore.optimizers.cmaes import (
 )
 from evocore.optimizers.ga import GeneticAlgorithmOptimizer
 from evocore.results import (
+    CHECKPOINT_KIND,
+    CHECKPOINT_SCHEMA_VERSION,
+    CheckpointSnapshot,
     EventHistory,
     EventRecord,
     GenerationHistory,
@@ -83,6 +86,10 @@ from evocore.results import (
     OptimizationBatchResult,
     OptimizationResult,
     ReproducibilityMetadata,
+    load_checkpoint,
+    save_checkpoint,
+    validate_checkpoint_envelope,
+    validate_checkpoint_identity,
 )
 from evocore.search_space import (
     Gene,
@@ -115,6 +122,7 @@ __all__ = [
     "CategoricalDistributionState",
     "CheckpointCallback",
     "CheckpointError",
+    "CheckpointSnapshot",
     "ConfigurableComponent",
     "ConfigurationError",
     "ConfigurationWarning",
@@ -169,4 +177,10 @@ __all__ = [
     "_core",
     "config_hash",
     "py_derive_seed",
+    "CHECKPOINT_KIND",
+    "CHECKPOINT_SCHEMA_VERSION",
+    "load_checkpoint",
+    "save_checkpoint",
+    "validate_checkpoint_envelope",
+    "validate_checkpoint_identity",
 ]
