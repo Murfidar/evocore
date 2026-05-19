@@ -32,7 +32,7 @@ def _created_by() -> dict[str, str]:
 
 def _available_checkpoints(path: Path) -> list[str]:
     """Return nearby checkpoint-like files for missing-file diagnostics."""
-    directory = path.parent if path.parent != Path("") else Path(".")
+    directory = path.parent
     if not directory.is_dir():
         return []
     return sorted(
@@ -94,6 +94,46 @@ def _require_mapping(payload: Mapping[str, Any], key: str) -> Mapping[str, Any]:
     return value
 
 
+def _validate_seed_derivation(seed_derivation: object) -> None:
+    if not isinstance(seed_derivation, Mapping):
+        raise CheckpointError("checkpoint optimizer.seed_derivation must be an object.")
+    if seed_derivation.get("algorithm") != SEED_DERIVATION_ALGORITHM:
+        raise CheckpointError(
+            "checkpoint seed_derivation.algorithm "
+            f"{seed_derivation.get('algorithm')!r} is unsupported."
+        )
+    if seed_derivation.get("version") != SEED_DERIVATION_VERSION:
+        raise CheckpointError(
+            "checkpoint seed_derivation.version "
+            f"{seed_derivation.get('version')!r} is unsupported."
+        )
+
+
+def _validate_optimizer_section(optimizer: Mapping[str, Any]) -> None:
+    if not optimizer.get("optimizer_type"):
+        raise CheckpointError("checkpoint optimizer.optimizer_type is required.")
+    if not optimizer.get("optimizer_config_hash"):
+        raise CheckpointError("checkpoint optimizer.optimizer_config_hash is required.")
+    if not optimizer.get("gene_space_hash"):
+        raise CheckpointError("checkpoint optimizer.gene_space_hash is required.")
+    if optimizer.get("direction") not in ("maximize", "minimize"):
+        raise CheckpointError("checkpoint optimizer.direction must be 'maximize' or 'minimize'.")
+    if "seed" not in optimizer:
+        raise CheckpointError("checkpoint optimizer.seed is required.")
+    _validate_seed_derivation(optimizer.get("seed_derivation"))
+
+
+def _validate_state_section(state: Mapping[str, Any], optimizer_type: object) -> None:
+    if state.get("optimizer_type") != optimizer_type:
+        raise CheckpointError(
+            "checkpoint state.optimizer_type must match optimizer.optimizer_type."
+        )
+    if state.get("schema_version") != 1:
+        raise CheckpointError("checkpoint state.schema_version must be 1.")
+    if not isinstance(state.get("payload"), Mapping):
+        raise CheckpointError("checkpoint state.payload must be an object.")
+
+
 def validate_checkpoint_envelope(payload: object) -> dict[str, Any]:
     """Validate the shared checkpoint envelope and return it as a dict."""
     if not isinstance(payload, Mapping):
@@ -107,8 +147,7 @@ def validate_checkpoint_envelope(payload: object) -> dict[str, Any]:
         )
     if data.get("checkpoint_kind") != CHECKPOINT_KIND:
         raise CheckpointError(
-            f"checkpoint_kind must be {CHECKPOINT_KIND!r}, "
-            f"got {data.get('checkpoint_kind')!r}."
+            f"checkpoint_kind must be {CHECKPOINT_KIND!r}, got {data.get('checkpoint_kind')!r}."
         )
     created_by = _require_mapping(data, "created_by")
     if not created_by.get("evocore_version"):
@@ -116,35 +155,8 @@ def validate_checkpoint_envelope(payload: object) -> dict[str, Any]:
     optimizer = _require_mapping(data, "optimizer")
     _require_mapping(data, "position")
     state = _require_mapping(data, "state")
-    if not optimizer.get("optimizer_type"):
-        raise CheckpointError("checkpoint optimizer.optimizer_type is required.")
-    if not optimizer.get("optimizer_config_hash"):
-        raise CheckpointError("checkpoint optimizer.optimizer_config_hash is required.")
-    if not optimizer.get("gene_space_hash"):
-        raise CheckpointError("checkpoint optimizer.gene_space_hash is required.")
-    if optimizer.get("direction") not in ("maximize", "minimize"):
-        raise CheckpointError("checkpoint optimizer.direction must be 'maximize' or 'minimize'.")
-    if "seed" not in optimizer:
-        raise CheckpointError("checkpoint optimizer.seed is required.")
-    seed_derivation = optimizer.get("seed_derivation")
-    if not isinstance(seed_derivation, Mapping):
-        raise CheckpointError("checkpoint optimizer.seed_derivation must be an object.")
-    if seed_derivation.get("algorithm") != SEED_DERIVATION_ALGORITHM:
-        raise CheckpointError(
-            "checkpoint seed_derivation.algorithm "
-            f"{seed_derivation.get('algorithm')!r} is unsupported."
-        )
-    if seed_derivation.get("version") != SEED_DERIVATION_VERSION:
-        raise CheckpointError(
-            "checkpoint seed_derivation.version "
-            f"{seed_derivation.get('version')!r} is unsupported."
-        )
-    if state.get("optimizer_type") != optimizer.get("optimizer_type"):
-        raise CheckpointError("checkpoint state.optimizer_type must match optimizer.optimizer_type.")
-    if state.get("schema_version") != 1:
-        raise CheckpointError("checkpoint state.schema_version must be 1.")
-    if not isinstance(state.get("payload"), Mapping):
-        raise CheckpointError("checkpoint state.payload must be an object.")
+    _validate_optimizer_section(optimizer)
+    _validate_state_section(state, optimizer.get("optimizer_type"))
     return data
 
 

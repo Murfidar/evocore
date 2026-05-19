@@ -103,6 +103,8 @@ from evocore.search_space import (
 from evocore.surrogates import InverseDistanceAdvisor, SurrogateScore
 
 __all__ = [
+    "CHECKPOINT_KIND",
+    "CHECKPOINT_SCHEMA_VERSION",
     "OP_CMAES_ASK",
     "OP_CROSSOVER",
     "OP_CROSSOVER_PROB",
@@ -176,10 +178,8 @@ __all__ = [
     "__version__",
     "_core",
     "config_hash",
-    "py_derive_seed",
-    "CHECKPOINT_KIND",
-    "CHECKPOINT_SCHEMA_VERSION",
     "load_checkpoint",
+    "py_derive_seed",
     "save_checkpoint",
     "validate_checkpoint_envelope",
     "validate_checkpoint_identity",

@@ -68,9 +68,7 @@ def test_checkpoint_callback_writes_stable_checkpoint(tmp_path):
     cb.on_generation_end(3, pop, GenerationInfo(3, 0, 0))
 
     payload = json.loads(
-        (tmp_path / "checkpoint_gen_3.evocore-checkpoint.json").read_text(
-            encoding="utf-8"
-        )
+        (tmp_path / "checkpoint_gen_3.evocore-checkpoint.json").read_text(encoding="utf-8")
     )
     assert payload["checkpoint_kind"] == "optimizer_state"
     assert payload["position"]["generation"] == 3

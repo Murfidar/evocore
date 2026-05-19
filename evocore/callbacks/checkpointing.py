@@ -22,7 +22,7 @@ class CheckpointCallback(Callback):
         self,
         path: str = "./checkpoints",
         every: int = 10,
-        format: CheckpointFormat = "legacy_pickle",
+        format: CheckpointFormat = "legacy_pickle",  # noqa: A002
     ) -> None:
         if format not in ("stable", "legacy_pickle"):
             raise CheckpointError("CheckpointCallback format must be 'stable' or 'legacy_pickle'.")

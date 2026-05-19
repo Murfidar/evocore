@@ -10,9 +10,13 @@ from evocore.lifecycle import score_for_direction
 from evocore.results import (
     CheckpointSnapshot,
     OptimizationResult,
-    load_checkpoint as load_checkpoint_payload,
-    save_checkpoint as save_checkpoint_payload,
     validate_checkpoint_identity,
+)
+from evocore.results import (
+    load_checkpoint as load_checkpoint_payload,
+)
+from evocore.results import (
+    save_checkpoint as save_checkpoint_payload,
 )
 from evocore.search_space import Solution
 

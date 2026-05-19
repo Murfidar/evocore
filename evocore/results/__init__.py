@@ -23,6 +23,8 @@ from evocore.results.run import OptimizationBatchResult, OptimizationResult
 __all__ = [
     "CHECKPOINT_KIND",
     "CHECKPOINT_SCHEMA_VERSION",
+    "SEED_DERIVATION_ALGORITHM",
+    "SEED_DERIVATION_VERSION",
     "CheckpointSnapshot",
     "EventHistory",
     "EventRecord",
@@ -31,8 +33,6 @@ __all__ = [
     "OptimizationBatchResult",
     "OptimizationResult",
     "ReproducibilityMetadata",
-    "SEED_DERIVATION_ALGORITHM",
-    "SEED_DERIVATION_VERSION",
     "StopReason",
     "append_run_stop_event",
     "gene_space_hash",
