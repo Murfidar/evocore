@@ -241,3 +241,55 @@ def test_validate_genes_rejects_invalid_decoded_values(values, message):
 
     with pytest.raises(ConfigurationError, match=message):
         space.validate_genes(values)
+
+
+def test_gene_space_value_signature_uses_declared_gene_kinds():
+    space = GeneSpace(
+        [
+            Gene("x", "float", -1.0, 1.0),
+            Gene("period", "int", 2, 20),
+            Gene("enabled", "bool"),
+        ]
+    )
+
+    signature = space.value_signature([1, 3, True])
+
+    assert signature == {
+        "schema_version": 1,
+        "gene_space_hash": space.hash(),
+        "values": [
+            {"name": "x", "kind": "float", "value": float(1).hex()},
+            {"name": "period", "kind": "int", "value": 3},
+            {"name": "enabled", "kind": "bool", "value": True},
+        ],
+    }
+
+
+def test_gene_space_value_hash_is_deterministic():
+    space = GeneSpace(
+        [
+            Gene("x", "float", -1.0, 1.0),
+            Gene("period", "int", 2, 20),
+            Gene("enabled", "bool"),
+        ]
+    )
+
+    first = space.value_hash([0.25, 10, False])
+    second = space.value_hash([0.25, 10, False])
+
+    assert first == second
+    assert len(first) == 64
+
+
+def test_gene_space_value_hash_includes_gene_space_identity():
+    left = GeneSpace([Gene("x", "float", -1.0, 1.0)])
+    right = GeneSpace([Gene("renamed_x", "float", -1.0, 1.0)])
+
+    assert left.value_hash([0.0]) != right.value_hash([0.0])
+
+
+def test_gene_space_value_signature_reuses_validate_genes_errors():
+    space = GeneSpace([Gene("enabled", "bool")])
+
+    with pytest.raises(ConfigurationError, match="expects bool"):
+        space.value_signature([1])

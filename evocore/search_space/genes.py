@@ -197,6 +197,36 @@ class GeneSpace:
         """Return a stable SHA-256 hash for this gene-space signature."""
         return canonical_json_hash(self.signature())
 
+    def value_signature(self, values: Sequence[float | int | bool]) -> dict[str, Any]:
+        """Return a stable schema-aware signature for decoded gene values."""
+        self.validate_genes(values)
+
+        encoded_values: list[dict[str, Any]] = []
+        for value, gene in zip(values, self._genes, strict=False):
+            if gene.kind == "bool":
+                encoded_value: str | int | bool = bool(value)
+            elif gene.kind == "int":
+                encoded_value = int(value)
+            else:
+                encoded_value = float(value).hex()
+            encoded_values.append(
+                {
+                    "name": gene.name,
+                    "kind": gene.kind,
+                    "value": encoded_value,
+                }
+            )
+
+        return {
+            "schema_version": 1,
+            "gene_space_hash": self.hash(),
+            "values": encoded_values,
+        }
+
+    def value_hash(self, values: Sequence[float | int | bool]) -> str:
+        """Return a stable SHA-256 hash for decoded values in this gene space."""
+        return canonical_json_hash(self.value_signature(values))
+
     def to_json(self, *, indent: int | None = None) -> str:
         """Export this gene space as deterministic JSON."""
         return stable_json_dumps(self.to_dict(), indent=indent)

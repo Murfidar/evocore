@@ -3,6 +3,7 @@ import json
 from hypothesis import given
 from hypothesis import strategies as st
 
+from evocore.core.serialization import stable_json_dumps
 from evocore.search_space import Gene, GeneSpace, OperatorCodec, Solution
 
 GENE_NAME_CHARS = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -174,3 +175,70 @@ def test_gene_space_hash_is_stable_for_equivalent_flat_spaces(space):
 
     assert equivalent.signature() == space.signature()
     assert equivalent.hash() == space.hash()
+
+
+@st.composite
+def valid_flat_gene_spaces_with_values(draw):
+    kinds = draw(st.lists(st.sampled_from(["float", "int", "bool"]), min_size=1, max_size=8))
+    genes = []
+    values = []
+    for index, kind in enumerate(kinds):
+        name = f"gene_{index}"
+        if kind == "float":
+            low = draw(
+                st.floats(
+                    min_value=-1000.0,
+                    max_value=999.0,
+                    allow_nan=False,
+                    allow_infinity=False,
+                )
+            )
+            span = draw(
+                st.floats(
+                    min_value=1e-6,
+                    max_value=1000.0,
+                    allow_nan=False,
+                    allow_infinity=False,
+                )
+            )
+            high = low + span
+            value = draw(
+                st.floats(
+                    min_value=low,
+                    max_value=high,
+                    allow_nan=False,
+                    allow_infinity=False,
+                )
+            )
+            genes.append(Gene(name, "float", low, high))
+            values.append(value)
+        elif kind == "int":
+            low = draw(st.integers(min_value=-1000, max_value=999))
+            high = draw(st.integers(min_value=low + 1, max_value=low + 1000))
+            value = draw(st.integers(min_value=low, max_value=high))
+            genes.append(Gene(name, "int", low, high))
+            values.append(value)
+        else:
+            value = draw(st.booleans())
+            genes.append(Gene(name, "bool"))
+            values.append(value)
+    space = GeneSpace(genes)
+    return space, values
+
+
+@given(valid_flat_gene_spaces_with_values())
+def test_gene_space_value_hash_is_stable_for_equivalent_values(case):
+    space, values = case
+    equivalent = GeneSpace(list(space.genes), has_names=space.has_names)
+
+    assert equivalent.value_signature(values) == space.value_signature(values)
+    assert equivalent.value_hash(values) == space.value_hash(values)
+
+
+@given(valid_flat_gene_spaces_with_values())
+def test_gene_space_value_signature_json_round_trips(case):
+    space, values = case
+
+    assert json.loads(stable_json_dumps(space.value_signature(values))) == space.value_signature(
+        values
+    )
