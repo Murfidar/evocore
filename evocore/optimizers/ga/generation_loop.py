@@ -146,7 +146,11 @@ class GeneticAlgorithmGenerationLoopMixin:
     def _bind_callbacks(self) -> None:
         for callback in self.callbacks:
             callback.should_stop = False
-            callback.bind_context(seed=self.seed, max_generations=self.max_generations)
+            callback.bind_context(
+                seed=self.seed,
+                max_generations=self.max_generations,
+                checkpoint_factory=self.checkpoint,
+            )
 
     def _callbacks_should_stop(self) -> bool:
         return any(getattr(callback, "should_stop", False) for callback in self.callbacks)
