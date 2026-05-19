@@ -8,6 +8,7 @@ from evocore import (
     CheckpointError,
     ConfigurationError,
     ConfigurationWarning,
+    CrossoverOperator,
     EvaluationContext,
     EvaluationRecord,
     EvaluationStage,
@@ -16,6 +17,13 @@ from evocore import (
     GenerationInfo,
     GeneSpace,
     GeneticAlgorithmOptimizer,
+    MutationOperator,
+    SelectionOperator,
+)
+from evocore.optimizers.operators import (
+    custom_crossover_operator,
+    custom_mutation_operator,
+    custom_selection_operator,
 )
 from evocore.results import (
     EventRecord,
@@ -728,3 +736,199 @@ def test_ga_callback_stop_precedes_max_evaluations():
 
     assert result.stop_reason == "callback"
     assert result.events.to_rows()[-1]["metadata"]["stop_reason"] == "callback"
+
+
+def test_ga_run_with_typed_builtin_operators_matches_legacy_strings():
+    space = GeneSpace.uniform(-1.0, 1.0, 3)
+    legacy = GeneticAlgorithmOptimizer(
+        space,
+        population_size=8,
+        max_generations=2,
+        seed=42,
+        crossover="sbx",
+        mutation="gaussian",
+        selection="tournament",
+    )
+    typed = GeneticAlgorithmOptimizer(
+        space,
+        population_size=8,
+        max_generations=2,
+        seed=42,
+        crossover=CrossoverOperator.sbx(),
+        mutation=MutationOperator.gaussian(),
+        selection=SelectionOperator.tournament(),
+    )
+
+    legacy_initial = [solution.values for solution in legacy._initial_population()]
+    typed_initial = [solution.values for solution in typed._initial_population()]
+
+    assert typed_initial == legacy_initial
+
+    fitnesses = [
+        -sum(float(value) ** 2 for value in solution.values)
+        for solution in legacy._initial_population()
+    ]
+    legacy_offspring = [
+        solution.values
+        for solution in legacy._make_offspring(
+            legacy._initial_population(),
+            fitnesses,
+            gen=1,
+            offspring_count=6,
+        )
+    ]
+    typed_offspring = [
+        solution.values
+        for solution in typed._make_offspring(
+            typed._initial_population(),
+            fitnesses,
+            gen=1,
+            offspring_count=6,
+        )
+    ]
+
+    assert typed_offspring == legacy_offspring
+
+
+def test_ga_custom_mutation_path_applies_bounds_and_runs():
+    class OvershootMutation:
+        name = "overshoot"
+        operator_type = "mutation"
+        supported_gene_kinds = frozenset({"float"})
+
+        def config_signature(self):
+            return {"name": "overshoot"}
+
+        def validate_compatibility(self, gene_space):
+            return None
+
+        def mutate(self, values, context):
+            return [999.0 for _ in values]
+
+    engine = GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        population_size=4,
+        max_generations=1,
+        seed=42,
+        mutation=custom_mutation_operator(OvershootMutation()),
+        crossover_prob=0.0,
+    )
+    population = engine._initial_population()
+    fitnesses = [1.0, 2.0, 3.0, 4.0]
+
+    offspring = engine._make_offspring(population, fitnesses, gen=1, offspring_count=4)
+
+    assert len(offspring) == 4
+    assert all(all(-1.0 <= value <= 1.0 for value in solution.values) for solution in offspring)
+
+
+def test_ga_custom_crossover_and_selection_path_runs():
+    class CopyFirstCrossover:
+        name = "copy_first"
+        operator_type = "crossover"
+        supported_gene_kinds = frozenset({"float"})
+
+        def config_signature(self):
+            return {"name": "copy_first"}
+
+        def validate_compatibility(self, gene_space):
+            return None
+
+        def crossover(self, left, right, context):
+            return left, left
+
+    class FirstSelection:
+        name = "first"
+        operator_type = "selection"
+
+        def config_signature(self):
+            return {"name": "first"}
+
+        def validate_compatibility(self, gene_space):
+            return None
+
+        def select(self, scores, count, context):
+            return [0 for _ in range(count)]
+
+    engine = GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        population_size=4,
+        max_generations=1,
+        seed=42,
+        crossover=custom_crossover_operator(CopyFirstCrossover()),
+        mutation=MutationOperator.gaussian(probability=0.0),
+        selection=custom_selection_operator(FirstSelection()),
+    )
+    population = engine._initial_population()
+    fitnesses = [1.0, 2.0, 3.0, 4.0]
+
+    offspring = engine._make_offspring(population, fitnesses, gen=1, offspring_count=4)
+
+    assert len(offspring) == 4
+    assert all(solution.values == population[0].values for solution in offspring)
+
+
+def test_ga_python_operator_path_still_applies_builtin_crossover():
+    class FirstPairSelection:
+        name = "first_pair"
+        operator_type = "selection"
+
+        def config_signature(self):
+            return {"name": "first_pair"}
+
+        def validate_compatibility(self, gene_space):
+            return None
+
+        def select(self, scores, count, context):
+            return [index % 2 for index in range(count)]
+
+    space = GeneSpace([Gene(f"bit_{index}", "bool") for index in range(4)])
+    engine = GeneticAlgorithmOptimizer(
+        space,
+        population_size=2,
+        max_generations=1,
+        seed=42,
+        crossover=CrossoverOperator.one_point(probability=1.0),
+        mutation=MutationOperator.bit_flip(probability=0.0),
+        selection=custom_selection_operator(FirstPairSelection()),
+    )
+    population = [
+        Solution([False, False, False, False]),
+        Solution([True, True, True, True]),
+    ]
+
+    offspring = engine._make_offspring(population, [1.0, 2.0], gen=1, offspring_count=2)
+
+    parent_values = {tuple(solution.values) for solution in population}
+    assert any(tuple(solution.values) not in parent_values for solution in offspring)
+
+
+def test_ga_custom_selection_rejects_non_integer_parent_indices():
+    class FloatSelection:
+        name = "float_index"
+        operator_type = "selection"
+
+        def config_signature(self):
+            return {"name": "float_index"}
+
+        def validate_compatibility(self, gene_space):
+            return None
+
+        def select(self, scores, count, context):
+            return [0.5 for _ in range(count)]
+
+    engine = GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        population_size=4,
+        max_generations=1,
+        seed=42,
+        selection=custom_selection_operator(FloatSelection()),
+    )
+
+    with pytest.raises(ConfigurationError, match="invalid parent indices"):
+        engine._make_offspring(
+            engine._initial_population(),
+            [1.0, 2.0, 3.0, 4.0],
+            gen=1,
+            offspring_count=4,
+        )

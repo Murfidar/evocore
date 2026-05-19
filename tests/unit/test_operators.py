@@ -1,7 +1,13 @@
 import pytest
 
-from evocore.core.errors import ConfigurationError
-from evocore.search_space import Gene, GeneSpace, OperatorCodec
+from evocore import (
+    ConfigurationError,
+    CrossoverOperator,
+    Gene,
+    GeneSpace,
+    MutationOperator,
+)
+from evocore.search_space import OperatorCodec
 
 
 def test_numeric_space_accepts_sbx_gaussian():
@@ -25,7 +31,7 @@ def test_numeric_space_accepts_uniform_crossover_for_deap_parity():
 
 def test_binary_space_rejects_sbx():
     space = GeneSpace([Gene("a", "bool"), Gene("b", "bool")])
-    with pytest.raises(ConfigurationError, match="binary"):
+    with pytest.raises(ConfigurationError, match=r"sbx.*bool"):
         OperatorCodec(space, "sbx", "bit_flip")
 
 
@@ -104,3 +110,11 @@ def test_encode_values_uses_gene_space_validator_for_invalid_decoded_values():
 
     with pytest.raises(ConfigurationError, match="Gene 'period' at index 1 expects int"):
         ops.encode_values([0.5, 10.0])
+
+
+def test_operator_codec_accepts_normalized_typed_operators():
+    space = GeneSpace.uniform(-1.0, 1.0, 2)
+    ops = OperatorCodec(space, CrossoverOperator.sbx(), MutationOperator.gaussian())
+
+    assert ops.crossover == "sbx"
+    assert ops.mutation == "gaussian"

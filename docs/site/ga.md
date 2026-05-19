@@ -82,3 +82,8 @@ size, crossover, mutation, mutation schedule, selection, elitism, and budget cap
 Runtime hooks such as progress bars, metrics paths, checkpoint paths, and process
 initializers are recorded in reproducibility metadata rather than mixed into the core
 config hash.
+
+For crossover, mutation, selection, bounds policy, and custom operator compatibility,
+see [Operator Contract](operator-contract.md). Typed operator specs such as
+`CrossoverOperator.sbx(...)` and `MutationOperator.gaussian(...)` normalize to the same
+configuration identity as legacy strings.

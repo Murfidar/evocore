@@ -10,6 +10,7 @@ nav:
   - Install: install.md
   - Quickstart: quickstart.md
   - Gene Spaces: gene-space.md
+  - Operator Contract: operator-contract.md
   - Genetic Algorithms: ga.md
   - Budget-Aware Optimization: budget-aware-optimization.md
   - Ask/Tell Engines: ask-tell-engines.md

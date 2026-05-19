@@ -7,6 +7,12 @@ from evocore.optimizers.config import (
     RuntimeHookSignature,
     config_hash,
 )
+from evocore.optimizers.operators import (
+    BoundsPolicy,
+    CrossoverOperator,
+    MutationOperator,
+    SelectionOperator,
+)
 
 
 # Defer engine imports to break the circular dependency:
@@ -25,10 +31,14 @@ def __getattr__(name: str) -> object:
 
 
 __all__ = [
+    "BoundsPolicy",
     "CMAESOptimizer",
     "ConfigurableComponent",
+    "CrossoverOperator",
     "GeneticAlgorithmOptimizer",
+    "MutationOperator",
     "OptimizerConfig",
     "RuntimeHookSignature",
+    "SelectionOperator",
     "config_hash",
 ]

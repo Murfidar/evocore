@@ -5,48 +5,61 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from evocore.core.errors import ConfigurationError
+from evocore.optimizers.operators import (
+    BoundsPolicy,
+    CrossoverOperator,
+    MutationOperator,
+    SelectionOperator,
+    normalize_crossover_operator,
+    normalize_mutation_operator,
+    resolve_operator_domain,
+    validate_operator_set,
+)
 from evocore.search_space.genes import GeneSpace
 from evocore.search_space.solutions import Solution
-
-NUMERIC_CROSSOVERS = {"sbx", "blx", "uniform"}
-BINARY_CROSSOVERS = {"one_point", "two_point", "uniform"}
-NUMERIC_MUTATIONS = {"gaussian", "uniform"}
-BINARY_MUTATIONS = {"bit_flip"}
 
 
 class OperatorCodec:
     """Validate operators and translate values across the PyO3 boundary."""
 
-    def __init__(self, gene_space: GeneSpace, crossover: str, mutation: str) -> None:
+    def __init__(
+        self,
+        gene_space: GeneSpace,
+        crossover: str | CrossoverOperator,
+        mutation: str | MutationOperator,
+    ) -> None:
         self.gene_space = gene_space
-        self.crossover = crossover
-        self.mutation = mutation
+        self.crossover_operator = resolve_operator_domain(
+            normalize_crossover_operator(
+                crossover,
+                probability=0.9,
+                eta=2.0,
+                alpha=0.5,
+            ),
+            gene_space,
+        )
+        self.mutation_operator = resolve_operator_domain(
+            normalize_mutation_operator(
+                mutation,
+                probability=0.1,
+                individual_probability=1.0,
+                sigma=0.2,
+            ),
+            gene_space,
+        )
+        self.crossover = self.crossover_operator.name
+        self.mutation = self.mutation_operator.name
         self._validate()
 
     def _validate(self) -> None:
-        kinds = set(self.gene_space.kinds)
-        if "bool" in kinds and len(kinds) > 1:
-            raise ConfigurationError(
-                "GeneSpace contains bool genes alongside float/int genes. "
-                "Use a binary-only space or encode booleans as int genes with low=0, high=1."
-            )
 
-        if kinds == {"bool"}:
-            if self.crossover not in BINARY_CROSSOVERS:
-                raise ConfigurationError(
-                    "binary GeneSpace requires crossover='one_point', 'two_point', or 'uniform'."
-                )
-            if self.mutation not in BINARY_MUTATIONS:
-                raise ConfigurationError("binary GeneSpace requires mutation='bit_flip'.")
-        else:
-            if self.crossover not in NUMERIC_CROSSOVERS:
-                raise ConfigurationError(
-                    "float/int GeneSpace requires crossover='sbx', 'blx', or 'uniform'."
-                )
-            if self.mutation not in NUMERIC_MUTATIONS:
-                raise ConfigurationError(
-                    "float/int GeneSpace requires mutation='gaussian' or 'uniform'."
-                )
+        validate_operator_set(
+            gene_space=self.gene_space,
+            crossover=self.crossover_operator,
+            mutation=self.mutation_operator,
+            selection=SelectionOperator.tournament(),
+            bounds_policy=BoundsPolicy.clamp(),
+        )
 
     @property
     def gene_kinds(self) -> list[str]:

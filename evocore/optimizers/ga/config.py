@@ -14,7 +14,8 @@ from evocore.optimizers.config import (
     reproducibility_from_hooks,
     stable_object_identity,
 )
-from evocore.search_space import GeneSpace, OperatorCodec
+from evocore.optimizers.operators import validate_operator_set
+from evocore.search_space import GeneSpace
 
 
 class _GAOptimizerLike(Protocol):
@@ -43,6 +44,10 @@ class _GAOptimizerLike(Protocol):
     process_initializer: object | None
     process_initargs: Sequence[object]
     gene_space: GeneSpace | None
+    crossover_operator: object
+    mutation_operator: object
+    selection_operator: object
+    bounds_policy: object
 
 
 def build_ga_config(optimizer: _GAOptimizerLike) -> OptimizerConfig:
@@ -61,30 +66,14 @@ def build_ga_config(optimizer: _GAOptimizerLike) -> OptimizerConfig:
             "n_workers": optimizer.n_workers,
         },
         components={
-            "crossover": {
-                "type": optimizer.crossover,
-                "parameters": {
-                    "probability": optimizer.crossover_prob,
-                    "eta": optimizer.crossover_eta,
-                    "alpha": optimizer.crossover_alpha,
-                },
-            },
-            "mutation": {
-                "type": optimizer.mutation,
-                "parameters": {
-                    "probability": optimizer.mutation_prob,
-                    "individual_probability": optimizer.mutation_individual_prob,
-                    "sigma": optimizer.mutation_sigma,
-                },
-            },
+            "bounds_policy": optimizer.bounds_policy.signature(),
+            "crossover": optimizer.crossover_operator.signature(),
+            "mutation": optimizer.mutation_operator.signature(),
             "mutation_schedule": {
                 "type": optimizer.mutation_sigma_schedule,
                 "parameters": {"sigma_end": optimizer.mutation_sigma_end},
             },
-            "selection": {
-                "type": optimizer.selection,
-                "parameters": {"tournament_size": optimizer.tournament_size},
-            },
+            "selection": optimizer.selection_operator.signature(),
         },
     )
 
@@ -92,6 +81,7 @@ def build_ga_config(optimizer: _GAOptimizerLike) -> OptimizerConfig:
 def ga_runtime_hooks(optimizer: _GAOptimizerLike) -> tuple[RuntimeHookSignature, ...]:
     """Return runtime hook signatures for a GA optimizer."""
     hooks = list(callback_hook_signatures(optimizer.callbacks))
+    hooks.extend(operator_runtime_hook_signatures(optimizer))
     if optimizer.process_initializer is not None:
         hooks.append(
             RuntimeHookSignature(
@@ -118,11 +108,15 @@ def validate_ga_compatibility(optimizer: _GAOptimizerLike) -> None:
         raise ConfigurationError(
             "gene_space required for GeneticAlgorithmOptimizer. Pass GeneSpace.uniform(-5.0, 5.0, length)."
         )
-    OperatorCodec(optimizer.gene_space, optimizer.crossover, optimizer.mutation)
+    validate_operator_set(
+        gene_space=optimizer.gene_space,
+        crossover=optimizer.crossover_operator,
+        mutation=optimizer.mutation_operator,
+        selection=optimizer.selection_operator,
+        bounds_policy=optimizer.bounds_policy,
+    )
     if optimizer.parallel not in ("none", "thread", "process"):
         raise ConfigurationError("parallel must be one of 'none', 'thread', or 'process'.")
-    if optimizer.selection not in ("tournament", "roulette", "rank"):
-        raise ConfigurationError("selection must be 'tournament', 'roulette', or 'rank'.")
     if optimizer.population_size < 2:
         raise ConfigurationError("population_size must be at least 2.")
     if optimizer.max_generations < 0:
@@ -139,9 +133,33 @@ def validate_ga_compatibility(optimizer: _GAOptimizerLike) -> None:
         )
 
 
+def operator_runtime_hook_signatures(
+    optimizer: _GAOptimizerLike,
+) -> tuple[RuntimeHookSignature, ...]:
+    """Return runtime hook signatures for custom Python operators."""
+    hooks: list[RuntimeHookSignature] = []
+    for component_name, operator in (
+        ("crossover", optimizer.crossover_operator),
+        ("mutation", optimizer.mutation_operator),
+        ("selection", optimizer.selection_operator),
+    ):
+        if getattr(operator, "custom", False):
+            hooks.append(
+                RuntimeHookSignature(
+                    hook_type="environment",
+                    identity=stable_object_identity(operator.implementation),
+                    config={"component": component_name, "operator": operator.signature()},
+                    reproducibility="partial",
+                    notes=(f"custom {component_name} operator executes Python code.",),
+                )
+            )
+    return tuple(hooks)
+
+
 __all__ = [
     "build_ga_config",
     "ga_reproducibility_status",
     "ga_runtime_hooks",
+    "operator_runtime_hook_signatures",
     "validate_ga_compatibility",
 ]

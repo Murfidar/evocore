@@ -6,6 +6,14 @@
 
 ::: evocore.search_space.OperatorCodec
 
+::: evocore.optimizers.operators.BoundsPolicy
+
+::: evocore.optimizers.operators.CrossoverOperator
+
+::: evocore.optimizers.operators.MutationOperator
+
+::: evocore.optimizers.operators.SelectionOperator
+
 ::: evocore.results.GenerationHistory
 
 ::: evocore.core.parallel

@@ -33,6 +33,17 @@ from evocore.optimizers.ga.config import (
 from evocore.optimizers.ga.generation_loop import GeneticAlgorithmGenerationLoopMixin
 from evocore.optimizers.ga.multi_run import GeneticAlgorithmMultiRunMixin
 from evocore.optimizers.ga.reproduction import GeneticAlgorithmReproductionMixin
+from evocore.optimizers.operators import (
+    BoundsPolicy,
+    CrossoverOperator,
+    MutationOperator,
+    SelectionOperator,
+    normalize_bounds_policy,
+    normalize_crossover_operator,
+    normalize_mutation_operator,
+    normalize_selection_operator,
+    resolve_operator_domain,
+)
 from evocore.results import (
     EventHistory,
     EventRecord,
@@ -80,6 +91,8 @@ class GeneticAlgorithmOptimizer(
         track_diversity: Whether to record per-gene diversity.
         callbacks: Optional callbacks invoked during the run.
         max_evaluations: Optional hard cap on objective calls.
+        bounds_policy: Bounds repair policy. Pass by keyword to preserve the stable
+            positional order of existing GA arguments.
 
     Raises:
         ConfigurationError: If engine configuration is invalid.
@@ -90,17 +103,17 @@ class GeneticAlgorithmOptimizer(
         gene_space: GeneSpace,
         population_size: int = 100,
         max_generations: int = 100,
-        crossover: str = "sbx",
+        crossover: str | CrossoverOperator = "sbx",
         crossover_prob: float = 0.9,
         crossover_eta: float = 2.0,
         crossover_alpha: float = 0.5,
-        mutation: str = "gaussian",
+        mutation: str | MutationOperator = "gaussian",
         mutation_prob: float = 0.1,
         mutation_individual_prob: float = 1.0,
         mutation_sigma: float = 0.2,
         mutation_sigma_schedule: str = "constant",
         mutation_sigma_end: float = 0.02,
-        selection: str = "tournament",
+        selection: str | SelectionOperator = "tournament",
         tournament_size: int = 3,
         elitism: int = 1,
         parallel: str = "none",
@@ -112,6 +125,8 @@ class GeneticAlgorithmOptimizer(
         max_evaluations: int | None = None,
         track_diversity: bool = False,
         callbacks: Sequence[Callback] | None = None,
+        *,
+        bounds_policy: str | BoundsPolicy | None = None,
         **legacy_kwargs: object,
     ) -> None:
         if gene_space is None:
@@ -137,8 +152,6 @@ class GeneticAlgorithmOptimizer(
             raise ConfigurationError("elitism must satisfy 0 <= elitism < population_size.")
         if parallel not in ("none", "thread", "process"):
             raise ConfigurationError("parallel must be one of 'none', 'thread', or 'process'.")
-        if selection not in ("tournament", "roulette", "rank"):
-            raise ConfigurationError("selection must be 'tournament', 'roulette', or 'rank'.")
         if not (0.0 <= mutation_individual_prob <= 1.0):
             raise ConfigurationError("mutation_individual_prob must be in [0, 1].")
         if mutation_sigma_schedule not in ("constant", "linear_decay", "cosine_decay"):
@@ -146,21 +159,89 @@ class GeneticAlgorithmOptimizer(
                 "mutation_sigma_schedule must be 'constant', 'linear_decay', or 'cosine_decay'."
             )
 
+        self._reject_typed_operator_scalar_conflicts(
+            component="crossover",
+            provided=crossover,
+            scalar_values={
+                "crossover_prob": crossover_prob,
+                "crossover_eta": crossover_eta,
+                "crossover_alpha": crossover_alpha,
+            },
+            default_values={
+                "crossover_prob": 0.9,
+                "crossover_eta": 2.0,
+                "crossover_alpha": 0.5,
+            },
+        )
+        self._reject_typed_operator_scalar_conflicts(
+            component="mutation",
+            provided=mutation,
+            scalar_values={
+                "mutation_prob": mutation_prob,
+                "mutation_individual_prob": mutation_individual_prob,
+                "mutation_sigma": mutation_sigma,
+            },
+            default_values={
+                "mutation_prob": 0.1,
+                "mutation_individual_prob": 1.0,
+                "mutation_sigma": 0.2,
+            },
+        )
+        self._reject_typed_operator_scalar_conflicts(
+            component="selection",
+            provided=selection,
+            scalar_values={"tournament_size": tournament_size},
+            default_values={"tournament_size": 3},
+        )
+
+        crossover_operator = resolve_operator_domain(
+            normalize_crossover_operator(
+                crossover,
+                probability=crossover_prob,
+                eta=crossover_eta,
+                alpha=crossover_alpha,
+            ),
+            gene_space,
+        )
+        mutation_operator = resolve_operator_domain(
+            normalize_mutation_operator(
+                mutation,
+                probability=mutation_prob,
+                individual_probability=mutation_individual_prob,
+                sigma=mutation_sigma,
+            ),
+            gene_space,
+        )
+        selection_operator = normalize_selection_operator(
+            selection,
+            tournament_size=tournament_size,
+        )
+        normalized_bounds_policy = normalize_bounds_policy(bounds_policy)
+
+        self.crossover_operator = crossover_operator
+        self.mutation_operator = mutation_operator
+        self.selection_operator = selection_operator
+        self.bounds_policy = normalized_bounds_policy
+
         self.gene_space = gene_space
         self.population_size = population_size
         self.max_generations = max_generations
-        self.crossover = crossover
-        self.crossover_prob = crossover_prob
-        self.crossover_eta = crossover_eta
-        self.crossover_alpha = crossover_alpha
-        self.mutation = mutation
-        self.mutation_prob = mutation_prob
-        self.mutation_individual_prob = mutation_individual_prob
-        self.mutation_sigma = mutation_sigma
+        self.crossover = crossover_operator.name
+        self.crossover_prob = float(crossover_operator.parameters.get("probability", 0.9))
+        self.crossover_eta = float(crossover_operator.parameters.get("eta", crossover_eta))
+        self.crossover_alpha = float(crossover_operator.parameters.get("alpha", crossover_alpha))
+        self.mutation = mutation_operator.name
+        self.mutation_prob = float(mutation_operator.parameters.get("probability", 0.1))
+        self.mutation_individual_prob = float(
+            mutation_operator.parameters.get("individual_probability", 1.0)
+        )
+        self.mutation_sigma = float(mutation_operator.parameters.get("sigma", mutation_sigma))
         self.mutation_sigma_schedule = mutation_sigma_schedule
         self.mutation_sigma_end = mutation_sigma_end
-        self.selection = selection
-        self.tournament_size = tournament_size
+        self.selection = selection_operator.name
+        self.tournament_size = int(
+            selection_operator.parameters.get("tournament_size", tournament_size)
+        )
         self.elitism = elitism
         self.parallel = parallel
         self.n_workers = n_workers
@@ -173,11 +254,34 @@ class GeneticAlgorithmOptimizer(
         self.max_evaluations = max_evaluations
         self.track_diversity = track_diversity
         self.callbacks = list(callbacks or [])
-        self.operators = OperatorCodec(gene_space, crossover, mutation)
+        self.operators = OperatorCodec(
+            gene_space,
+            self.crossover_operator,
+            self.mutation_operator,
+        )
         self._fitness_warning_emitted = False
         self._reset_vnext_state()
 
         self._warn_if_large_int_gene_without_sigma()
+
+    @staticmethod
+    def _reject_typed_operator_scalar_conflicts(
+        *,
+        component: str,
+        provided: object,
+        scalar_values: dict[str, object],
+        default_values: dict[str, object],
+    ) -> None:
+        if isinstance(provided, str):
+            return
+        conflicts = [
+            name for name, value in scalar_values.items() if value != default_values[name]
+        ]
+        if conflicts:
+            joined = ", ".join(conflicts)
+            raise ConfigurationError(
+                f"{joined} conflicts with typed {component} operator parameters."
+            )
 
     def _reset_vnext_state(self) -> None:
         """Reset state used by the vNext ask/tell and run APIs."""

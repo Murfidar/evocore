@@ -60,9 +60,13 @@ from evocore.lifecycle import (
     UpdateResult,
 )
 from evocore.optimizers import (
+    BoundsPolicy,
     ConfigurableComponent,
+    CrossoverOperator,
+    MutationOperator,
     OptimizerConfig,
     RuntimeHookSignature,
+    SelectionOperator,
     config_hash,
 )
 from evocore.optimizers.cmaes import (
@@ -100,6 +104,7 @@ __all__ = [
     "OP_MUTATION",
     "OP_SELECTION",
     "BinaryIndividual",
+    "BoundsPolicy",
     "BudgetPolicy",
     "BudgetScheduler",
     "CMAESOptimizer",
@@ -114,6 +119,7 @@ __all__ = [
     "ConfigurationError",
     "ConfigurationWarning",
     "ConvergenceError",
+    "CrossoverOperator",
     "Direction",
     "EarlyStopping",
     "EvaluationConfidence",
@@ -139,6 +145,7 @@ __all__ = [
     "IntegerMarginDistribution",
     "InverseDistanceAdvisor",
     "MetricsLogger",
+    "MutationOperator",
     "OperatorCodec",
     "OptimizationBatchResult",
     "OptimizationResult",
@@ -152,6 +159,7 @@ __all__ = [
     "ReproducibilityMetadata",
     "RuntimeHookSignature",
     "ScoreObservation",
+    "SelectionOperator",
     "Solution",
     "SolutionSet",
     "SurrogateScore",

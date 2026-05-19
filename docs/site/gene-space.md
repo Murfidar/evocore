@@ -72,6 +72,10 @@ json_text = space.to_json(indent=2)
 `is_fixed` metadata. `OptimizationResult.reproducibility.gene_space_signature` and
 `OptimizationResult.reproducibility.gene_space_hash` use the same canonical values.
 
+Per-gene `sigma` values are consumed by GA mutation operators. They override the global
+scheduled mutation sigma for that gene; see [Operator Contract](operator-contract.md)
+for the full sigma semantics.
+
 This contract is intentionally flat. Categorical, permutation, conditional, and
 multi-variable spaces are not part of this slice.
 

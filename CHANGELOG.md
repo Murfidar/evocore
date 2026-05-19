@@ -24,6 +24,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   and `validate_genes(...)` helpers for the flat search-space contract.
 - Public optimizer configuration signatures and hashes for `GeneticAlgorithmOptimizer`
   and `CMAESOptimizer`, with hook-aware reproducibility metadata.
+- Public GA operator contract specs for crossover, mutation, selection, bounds policy,
+  compatibility validation, sigma semantics, and custom operator extension.
 
 ### Changed
 

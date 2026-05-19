@@ -2,7 +2,14 @@ import json
 
 import pytest
 
-from evocore import CMAESOptimizer, ConfigurationError, Gene, GeneSpace, GeneticAlgorithmOptimizer
+from evocore import (
+    CMAESOptimizer,
+    ConfigurationError,
+    CrossoverOperator,
+    Gene,
+    GeneSpace,
+    GeneticAlgorithmOptimizer,
+)
 from evocore.callbacks import Callback, EarlyStopping, MetricsLogger, ProgressBar
 from evocore.optimizers.config import (
     OptimizerConfig,
@@ -12,6 +19,7 @@ from evocore.optimizers.config import (
     reproducibility_from_hooks,
     stable_object_identity,
 )
+from evocore.optimizers.operators import custom_mutation_operator
 
 
 class CustomCallback(Callback):
@@ -177,12 +185,22 @@ def test_ga_config_signature_uses_nested_component_shape():
             "track_diversity": False,
         },
         "components": {
+            "bounds_policy": {
+                "type": "clamp",
+                "operator_type": "bounds",
+                "domain": "repair",
+                "parameters": {},
+            },
             "crossover": {
                 "type": "sbx",
-                "parameters": {"alpha": 0.5, "eta": 2.0, "probability": 0.9},
+                "operator_type": "crossover",
+                "domain": "numeric",
+                "parameters": {"eta": 2.0, "probability": 0.9},
             },
             "mutation": {
                 "type": "gaussian",
+                "operator_type": "mutation",
+                "domain": "numeric",
                 "parameters": {
                     "individual_probability": 1.0,
                     "probability": 0.1,
@@ -195,6 +213,8 @@ def test_ga_config_signature_uses_nested_component_shape():
             },
             "selection": {
                 "type": "tournament",
+                "operator_type": "selection",
+                "domain": "score",
                 "parameters": {"tournament_size": 3},
             },
         },
@@ -264,7 +284,7 @@ def test_ga_validate_compatibility_is_public():
 
     assert engine.validate_compatibility() is None
 
-    with pytest.raises(ConfigurationError, match="binary GeneSpace"):
+    with pytest.raises(ConfigurationError, match="supports numeric"):
         GeneticAlgorithmOptimizer(
             GeneSpace([Gene("a", "bool"), Gene("b", "bool")]),
             crossover="sbx",
@@ -353,3 +373,37 @@ def test_cmaes_callback_hook_is_visible_in_reproducibility(tmp_path):
             "notes": [],
         }
     ]
+
+
+def test_ga_typed_operator_parameters_change_config_hash():
+    space = GeneSpace.uniform(-1.0, 1.0, 2)
+    left = GeneticAlgorithmOptimizer(space, crossover=CrossoverOperator.sbx(eta=2.0))
+    right = GeneticAlgorithmOptimizer(space, crossover=CrossoverOperator.sbx(eta=3.0))
+
+    assert left.config_hash() != right.config_hash()
+
+
+def test_ga_custom_operator_is_visible_in_reproducibility_metadata():
+    class IdentityMutation:
+        name = "identity"
+        operator_type = "mutation"
+        supported_gene_kinds = frozenset({"float"})
+
+        def validate_compatibility(self, gene_space):
+            return None
+
+        def mutate(self, values, context):
+            return list(values)
+
+    engine = GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        mutation=custom_mutation_operator(IdentityMutation()),
+    )
+
+    payload = engine._reproducibility_metadata().to_dict()
+
+    assert payload["reproducibility_status"] == "partial"
+    assert any(
+        hook["config"].get("component") == "mutation" and hook["reproducibility"] == "partial"
+        for hook in payload["runtime_hooks"]
+    )
