@@ -498,9 +498,7 @@ def test_ga_run_final_solutions_use_candidate_conversion_provenance() -> None:
         result.best_solution.values
     )
     assert result.best_solution.metadata["origin"] == "random"
-    assert result.best_solution.metadata["params"] == space.params_for(
-        result.best_solution.values
-    )
+    assert result.best_solution.metadata["params"] == space.params_for(result.best_solution.values)
     assert "stage" not in result.best_solution.metadata
     assert all("candidate_hash" in solution.metadata for solution in result.final_solutions)
     assert all("status" not in solution.metadata for solution in result.final_solutions)
