@@ -7,10 +7,12 @@ from evocore.results import (
     CHECKPOINT_KIND,
     CHECKPOINT_SCHEMA_VERSION,
     CheckpointSnapshot,
+    GenerationHistory,
     load_checkpoint,
     save_checkpoint,
     validate_checkpoint_identity,
 )
+from evocore.search_space import Solution
 
 
 def _engine():
@@ -156,3 +158,143 @@ def test_checkpoint_identity_validation_rejects_seed_and_direction_mismatch() ->
             seed=engine.seed,
             direction="minimize",
         )
+
+
+def _sphere(solution: Solution) -> float:
+    return -sum(float(value) ** 2 for value in solution.values)
+
+
+def _run_generation_loop(engine: GeneticAlgorithmOptimizer):
+    return engine._run_from_population(
+        engine._initial_population(),
+        _sphere,
+        start_generation=0,
+    )
+
+
+def _population_after_generation_zero(engine: GeneticAlgorithmOptimizer) -> list[Solution]:
+    working_population, fitnesses, evaluated_now, _ = engine._evaluate_with_budget(
+        engine._initial_population(),
+        _sphere,
+        gen=-1,
+        n_evaluations=0,
+    )
+    generation_history = GenerationHistory()
+    working_population, _, _, stopped, _ = engine._run_generation(
+        working_population=working_population,
+        fitnesses=fitnesses,
+        objective_fn=_sphere,
+        gen=0,
+        n_evaluations=evaluated_now,
+        elite_history=[],
+        diversity_history=[],
+        generation_history=generation_history,
+    )
+    assert stopped is False
+    return working_population
+
+
+def test_ga_checkpoint_generation_snapshot_contains_population_state() -> None:
+    engine = _engine()
+    population = [
+        Solution([0.25, -0.5], score=-0.3125, score_valid=True, metadata={"rank": 1}),
+        Solution([0.5, -0.25], score=-0.3125, score_valid=True, metadata={"rank": 2}),
+    ]
+
+    snapshot = engine.checkpoint(generation=2, population=population)
+    payload = snapshot.to_dict()
+    state_payload = payload["state"]["payload"]
+
+    assert state_payload["state_kind"] == "ga_generation_loop"
+    assert payload["position"]["generation"] == 2
+    assert payload["position"]["event_index"] == engine.state_summary().event_index
+    assert state_payload["population"] == [
+        {
+            "values": [0.25, -0.5],
+            "score": -0.3125,
+            "score_valid": True,
+            "metadata": {"rank": 1},
+        },
+        {
+            "values": [0.5, -0.25],
+            "score": -0.3125,
+            "score_valid": True,
+            "metadata": {"rank": 2},
+        },
+    ]
+
+
+def test_ga_resume_from_stable_checkpoint_matches_uninterrupted_generation_loop(tmp_path) -> None:
+    space = GeneSpace.uniform(-1.0, 1.0, 3)
+    checkpoint_path = tmp_path / "checkpoint_gen_0.evocore-checkpoint.json"
+
+    partial = GeneticAlgorithmOptimizer(
+        space,
+        population_size=6,
+        max_generations=3,
+        seed=123,
+    )
+    generation_zero_population = _population_after_generation_zero(partial)
+    partial.save_checkpoint(
+        checkpoint_path,
+        partial.checkpoint(generation=0, population=generation_zero_population),
+    )
+
+    resumed = GeneticAlgorithmOptimizer(
+        space,
+        population_size=6,
+        max_generations=3,
+        seed=123,
+    ).resume_from_checkpoint(_sphere, checkpoint_path)
+    uninterrupted = _run_generation_loop(
+        GeneticAlgorithmOptimizer(
+            space,
+            population_size=6,
+            max_generations=3,
+            seed=123,
+        )
+    )
+
+    assert resumed.best_score == pytest.approx(uninterrupted.best_score)
+    assert [solution.values for solution in resumed.final_solutions] == [
+        solution.values for solution in uninterrupted.final_solutions
+    ]
+    assert resumed.seed == 123
+    assert resumed.stop_reason == uninterrupted.stop_reason
+
+
+def test_ga_resume_from_stable_checkpoint_rejects_config_mismatch(tmp_path) -> None:
+    space = GeneSpace.uniform(-1.0, 1.0, 3)
+    source = GeneticAlgorithmOptimizer(space, population_size=6, max_generations=3, seed=123)
+    generation_zero_population = _population_after_generation_zero(source)
+    checkpoint_path = tmp_path / "checkpoint_gen_0.evocore-checkpoint.json"
+    source.save_checkpoint(
+        checkpoint_path,
+        source.checkpoint(generation=0, population=generation_zero_population),
+    )
+
+    mismatched = GeneticAlgorithmOptimizer(space, population_size=8, max_generations=3, seed=123)
+
+    with pytest.raises(CheckpointError, match="optimizer_config_hash"):
+        mismatched.resume_from_checkpoint(_sphere, checkpoint_path)
+
+
+def test_ga_resume_keeps_legacy_pickle_path(tmp_path) -> None:
+    checkpoint_path = tmp_path / "checkpoint_gen_0.pkl"
+    population = [
+        Solution([0.0, 0.0], score=0.0, score_valid=True),
+        Solution([0.1, 0.0], score=-0.01, score_valid=True),
+        Solution([0.0, 0.1], score=-0.01, score_valid=True),
+        Solution([0.1, 0.1], score=-0.02, score_valid=True),
+    ]
+
+    import pickle
+
+    checkpoint_path.write_bytes(
+        pickle.dumps({"population": population, "generation": 0, "seed": 42})
+    )
+
+    result = _engine().resume(_sphere, str(checkpoint_path))
+
+    assert result.seed == 42
+    assert result.best_solution.score_valid
