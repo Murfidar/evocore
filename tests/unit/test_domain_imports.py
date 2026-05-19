@@ -78,7 +78,13 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
         MetricsLogger,
         ProgressBar,
     )
-    from evocore.lifecycle import OptimizationTelemetry, OptimizerStateSummary, UpdateResult
+    from evocore.lifecycle import (
+        OptimizationTelemetry,
+        OptimizerStateSummary,
+        UpdateResult,
+        candidate_to_solution,
+        solution_to_candidate,
+    )
     from evocore.lifecycle.events import EventHistory, EventRecord, append_run_stop_event
     from evocore.optimizers import OptimizerConfig, RuntimeHookSignature, config_hash
     from evocore.optimizers.cmaes import CMAESAskTellMixin, CMAESOptimizer
@@ -110,6 +116,8 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
     assert EventRecord.__module__ == "evocore.lifecycle.events"
     assert EventHistory.__module__ == "evocore.lifecycle.events"
     assert append_run_stop_event.__module__ == "evocore.lifecycle.events"
+    assert candidate_to_solution.__module__ == "evocore.lifecycle.conversion"
+    assert solution_to_candidate.__module__ == "evocore.lifecycle.conversion"
     assert OptimizationTelemetry.__module__ == "evocore.lifecycle.telemetry"
     assert UpdateResult.__module__ == "evocore.lifecycle.telemetry"
     assert OptimizerStateSummary.__module__ == "evocore.lifecycle.telemetry"

@@ -1,6 +1,7 @@
 """Ask/tell lifecycle contracts shared by EvoCore optimizers."""
 
 from evocore.lifecycle.batches import CandidateBatch, batch_id_from_seed
+from evocore.lifecycle.conversion import candidate_to_solution, solution_to_candidate
 from evocore.lifecycle.events import EventHistory, EventRecord, StopReason, append_run_stop_event
 from evocore.lifecycle.policies import BudgetPolicy
 from evocore.lifecycle.protocols import Evaluator, Optimizer
@@ -43,6 +44,8 @@ __all__ = [
     "UpdateResult",
     "append_run_stop_event",
     "batch_id_from_seed",
+    "candidate_to_solution",
     "is_state_update_confidence",
     "score_for_direction",
+    "solution_to_candidate",
 ]
