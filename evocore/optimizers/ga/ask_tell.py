@@ -17,8 +17,10 @@ from evocore.lifecycle import (
     Evaluator,
     UpdateResult,
     batch_id_from_seed,
+    candidate_to_solution,
     is_state_update_confidence,
     score_for_direction,
+    solution_to_candidate,
 )
 from evocore.results import (
     EventRecord,
@@ -43,15 +45,14 @@ class GeneticAlgorithmAskTellMixin:
         parents: Sequence[str] = (),
     ) -> Candidate:
         candidate_id = _core.candidate_id(self.seed, event_index, candidate_index)
-        params = self.gene_space.params_for(genes)
-        return Candidate(
+        return solution_to_candidate(
+            Solution(genes),
+            gene_space=self.gene_space,
             candidate_id=candidate_id,
-            genes=list(genes),
             batch_id=batch_id,
-            params=params,
             origin=origin,
-            parents=parents,
             event_index=event_index,
+            parents=parents,
         )
 
     def ask(self, n: int | None = None) -> list[Candidate]:
@@ -115,7 +116,7 @@ class GeneticAlgorithmAskTellMixin:
             candidate_ids=tuple(candidate.candidate_id for candidate in candidates),
         )
         self._event_index += 1
-        self.vnext_telemetry.record_proposed_candidates(candidates)
+        self.vnext_telemetry.record_proposed_candidates(candidates, gene_space=self.gene_space)
         self._append_ask_events(candidates)
         return candidates
 
@@ -262,7 +263,7 @@ class GeneticAlgorithmAskTellMixin:
                     event_type="ask",
                     batch_id=candidate.batch_id,
                     candidate_id=candidate.candidate_id,
-                    candidate_hash=candidate.candidate_hash(),
+                    candidate_hash=candidate.candidate_hash(self.gene_space),
                     generation=candidate.generation,
                     origin=candidate.origin,
                     parents=tuple(candidate.parents),
@@ -286,7 +287,7 @@ class GeneticAlgorithmAskTellMixin:
                 event_type="tell",
                 batch_id=candidate.batch_id,
                 candidate_id=candidate.candidate_id,
-                candidate_hash=candidate.candidate_hash(),
+                candidate_hash=candidate.candidate_hash(self.gene_space),
                 generation=candidate.generation,
                 stage=record.stage,
                 confidence=record.confidence,
@@ -379,23 +380,17 @@ class GeneticAlgorithmAskTellMixin:
             )
             return result
 
-        best = Solution(
-            list(self.best_candidate.genes),
-            score=self.best_candidate.best_state_score(self.direction),
-            score_valid=True,
-            metadata={
-                "params": self.best_candidate.params,
-                "candidate_id": self.best_candidate.candidate_id,
-            },
+        best = candidate_to_solution(
+            self.best_candidate,
+            direction=self.direction,
+            gene_space=self.gene_space,
         )
         final_solutions = SolutionSet(
             [
-                Solution(
-                    list(candidate.genes),
-                    score=candidate.best_state_score(self.direction),
-                    score_valid=candidate.confidence is not None
-                    and is_state_update_confidence(candidate.confidence),
-                    metadata={"params": candidate.params, "candidate_id": candidate.candidate_id},
+                candidate_to_solution(
+                    candidate,
+                    direction=self.direction,
+                    gene_space=self.gene_space,
                 )
                 for candidate in final_candidates
             ]

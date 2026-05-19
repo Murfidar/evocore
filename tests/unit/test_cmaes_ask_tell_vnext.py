@@ -25,7 +25,8 @@ def test_cma_ask_returns_candidate_batch() -> None:
 
 
 def test_cma_ask_records_append_only_ask_events() -> None:
-    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
+    space = _space()
+    engine = CMAESOptimizer(space, population_size=4, seed=7)
 
     candidates = engine.ask()
 
@@ -35,7 +36,10 @@ def test_cma_ask_records_append_only_ask_events() -> None:
     assert all(row["event_type"] == "ask" for row in rows)
     assert rows[0]["batch_id"] == candidates[0].batch_id
     assert rows[0]["candidate_id"] == candidates[0].candidate_id
-    assert rows[0]["candidate_hash"] == candidates[0].candidate_hash()
+    assert rows[0]["candidate_hash"] == space.value_hash(candidates[0].genes)
+    assert engine.vnext_telemetry.unique_candidate_hashes == {
+        space.value_hash(candidate.genes) for candidate in candidates
+    }
 
 
 def test_cma_tell_ignores_partial_records_for_state_update() -> None:

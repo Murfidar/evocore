@@ -92,7 +92,7 @@ class CMAESAskTellMixin:
                     event_type="ask",
                     batch_id=candidate.batch_id,
                     candidate_id=candidate.candidate_id,
-                    candidate_hash=candidate.candidate_hash(),
+                    candidate_hash=candidate.candidate_hash(self.gene_space),
                     generation=candidate.generation,
                     origin=candidate.origin,
                     parents=tuple(candidate.parents),
@@ -116,7 +116,7 @@ class CMAESAskTellMixin:
                 event_type="tell",
                 batch_id=candidate.batch_id,
                 candidate_id=candidate.candidate_id,
-                candidate_hash=candidate.candidate_hash(),
+                candidate_hash=candidate.candidate_hash(self.gene_space),
                 generation=candidate.generation,
                 stage=record.stage,
                 confidence=record.confidence,
@@ -166,7 +166,7 @@ class CMAESAskTellMixin:
             continuous_samples_by_id=continuous_samples_by_id,
         )
         self._event_index += 1
-        self.vnext_telemetry.record_proposed_candidates(candidates)
+        self.vnext_telemetry.record_proposed_candidates(candidates, gene_space=self.gene_space)
         self._append_ask_events(candidates)
         return candidates
 

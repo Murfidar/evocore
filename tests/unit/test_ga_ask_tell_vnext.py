@@ -113,14 +113,15 @@ def test_ga_ask_assigns_stable_batch_id_per_batch() -> None:
 
 
 def test_ga_ask_populates_unique_candidate_hash_telemetry() -> None:
-    engine = GeneticAlgorithmOptimizer(_space(), population_size=6, max_generations=5, seed=123)
+    space = _space()
+    engine = GeneticAlgorithmOptimizer(space, population_size=6, max_generations=5, seed=123)
 
     candidates = engine.ask(4)
 
     assert engine.vnext_telemetry.total_candidates_proposed == 4
-    assert len(engine.vnext_telemetry.unique_candidate_hashes) == len(
-        {tuple(candidate.genes) for candidate in candidates}
-    )
+    assert engine.vnext_telemetry.unique_candidate_hashes == {
+        space.value_hash(candidate.genes) for candidate in candidates
+    }
 
 
 def test_ga_ask_records_append_only_ask_events() -> None:
@@ -134,7 +135,7 @@ def test_ga_ask_records_append_only_ask_events() -> None:
     assert all(row["event_type"] == "ask" for row in rows)
     assert rows[0]["batch_id"] == candidates[0].batch_id
     assert rows[0]["candidate_id"] == candidates[0].candidate_id
-    assert rows[0]["candidate_hash"] == candidates[0].candidate_hash()
+    assert rows[0]["candidate_hash"] == engine.gene_space.value_hash(candidates[0].genes)
     assert rows[0]["genes"] == list(candidates[0].genes)
     assert rows[0]["params"] == candidates[0].params
 
@@ -481,3 +482,25 @@ def test_ga_run_cached_records_do_not_consume_full_evaluation_budget() -> None:
     assert result.telemetry.candidates_full_evaluated == 4
     assert result.telemetry.candidates_cached == 1
     assert result.best_score == pytest.approx(100.0)
+
+
+def test_ga_run_final_solutions_use_candidate_conversion_provenance() -> None:
+    space = _space()
+    engine = GeneticAlgorithmOptimizer(space, population_size=4, max_generations=20, seed=123)
+
+    result = engine.run(
+        SphereEvaluator(),
+        policy=BudgetPolicy.single_full(max_evaluations=4, batch_size=4),
+    )
+
+    assert result.best_solution.metadata["candidate_id"] == result.best_candidate_id
+    assert result.best_solution.metadata["candidate_hash"] == space.value_hash(
+        result.best_solution.values
+    )
+    assert result.best_solution.metadata["origin"] == "random"
+    assert result.best_solution.metadata["params"] == space.params_for(
+        result.best_solution.values
+    )
+    assert "stage" not in result.best_solution.metadata
+    assert all("candidate_hash" in solution.metadata for solution in result.final_solutions)
+    assert all("status" not in solution.metadata for solution in result.final_solutions)
