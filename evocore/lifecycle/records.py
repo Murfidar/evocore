@@ -7,10 +7,13 @@ import json
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from evocore.core.errors import ConfigurationError, FitnessError
 from evocore.search_space import GeneValue
+
+if TYPE_CHECKING:
+    from evocore.search_space import GeneSpace
 
 Direction = Literal["maximize", "minimize"]
 CandidateOrigin = Literal[
@@ -233,8 +236,11 @@ class Candidate:
             return best if direction == "maximize" else -best
         return score_for_direction(best, direction)
 
-    def candidate_hash(self) -> str:
+    def candidate_hash(self, gene_space: GeneSpace | None = None) -> str:
         """Return a stable hash for this candidate's decoded genes."""
+        if gene_space is not None:
+            return gene_space.value_hash(self.genes)
+
         encoded: list[list[Any]] = []
         for value in self.genes:
             if isinstance(value, bool):

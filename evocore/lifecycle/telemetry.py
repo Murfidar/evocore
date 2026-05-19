@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from evocore.core.serialization import stable_json_dumps
 from evocore.lifecycle.records import Candidate
+
+if TYPE_CHECKING:
+    from evocore.search_space import GeneSpace
 
 
 @dataclass
@@ -28,11 +31,18 @@ class OptimizationTelemetry:
         """Record newly proposed candidate count."""
         self.total_candidates_proposed += int(count)
 
-    def record_proposed_candidates(self, candidates: Sequence[Candidate]) -> None:
+    def record_proposed_candidates(
+        self,
+        candidates: Sequence[Candidate],
+        *,
+        gene_space: GeneSpace | None = None,
+    ) -> None:
         """Record newly proposed candidates and their unique genome hashes."""
         proposed = list(candidates)
         self.record_proposed(len(proposed))
-        self.unique_candidate_hashes.update(candidate.candidate_hash() for candidate in proposed)
+        self.unique_candidate_hashes.update(
+            candidate.candidate_hash(gene_space) for candidate in proposed
+        )
 
     def record_screened(self, count: int) -> None:
         """Record candidates scored by a surrogate or screen."""

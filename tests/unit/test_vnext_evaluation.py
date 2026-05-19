@@ -11,6 +11,7 @@ from evocore.lifecycle import (
     UpdateResult,
     score_for_direction,
 )
+from evocore.search_space import Gene, GeneSpace
 
 
 def test_rung_requires_valid_budget_and_promotion_fraction() -> None:
@@ -363,3 +364,39 @@ def test_telemetry_records_cached_without_full_evaluation_count() -> None:
     assert telemetry.candidates_cached == 2
     assert telemetry.candidates_full_evaluated == 0
     assert telemetry.to_dict()["candidates_cached"] == 2
+
+
+def test_candidate_hash_uses_gene_space_value_hash_when_supplied() -> None:
+    space = GeneSpace(
+        [
+            Gene("x", "float", -5.0, 5.0),
+            Gene("period", "int", 2, 20),
+            Gene("enabled", "bool"),
+        ]
+    )
+    left = Candidate(candidate_id="c-left", genes=[1.0, 5, True], event_index=0)
+    right = Candidate(candidate_id="c-right", genes=[1, 5, True], event_index=0)
+
+    assert left.candidate_id != right.candidate_id
+    assert left.candidate_hash(space) == space.value_hash(left.genes)
+    assert left.candidate_hash(space) == right.candidate_hash(space)
+
+
+def test_candidate_hash_without_gene_space_keeps_legacy_fallback() -> None:
+    candidate = Candidate(candidate_id="c-1", genes=[1.0, 5, True], event_index=0)
+
+    assert candidate.candidate_hash() == candidate.candidate_hash()
+    assert len(candidate.candidate_hash()) == 64
+
+
+def test_telemetry_records_schema_aware_candidate_hashes() -> None:
+    space = GeneSpace([Gene("x", "float", -5.0, 5.0)])
+    telemetry = OptimizationTelemetry()
+    candidates = [
+        Candidate(candidate_id="c-1", genes=[1.0], origin="random", event_index=0),
+        Candidate(candidate_id="c-2", genes=[1], origin="random", event_index=0),
+    ]
+
+    telemetry.record_proposed_candidates(candidates, gene_space=space)
+
+    assert telemetry.unique_candidate_hashes == {space.value_hash([1.0])}
