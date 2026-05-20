@@ -11,6 +11,12 @@ can update best-candidate state, but they do not spend fresh objective budget.
 Use `ask()` and `tell()` directly when an external system owns evaluation. Use `run()` with an
 an evaluator object and optional `BudgetPolicy` when EvoCore should drive the budget loop.
 
+GA ask/tell checkpoints are stable JSON files. Use
+`optimizer.ask_tell_checkpoint()` after `ask()` or after partial `tell()` calls
+when external evaluation work may outlive the Python process. Restore with
+`resume_ask_tell_checkpoint(...)`, inspect `state_summary().pending_batch_ids`,
+and continue with normal `tell()` or `ask()` calls.
+
 ## Budgeted Evaluation
 
 `GeneticAlgorithmOptimizer.run()` expects an evaluator object:

@@ -53,3 +53,7 @@ validates optimizer identity before mutating the optimizer.
 `OptimizationResult.to_dict()`, `OptimizationTelemetry.to_dict()`, and
 `EventHistory.to_rows()` are export surfaces for analysis and inspection. They are
 not accepted as checkpoint resume files.
+
+Stable GA ask/tell checkpoints include telemetry counters and unique candidate
+hashes. Restored telemetry continues counting from the checkpoint rather than
+being rebuilt from event rows.

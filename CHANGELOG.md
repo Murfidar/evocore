@@ -33,6 +33,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Stable JSON checkpoint envelope helpers and GA generation-loop checkpoint/resume
   support with optimizer, gene-space, config, seed, direction, and seed-derivation
   validation.
+- Added stable GA ask/tell checkpoints with pending-batch and partial-tell
+  resume support.
 
 ### Changed
 

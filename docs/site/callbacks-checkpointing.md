@@ -59,3 +59,39 @@ audit data and is not replayed to rebuild optimizer state.
 `CMAESOptimizer` checkpoint/resume is unsupported until the Rust-backed CMA-ES
 state exposes a stable export/import contract. CMA-ES result export and event
 audit history remain available.
+
+## GA Ask/Tell Checkpoints
+
+Stable checkpoints also cover manual GA ask/tell workflows. This is the
+recommended checkpoint boundary when evaluation work happens outside EvoCore,
+for example in a job queue or remote worker pool.
+
+```python
+from evocore import EvaluationRecord, GeneticAlgorithmOptimizer
+
+optimizer = GeneticAlgorithmOptimizer(gene_space, population_size=8, seed=42)
+candidates = optimizer.ask()
+optimizer.save_checkpoint(
+    "ga-ask-tell.evocore-checkpoint.json",
+    optimizer.ask_tell_checkpoint(metadata={"phase": "submitted"}),
+)
+
+restored = GeneticAlgorithmOptimizer(gene_space, population_size=8, seed=42)
+summary = restored.resume_ask_tell_checkpoint("ga-ask-tell.evocore-checkpoint.json")
+
+records = [
+    EvaluationRecord(
+        candidate_id=candidate.candidate_id,
+        batch_id=candidate.batch_id,
+        score=score,
+        confidence="trusted_full",
+        stage="full",
+    )
+    for candidate, score in zip(candidates, scores, strict=False)
+]
+restored.tell(records)
+```
+
+Pending batches and partial tells are valid checkpoint state. Resume restores
+candidate and batch ledgers directly; event history is audit data and is not
+replayed to rebuild optimizer state.
