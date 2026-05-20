@@ -6,6 +6,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-21
+
 ### Added
 
 - Structural `Optimizer` and `Evaluator` protocols for the clean-break ask/tell
