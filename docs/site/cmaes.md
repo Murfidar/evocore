@@ -10,11 +10,32 @@ results while using direction-aware comparison internally. In ask/tell mode, com
 batches of `trusted_full` or `cached` records update the covariance state. Cached records
 reuse trusted previous full observations and do not spend fresh full-evaluation budget.
 
-## Checkpoint Resume
+## Rust State Snapshots
 
-`CMAESOptimizer` checkpoint/resume is unsupported in checkpoint v1. The Rust-backed
-CMA-ES state must expose stable serializable fields before EvoCore can continue
-the same covariance trajectory from a checkpoint.
+`PyCMAESState` exposes a Rust-backed state snapshot primitive:
+
+```python
+from evocore._core import PyCMAESState
+
+state = PyCMAESState([0.0, 0.0], 0.5, 6, [(-5.0, 5.0), (-5.0, 5.0)])
+samples = state.ask(42, state.generation)
+state.tell(samples, [-sum(value * value for value in sample) for sample in samples])
+
+snapshot = state.to_dict()
+restored = PyCMAESState.from_dict(snapshot)
+
+assert restored.ask(42, restored.generation) == state.ask(42, state.generation)
+```
+
+The snapshot is a schema-versioned optimizer-state payload. It preserves the
+CMA-ES adaptation state needed for deterministic continuation, including mean,
+sigma, covariance, evolution paths, generation, bounds, and lazy
+eigendecomposition state.
+
+`CMAESOptimizer` checkpoint/resume is still unsupported in checkpoint v1. The
+Rust state primitive is the foundation for that later optimizer-level work,
+which also needs Python candidate ledgers, pending batches, telemetry, and event
+indexes.
 
 Use `OptimizationResult.to_dict()` for completed-run export and `engine.events`
 for ask/tell audit rows. Those exports are not checkpoint files and are not

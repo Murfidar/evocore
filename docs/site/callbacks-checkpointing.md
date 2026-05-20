@@ -57,9 +57,11 @@ Policy-driven `run(evaluator, policy=...)` mid-loop resume is not part of
 checkpoint v1. `EventHistory` remains audit data and is not replayed to rebuild
 optimizer state.
 
-`CMAESOptimizer` checkpoint/resume is unsupported until the Rust-backed CMA-ES
-state exposes a stable export/import contract. CMA-ES result export and event
-audit history remain available.
+`CMAESOptimizer` checkpoint/resume is unsupported in checkpoint v1. The
+Rust-backed `PyCMAESState` now has a stable state snapshot primitive, but full
+optimizer resume still needs the Python optimizer ledger and pending-batch state
+to be wired into the checkpoint envelope. CMA-ES result export and event audit
+history remain available.
 
 ## GA Ask/Tell Checkpoints
 

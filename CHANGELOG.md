@@ -35,6 +35,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   validation.
 - Added stable GA ask/tell checkpoints with pending-batch and partial-tell
   resume support.
+- Rust-backed `PyCMAESState.to_dict()` and `PyCMAESState.from_dict(...)`
+  snapshots for deterministic CMA-ES state continuation primitives.
 
 ### Changed
 
