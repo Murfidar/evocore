@@ -1,6 +1,6 @@
 import pytest
 
-from evocore import CheckpointError
+from evocore import CheckpointError, GeneSpace, GeneticAlgorithmOptimizer
 from evocore.lifecycle import (
     Candidate,
     CandidateBatch,
@@ -142,3 +142,49 @@ def test_event_history_checkpoint_round_trip_preserves_append_order() -> None:
     restored = event_history_from_checkpoint(event_history_to_checkpoint(history))
 
     assert restored.to_rows() == history.to_rows()
+
+
+def _ga() -> GeneticAlgorithmOptimizer:
+    return GeneticAlgorithmOptimizer(
+        GeneSpace.uniform(-1.0, 1.0, 2),
+        population_size=4,
+        max_generations=5,
+        seed=123,
+    )
+
+
+def test_ga_ask_tell_checkpoint_after_ask_contains_pending_batch_state() -> None:
+    optimizer = _ga()
+    candidates = optimizer.ask(4)
+
+    snapshot = optimizer.ask_tell_checkpoint(metadata={"reason": "unit"})
+    payload = snapshot.to_dict()
+    state_payload = payload["state"]["payload"]
+
+    assert state_payload["state_kind"] == "ga_ask_tell"
+    assert state_payload["event_index"] == 1
+    assert set(state_payload["candidates_by_id"]) == {
+        candidate.candidate_id for candidate in candidates
+    }
+    assert list(state_payload["batches_by_id"]) == [candidates[0].batch_id]
+    assert state_payload["trusted_candidate_ids"] == []
+    assert state_payload["best_candidate_id"] is None
+    assert payload["position"]["mode"] == "ask_tell"
+    assert payload["position"]["event_index"] == 1
+    assert payload["position"]["pending_batch_ids"] == [candidates[0].batch_id]
+    assert payload["metadata"] == {"reason": "unit"}
+
+
+def test_ga_ask_tell_checkpoint_after_partial_tell_contains_accepted_record() -> None:
+    optimizer = _ga()
+    candidates = optimizer.ask(4)
+    optimizer.tell([_record(candidates[0].candidate_id, batch_id=candidates[0].batch_id)])
+
+    payload = optimizer.ask_tell_checkpoint().to_dict()
+    batch_payload = payload["state"]["payload"]["batches_by_id"][candidates[0].batch_id]
+
+    assert len(batch_payload["records"]) == 1
+    assert batch_payload["records"][0]["candidate_id"] == candidates[0].candidate_id
+    assert payload["position"]["pending_batch_ids"] == [candidates[0].batch_id]
+    assert payload["state"]["payload"]["best_candidate_id"] == candidates[0].candidate_id
+    assert payload["state"]["payload"]["trusted_candidate_ids"] == [candidates[0].candidate_id]

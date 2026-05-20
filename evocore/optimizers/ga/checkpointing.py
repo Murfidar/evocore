@@ -6,7 +6,13 @@ from collections.abc import Callable, Mapping, Sequence
 from typing import Any
 
 from evocore.core.errors import CheckpointError
-from evocore.lifecycle import score_for_direction
+from evocore.lifecycle import (
+    batch_to_checkpoint,
+    candidate_to_checkpoint,
+    event_history_to_checkpoint,
+    score_for_direction,
+    telemetry_to_checkpoint,
+)
 from evocore.results import (
     CheckpointSnapshot,
     OptimizationResult,
@@ -19,6 +25,10 @@ from evocore.results import (
     save_checkpoint as save_checkpoint_payload,
 )
 from evocore.search_space import Solution
+
+GA_GENERATION_LOOP_STATE_KIND = "ga_generation_loop"
+GA_ASK_TELL_STATE_KIND = "ga_ask_tell"
+GA_CHECKPOINT_STATE_SCHEMA_VERSION = 1
 
 
 def _solution_to_checkpoint(solution: Solution) -> dict[str, Any]:
@@ -62,7 +72,7 @@ class GeneticAlgorithmCheckpointingMixin:
             )
         population_payload = [_solution_to_checkpoint(solution) for solution in population]
         state_payload = {
-            "state_kind": "ga_generation_loop",
+            "state_kind": GA_GENERATION_LOOP_STATE_KIND,
             "generation": int(generation),
             "population": population_payload,
         }
@@ -133,7 +143,7 @@ class GeneticAlgorithmCheckpointingMixin:
     ) -> tuple[list[Solution], int]:
         state = payload["state"]
         state_payload = state["payload"]
-        if state_payload.get("state_kind") != "ga_generation_loop":
+        if state_payload.get("state_kind") != GA_GENERATION_LOOP_STATE_KIND:
             raise CheckpointError(
                 "checkpoint state_kind "
                 f"{state_payload.get('state_kind')!r} is not supported by "
@@ -219,6 +229,58 @@ class GeneticAlgorithmCheckpointingMixin:
         if str(checkpoint).endswith(".json"):
             return self.resume_from_checkpoint(objective_fn, checkpoint)
         return self._resume_legacy_pickle(objective_fn, checkpoint)
+
+    def ask_tell_checkpoint(
+        self,
+        *,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> CheckpointSnapshot:
+        """Return a stable GA ask/tell runtime checkpoint snapshot."""
+        trusted_ids = [candidate.candidate_id for candidate in self._trusted_population_vnext]
+        best_candidate_id = (
+            None if self.best_candidate is None else self.best_candidate.candidate_id
+        )
+        state_payload = {
+            "state_kind": GA_ASK_TELL_STATE_KIND,
+            "event_index": self._event_index,
+            "candidates_by_id": {
+                candidate_id: candidate_to_checkpoint(candidate)
+                for candidate_id, candidate in sorted(self._candidates_by_id.items())
+            },
+            "batches_by_id": {
+                batch_id: batch_to_checkpoint(batch)
+                for batch_id, batch in sorted(self._batches_by_id.items())
+            },
+            "trusted_candidate_ids": trusted_ids,
+            "best_candidate_id": best_candidate_id,
+            "telemetry": telemetry_to_checkpoint(self.vnext_telemetry),
+            "events": event_history_to_checkpoint(self.events),
+        }
+        return CheckpointSnapshot(
+            optimizer_type="GeneticAlgorithmOptimizer",
+            optimizer_config=self.config_signature(),
+            optimizer_config_hash=self.config_hash(),
+            gene_space_signature=self.gene_space.signature(),
+            gene_space_hash=self.gene_space.hash(),
+            direction=self.direction,
+            seed=self.seed,
+            position={
+                "mode": "ask_tell",
+                "event_index": self._event_index,
+                "pending_batch_ids": list(self._pending_batch_ids()),
+                "best_candidate_id": best_candidate_id,
+            },
+            state={
+                "optimizer_type": "GeneticAlgorithmOptimizer",
+                "schema_version": GA_CHECKPOINT_STATE_SCHEMA_VERSION,
+                "payload": state_payload,
+            },
+            audit={
+                "events": event_history_to_checkpoint(self.events),
+                "telemetry": telemetry_to_checkpoint(self.vnext_telemetry),
+            },
+            metadata=dict(metadata or {}),
+        )
 
 
 __all__ = ["GeneticAlgorithmCheckpointingMixin"]
