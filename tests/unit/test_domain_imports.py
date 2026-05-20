@@ -28,6 +28,7 @@ def test_new_domain_imports_are_available():
         "evocore.optimizers",
         "evocore.optimizers.ga",
         "evocore.optimizers.cmaes",
+        "evocore.optimizers.cmaes.checkpointing",
         "evocore.optimizers.config",
         "evocore.optimizers.ga.config",
         "evocore.optimizers.cmaes.config",
@@ -91,7 +92,11 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
     )
     from evocore.lifecycle.events import EventHistory, EventRecord, append_run_stop_event
     from evocore.optimizers import OptimizerConfig, RuntimeHookSignature, config_hash
-    from evocore.optimizers.cmaes import CMAESAskTellMixin, CMAESOptimizer
+    from evocore.optimizers.cmaes import (
+        CMAESAskTellMixin,
+        CMAESCheckpointingMixin,
+        CMAESOptimizer,
+    )
     from evocore.optimizers.config import ConfigurableComponent
     from evocore.optimizers.ga import (
         GeneticAlgorithmAskTellMixin,
@@ -149,6 +154,8 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
     assert GeneticAlgorithmCheckpointingMixin in GeneticAlgorithmOptimizer.__mro__
     assert GeneticAlgorithmMultiRunMixin in GeneticAlgorithmOptimizer.__mro__
     assert CMAESAskTellMixin in CMAESOptimizer.__mro__
+    assert CMAESCheckpointingMixin.__module__ == "evocore.optimizers.cmaes.checkpointing"
+    assert CMAESCheckpointingMixin in CMAESOptimizer.__mro__
 
 
 def test_solution_and_callback_compatibility_aliases_are_removed():
