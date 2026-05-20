@@ -1,6 +1,6 @@
 import pytest
 
-from evocore import CheckpointError, GeneSpace, GeneticAlgorithmOptimizer
+from evocore import CheckpointError, FitnessError, GeneSpace, GeneticAlgorithmOptimizer
 from evocore.lifecycle import (
     Candidate,
     CandidateBatch,
@@ -188,3 +188,61 @@ def test_ga_ask_tell_checkpoint_after_partial_tell_contains_accepted_record() ->
     assert payload["position"]["pending_batch_ids"] == [candidates[0].batch_id]
     assert payload["state"]["payload"]["best_candidate_id"] == candidates[0].candidate_id
     assert payload["state"]["payload"]["trusted_candidate_ids"] == [candidates[0].candidate_id]
+
+
+def _records_for(candidates):
+    return [
+        _record(candidate.candidate_id, batch_id=candidate.batch_id, stage="full")
+        for candidate in candidates
+    ]
+
+
+def test_ga_resume_ask_tell_checkpoint_after_ask_accepts_pending_records(tmp_path) -> None:
+    source = _ga()
+    candidates = source.ask(4)
+    checkpoint_path = tmp_path / "ga-ask-tell.evocore-checkpoint.json"
+    source.save_checkpoint(checkpoint_path, source.ask_tell_checkpoint())
+
+    restored = _ga()
+    summary = restored.resume_ask_tell_checkpoint(checkpoint_path)
+    result = restored.tell(_records_for(candidates))
+
+    assert summary.pending_batch_ids == (candidates[0].batch_id,)
+    assert result.trusted_count == 4
+    assert result.pending_batch_ids == ()
+    assert restored.state_summary().trusted_count == 4
+    assert restored.best_candidate is not None
+
+
+def test_ga_resume_ask_tell_checkpoint_after_partial_tell_accepts_missing_records(
+    tmp_path,
+) -> None:
+    source = _ga()
+    candidates = source.ask(4)
+    source.tell([_record(candidates[0].candidate_id, batch_id=candidates[0].batch_id)])
+    checkpoint_path = tmp_path / "ga-partial.evocore-checkpoint.json"
+    source.save_checkpoint(checkpoint_path, source.ask_tell_checkpoint())
+
+    restored = _ga()
+    summary = restored.resume_ask_tell_checkpoint(checkpoint_path)
+    result = restored.tell(_records_for(candidates[1:]))
+
+    assert summary.best_candidate_id == candidates[0].candidate_id
+    assert summary.pending_batch_ids == (candidates[0].batch_id,)
+    assert result.accepted_count == 3
+    assert result.pending_batch_ids == ()
+    assert restored.state_summary().trusted_count == 4
+
+
+def test_ga_resume_ask_tell_checkpoint_rejects_duplicate_tell(tmp_path) -> None:
+    source = _ga()
+    candidates = source.ask(4)
+    source.tell([_record(candidates[0].candidate_id, batch_id=candidates[0].batch_id)])
+    checkpoint_path = tmp_path / "ga-duplicate.evocore-checkpoint.json"
+    source.save_checkpoint(checkpoint_path, source.ask_tell_checkpoint())
+
+    restored = _ga()
+    restored.resume_ask_tell_checkpoint(checkpoint_path)
+
+    with pytest.raises(FitnessError, match="already has a state update record"):
+        restored.tell([_record(candidates[0].candidate_id, batch_id=candidates[0].batch_id)])

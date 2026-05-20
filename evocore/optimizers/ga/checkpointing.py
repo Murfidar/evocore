@@ -7,10 +7,14 @@ from typing import Any
 
 from evocore.core.errors import CheckpointError
 from evocore.lifecycle import (
+    batch_from_checkpoint,
     batch_to_checkpoint,
+    candidate_from_checkpoint,
     candidate_to_checkpoint,
+    event_history_from_checkpoint,
     event_history_to_checkpoint,
     score_for_direction,
+    telemetry_from_checkpoint,
     telemetry_to_checkpoint,
 )
 from evocore.results import (
@@ -281,6 +285,96 @@ class GeneticAlgorithmCheckpointingMixin:
             },
             metadata=dict(metadata or {}),
         )
+
+    def _ask_tell_payload_from_checkpoint(
+        self,
+        payload: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        state = payload["state"]
+        if state.get("schema_version") != GA_CHECKPOINT_STATE_SCHEMA_VERSION:
+            raise CheckpointError("checkpoint state.schema_version must be 1.")
+        state_payload = state["payload"]
+        if state_payload.get("state_kind") != GA_ASK_TELL_STATE_KIND:
+            raise CheckpointError(
+                "checkpoint state_kind "
+                f"{state_payload.get('state_kind')!r} is not supported by "
+                "GA ask/tell resume."
+            )
+        return state_payload
+
+    def _restore_ask_tell_state(self, state_payload: Mapping[str, Any]) -> None:
+        raw_candidates = state_payload.get("candidates_by_id")
+        if not isinstance(raw_candidates, Mapping):
+            raise CheckpointError("checkpoint state.payload.candidates_by_id must be an object.")
+        candidates = {
+            str(candidate_id): candidate_from_checkpoint(candidate_payload)
+            for candidate_id, candidate_payload in raw_candidates.items()
+        }
+        for candidate_id, candidate in candidates.items():
+            if candidate.candidate_id != candidate_id:
+                raise CheckpointError(
+                    f"checkpoint candidate key {candidate_id!r} does not match "
+                    f"candidate_id {candidate.candidate_id!r}."
+                )
+
+        raw_batches = state_payload.get("batches_by_id")
+        if not isinstance(raw_batches, Mapping):
+            raise CheckpointError("checkpoint state.payload.batches_by_id must be an object.")
+        batches = {
+            str(batch_id): batch_from_checkpoint(batch_payload)
+            for batch_id, batch_payload in raw_batches.items()
+        }
+        for batch_id, batch in batches.items():
+            if batch.batch_id != batch_id:
+                raise CheckpointError(
+                    f"checkpoint batch key {batch_id!r} does not match "
+                    f"batch_id {batch.batch_id!r}."
+                )
+            for candidate_id in batch.candidate_ids:
+                if candidate_id not in candidates:
+                    raise CheckpointError(
+                        f"checkpoint batch {batch_id!r} references unknown "
+                        f"candidate_id {candidate_id!r}."
+                    )
+
+        trusted_ids = list(state_payload.get("trusted_candidate_ids") or ())
+        missing_trusted = [
+            candidate_id for candidate_id in trusted_ids if candidate_id not in candidates
+        ]
+        if missing_trusted:
+            raise CheckpointError(
+                "checkpoint trusted_candidate_ids reference unknown candidate_ids: "
+                f"{missing_trusted!r}."
+            )
+
+        best_candidate_id = state_payload.get("best_candidate_id")
+        if best_candidate_id is not None and best_candidate_id not in candidates:
+            raise CheckpointError(
+                f"checkpoint best_candidate_id {best_candidate_id!r} is unknown."
+            )
+
+        self._candidates_by_id = candidates
+        self._batches_by_id = batches
+        self._trusted_population_vnext = [candidates[candidate_id] for candidate_id in trusted_ids]
+        self.best_candidate = None if best_candidate_id is None else candidates[best_candidate_id]
+        self.vnext_telemetry = telemetry_from_checkpoint(state_payload.get("telemetry") or {})
+        self.events = event_history_from_checkpoint(state_payload.get("events") or [])
+        self._event_index = int(state_payload.get("event_index", 0))
+
+    def resume_ask_tell_checkpoint(
+        self,
+        checkpoint: str | os.PathLike[str] | Mapping[str, Any],
+    ):
+        """Resume GA ask/tell runtime state from a stable checkpoint."""
+        payload = (
+            load_checkpoint_payload(checkpoint)
+            if isinstance(checkpoint, str | os.PathLike)
+            else dict(checkpoint)
+        )
+        self._validate_stable_checkpoint_identity(payload)
+        state_payload = self._ask_tell_payload_from_checkpoint(payload)
+        self._restore_ask_tell_state(state_payload)
+        return self.state_summary()
 
 
 __all__ = ["GeneticAlgorithmCheckpointingMixin"]
