@@ -23,6 +23,7 @@ from evocore.lifecycle import (
     score_for_direction,
 )
 from evocore.optimizers.cmaes.ask_tell import CMAESAskTellMixin
+from evocore.optimizers.cmaes.checkpointing import CMAESCheckpointingMixin
 from evocore.optimizers.cmaes.config import (
     build_cmaes_config,
     cmaes_reproducibility_status,
@@ -45,7 +46,7 @@ from evocore.search_space import GeneSpace, OperatorCodec, Solution, SolutionSet
 logger = logging.getLogger(__name__)
 
 
-class CMAESOptimizer(CMAESAskTellMixin):
+class CMAESOptimizer(CMAESCheckpointingMixin, CMAESAskTellMixin):
     """Run covariance matrix adaptation evolution strategy optimization.
 
     Args:
@@ -147,7 +148,7 @@ class CMAESOptimizer(CMAESAskTellMixin):
         return tuple(
             batch_id
             for batch_id, batch in self._batches_by_id.items()
-            if not batch.consumed and len(batch.records_by_key) < len(batch.candidate_ids)
+            if not batch.consumed and batch.ordered_state_update_records() is None
         )
 
     def _best_candidate_id_and_score(self) -> tuple[str | None, float | None]:
