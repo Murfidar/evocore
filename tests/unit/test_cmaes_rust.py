@@ -216,3 +216,112 @@ class TestIntegerGeneWorkflow:
         for sample in samples_rounded:
             for gene in sample:
                 assert gene == int(gene)
+
+
+class TestStateSnapshots:
+    def test_to_dict_returns_json_safe_schema_v1_payload(self):
+        s = make_state(n=3, lambda_=6, sigma=0.4)
+        samples = s.ask(42, 0)
+        s.tell(samples, [neg_sphere(sample) for sample in samples])
+
+        payload = s.to_dict()
+
+        assert payload["schema_version"] == 1
+        assert payload["optimizer_type"] == "cmaes"
+        assert set(payload["state"]) == {
+            "n",
+            "lambda",
+            "generation",
+            "mean",
+            "sigma",
+            "cov",
+            "pc",
+            "ps",
+            "bounds",
+            "eigendecomp_interval",
+            "pending_eigen_updates",
+            "eigen_cache",
+        }
+        assert payload["state"]["n"] == 3
+        assert payload["state"]["lambda"] == 6
+        assert payload["state"]["generation"] == 1
+        assert len(payload["state"]["mean"]) == 3
+        assert len(payload["state"]["cov"]) == 3
+        assert len(payload["state"]["cov"][0]) == 3
+        assert payload["state"]["eigen_cache"]["valid"] in {True, False}
+        assert len(payload["state"]["eigen_cache"]["eigenvectors"]) == 3
+        assert len(payload["state"]["eigen_cache"]["eigenvalues_sqrt"]) == 3
+
+        import json
+
+        json.dumps(payload, sort_keys=True)
+
+    def test_from_dict_restores_next_ask_after_stale_eigen_cache(self):
+        s = make_state(n=4, lambda_=8, sigma=0.5)
+        for generation in range(3):
+            samples = s.ask(99, generation)
+            s.tell(samples, [neg_sphere(sample) for sample in samples])
+
+        payload = s.to_dict()
+        restored = PyCMAESState.from_dict(payload)
+
+        assert restored.generation == s.generation
+        assert restored.sigma == pytest.approx(s.sigma)
+        assert restored.mean == pytest.approx(s.mean)
+        assert restored.ask(123, restored.generation) == s.ask(123, s.generation)
+
+    def test_restored_state_matches_uninterrupted_state_after_same_tell(self):
+        s = make_state(n=4, lambda_=8, sigma=0.5)
+        for generation in range(3):
+            samples = s.ask(99, generation)
+            s.tell(samples, [neg_sphere(sample) for sample in samples])
+
+        restored = PyCMAESState.from_dict(s.to_dict())
+        samples = s.ask(123, s.generation)
+        assert samples == restored.ask(123, restored.generation)
+        fitnesses = [neg_sphere(sample) for sample in samples]
+
+        s.tell(samples, fitnesses)
+        restored.tell(samples, fitnesses)
+
+        assert restored.to_dict() == s.to_dict()
+
+    @pytest.mark.parametrize(
+        ("mutate", "match"),
+        [
+            (lambda payload: payload.update({"schema_version": 999}), "schema_version"),
+            (lambda payload: payload.update({"optimizer_type": "ga"}), "optimizer_type"),
+            (lambda payload: payload["state"].update({"lambda": 1}), "lambda"),
+            (lambda payload: payload["state"].update({"sigma": 0.0}), "sigma"),
+            (lambda payload: payload["state"].update({"generation": -1}), "invalid|generation"),
+            (lambda payload: payload["state"].update({"mean": [0.0]}), "mean"),
+            (lambda payload: payload["state"].update({"cov": [[1.0, 0.0]]}), "cov"),
+            (lambda payload: payload["state"].update({"bounds": [[1.0, -1.0]] * 3}), "bound"),
+            (
+                lambda payload: payload["state"]["eigen_cache"].update(
+                    {"eigenvalues_sqrt": [1.0]}
+                ),
+                "eigen_cache",
+            ),
+        ],
+    )
+    def test_from_dict_rejects_malformed_snapshots(self, mutate, match):
+        payload = make_state(n=3, lambda_=6).to_dict()
+        mutate(payload)
+
+        with pytest.raises(ValueError, match=match):
+            PyCMAESState.from_dict(payload)
+
+    def test_from_dict_rejects_nonsymmetric_covariance(self):
+        payload = make_state(n=3, lambda_=6).to_dict()
+        payload["state"]["cov"][0][1] = 0.25
+
+        with pytest.raises(ValueError, match="cov"):
+            PyCMAESState.from_dict(payload)
+
+    def test_from_dict_rejects_negative_covariance_eigenvalue(self):
+        payload = make_state(n=3, lambda_=6).to_dict()
+        payload["state"]["cov"][0][0] = -1.0
+
+        with pytest.raises(ValueError, match="cov"):
+            PyCMAESState.from_dict(payload)
