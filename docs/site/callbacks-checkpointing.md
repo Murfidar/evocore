@@ -53,8 +53,9 @@ stable JSON checkpoint format is the forward contract.
 
 ## Unsupported Checkpoint Surfaces
 
-GA ask/tell checkpointing is not part of checkpoint v1. `EventHistory` remains
-audit data and is not replayed to rebuild optimizer state.
+Policy-driven `run(evaluator, policy=...)` mid-loop resume is not part of
+checkpoint v1. `EventHistory` remains audit data and is not replayed to rebuild
+optimizer state.
 
 `CMAESOptimizer` checkpoint/resume is unsupported until the Rust-backed CMA-ES
 state exposes a stable export/import contract. CMA-ES result export and event
@@ -67,8 +68,9 @@ recommended checkpoint boundary when evaluation work happens outside EvoCore,
 for example in a job queue or remote worker pool.
 
 ```python
-from evocore import EvaluationRecord, GeneticAlgorithmOptimizer
+from evocore import EvaluationRecord, GeneSpace, GeneticAlgorithmOptimizer
 
+gene_space = GeneSpace.uniform(-1.0, 1.0, 3)
 optimizer = GeneticAlgorithmOptimizer(gene_space, population_size=8, seed=42)
 candidates = optimizer.ask()
 optimizer.save_checkpoint(
@@ -79,6 +81,7 @@ optimizer.save_checkpoint(
 restored = GeneticAlgorithmOptimizer(gene_space, population_size=8, seed=42)
 summary = restored.resume_ask_tell_checkpoint("ga-ask-tell.evocore-checkpoint.json")
 
+scores = [-sum(float(value) ** 2 for value in candidate.genes) for candidate in candidates]
 records = [
     EvaluationRecord(
         candidate_id=candidate.candidate_id,

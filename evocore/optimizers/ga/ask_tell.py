@@ -165,8 +165,7 @@ class GeneticAlgorithmAskTellMixin:
         consumed_batch_ids = tuple(
             batch_id
             for batch_id in touched_batch_ids
-            if len(self._batches_by_id[batch_id].records_by_key)
-            >= len(self._batches_by_id[batch_id].candidate_ids)
+            if self._batches_by_id[batch_id].ordered_state_update_records() is not None
         )
         return UpdateResult(
             accepted_count=len(records),

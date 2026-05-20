@@ -2,15 +2,37 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping
 from typing import Any
 
-from evocore.core.errors import CheckpointError, FitnessError
+from evocore.core.errors import CheckpointError, ConfigurationError, FitnessError
 from evocore.core.serialization import json_safe
 from evocore.lifecycle.batches import CandidateBatch
 from evocore.lifecycle.events import EventHistory, EventRecord
 from evocore.lifecycle.records import Candidate, EvaluationRecord, ScoreObservation
 from evocore.lifecycle.telemetry import OptimizationTelemetry
+
+_CANDIDATE_ORIGINS = {
+    "random",
+    "crossover",
+    "mutation",
+    "cma_sample",
+    "surrogate_proposal",
+    "memory_seed",
+    "restart",
+}
+_CANDIDATE_STATUSES = {
+    "proposed",
+    "screened",
+    "racing",
+    "promoted",
+    "trusted",
+    "eliminated",
+    "archived",
+}
+_EVALUATION_CONFIDENCES = {"surrogate", "partial", "cached", "trusted_full", "rejected"}
+_EVENT_TYPES = {"ask", "tell", "generation", "run_stop"}
 
 
 def _require_mapping(payload: object, label: str) -> Mapping[str, Any]:
@@ -24,6 +46,133 @@ def _require_list(payload: Mapping[str, Any], key: str, label: str) -> list[Any]
     if not isinstance(value, list):
         raise CheckpointError(f"checkpoint {label}.{key} must be a list.")
     return value
+
+
+def _require_non_empty_str(payload: Mapping[str, Any], key: str, label: str) -> str:
+    value = payload.get(key)
+    if not isinstance(value, str) or not value:
+        raise CheckpointError(f"checkpoint {label}.{key} must be a non-empty string.")
+    return value
+
+
+def _optional_str(payload: Mapping[str, Any], key: str, label: str) -> str | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise CheckpointError(f"checkpoint {label}.{key} must be a string when provided.")
+    return value
+
+
+def _require_mapping_value(payload: Mapping[str, Any], key: str, label: str) -> Mapping[str, Any]:
+    value = payload.get(key)
+    if not isinstance(value, Mapping):
+        raise CheckpointError(f"checkpoint {label}.{key} must be an object.")
+    return value
+
+
+def _optional_mapping_value(
+    payload: Mapping[str, Any],
+    key: str,
+    label: str,
+) -> Mapping[str, Any] | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise CheckpointError(f"checkpoint {label}.{key} must be an object when provided.")
+    return value
+
+
+def _finite_float(payload: Mapping[str, Any], key: str, label: str) -> float:
+    try:
+        value = float(payload.get(key, 0.0))
+    except (TypeError, ValueError) as exc:
+        raise CheckpointError(f"checkpoint {label}.{key} must be a finite number.") from exc
+    if not math.isfinite(value):
+        raise CheckpointError(f"checkpoint {label}.{key} must be a finite number.")
+    return value
+
+
+def _optional_finite_float(
+    payload: Mapping[str, Any],
+    key: str,
+    label: str,
+) -> float | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    try:
+        number = float(value)
+    except (TypeError, ValueError) as exc:
+        raise CheckpointError(f"checkpoint {label}.{key} must be a finite number.") from exc
+    if not math.isfinite(number):
+        raise CheckpointError(f"checkpoint {label}.{key} must be a finite number.")
+    return number
+
+
+def _non_negative_int(payload: Mapping[str, Any], key: str, label: str) -> int:
+    try:
+        value = int(payload.get(key, 0))
+    except (TypeError, ValueError) as exc:
+        raise CheckpointError(f"checkpoint {label}.{key} must be a non-negative integer.") from exc
+    if value < 0:
+        raise CheckpointError(f"checkpoint {label}.{key} must be a non-negative integer.")
+    return value
+
+
+def _literal_value(
+    value: object,
+    *,
+    key: str,
+    label: str,
+    allowed: set[str],
+    optional: bool = False,
+) -> str | None:
+    if value is None and optional:
+        return None
+    if not isinstance(value, str) or value not in allowed:
+        choices = ", ".join(sorted(allowed))
+        raise CheckpointError(f"checkpoint {label}.{key} must be one of: {choices}.")
+    return value
+
+
+def _counter_mapping(payload: Mapping[str, Any], key: str, label: str) -> dict[str, int]:
+    value = payload.get(key) or {}
+    if not isinstance(value, Mapping):
+        raise CheckpointError(f"checkpoint {label}.{key} must be an object.")
+    result: dict[str, int] = {}
+    for stage, count in value.items():
+        try:
+            parsed = int(count)
+        except (TypeError, ValueError) as exc:
+            raise CheckpointError(
+                f"checkpoint {label}.{key}.{stage} must be a non-negative integer."
+            ) from exc
+        if parsed < 0:
+            raise CheckpointError(
+                f"checkpoint {label}.{key}.{stage} must be a non-negative integer."
+            )
+        result[str(stage)] = parsed
+    return result
+
+
+def _cost_mapping(payload: Mapping[str, Any], key: str, label: str) -> dict[str, float]:
+    value = payload.get(key) or {}
+    if not isinstance(value, Mapping):
+        raise CheckpointError(f"checkpoint {label}.{key} must be an object.")
+    result: dict[str, float] = {}
+    for stage, cost in value.items():
+        try:
+            parsed = float(cost)
+        except (TypeError, ValueError) as exc:
+            raise CheckpointError(
+                f"checkpoint {label}.{key}.{stage} must be a finite number."
+            ) from exc
+        if not math.isfinite(parsed):
+            raise CheckpointError(f"checkpoint {label}.{key}.{stage} must be a finite number.")
+        result[str(stage)] = parsed
+    return result
 
 
 def score_observation_to_checkpoint(observation: ScoreObservation) -> dict[str, Any]:
@@ -44,12 +193,17 @@ def score_observation_from_checkpoint(payload: object) -> ScoreObservation:
     """Deserialise a ScoreObservation from a checkpoint payload."""
     data = _require_mapping(payload, "score observation")
     return ScoreObservation(
-        score=data.get("score"),
-        confidence=data.get("confidence"),
-        stage=str(data.get("stage") or ""),
-        cost=float(data.get("cost", 0.0)),
-        metrics=dict(data.get("metrics") or {}),
-        metadata=dict(data.get("metadata") or {}),
+        score=_optional_finite_float(data, "score", "score observation"),
+        confidence=_literal_value(
+            data.get("confidence"),
+            key="confidence",
+            label="score observation",
+            allowed=_EVALUATION_CONFIDENCES,
+        ),
+        stage=_require_non_empty_str(data, "stage", "score observation"),
+        cost=_finite_float(data, "cost", "score observation"),
+        metrics=dict(_require_mapping_value(data, "metrics", "score observation")),
+        metadata=dict(_require_mapping_value(data, "metadata", "score observation")),
     )
 
 
@@ -85,20 +239,37 @@ def candidate_from_checkpoint(payload: object) -> Candidate:
     scores_payload = data.get("scores") or {}
     if not isinstance(scores_payload, Mapping):
         raise CheckpointError("checkpoint candidate.scores must be an object.")
+    params = _optional_mapping_value(data, "params", "candidate")
     candidate = Candidate(
-        candidate_id=str(data.get("candidate_id") or ""),
+        candidate_id=_require_non_empty_str(data, "candidate_id", "candidate"),
         genes=list(genes),
-        batch_id=str(data.get("batch_id") or ""),
-        params=dict(data["params"]) if isinstance(data.get("params"), Mapping) else None,
-        origin=data.get("origin", "random"),
+        batch_id=_require_non_empty_str(data, "batch_id", "candidate"),
+        params=dict(params) if params is not None else None,
+        origin=_literal_value(
+            data.get("origin"),
+            key="origin",
+            label="candidate",
+            allowed=_CANDIDATE_ORIGINS,
+        ),
         parents=tuple(data.get("parents") or ()),
-        event_index=int(data.get("event_index", 0)),
+        event_index=_non_negative_int(data, "event_index", "candidate"),
         generation=data.get("generation"),
-        stage=data.get("stage"),
-        status=data.get("status", "proposed"),
-        confidence=data.get("confidence"),
-        cost=float(data.get("cost", 0.0)),
-        metadata=dict(data.get("metadata") or {}),
+        stage=_optional_str(data, "stage", "candidate"),
+        status=_literal_value(
+            data.get("status"),
+            key="status",
+            label="candidate",
+            allowed=_CANDIDATE_STATUSES,
+        ),
+        confidence=_literal_value(
+            data.get("confidence"),
+            key="confidence",
+            label="candidate",
+            allowed=_EVALUATION_CONFIDENCES,
+            optional=True,
+        ),
+        cost=_finite_float(data, "cost", "candidate"),
+        metadata=dict(_require_mapping_value(data, "metadata", "candidate")),
     )
     candidate.scores = {
         str(stage): score_observation_from_checkpoint(observation)
@@ -126,16 +297,24 @@ def evaluation_record_to_checkpoint(record: EvaluationRecord) -> dict[str, Any]:
 def evaluation_record_from_checkpoint(payload: object) -> EvaluationRecord:
     """Deserialise an EvaluationRecord from a checkpoint payload."""
     data = _require_mapping(payload, "evaluation record")
-    return EvaluationRecord(
-        candidate_id=str(data.get("candidate_id") or ""),
-        batch_id=data.get("batch_id"),
-        score=data.get("score"),
-        confidence=data.get("confidence"),
-        stage=str(data.get("stage") or ""),
-        cost=float(data.get("cost", 0.0)),
-        metrics=dict(data.get("metrics") or {}),
-        metadata=dict(data.get("metadata") or {}),
-    )
+    try:
+        return EvaluationRecord(
+            candidate_id=_require_non_empty_str(data, "candidate_id", "evaluation record"),
+            batch_id=_optional_str(data, "batch_id", "evaluation record"),
+            score=_optional_finite_float(data, "score", "evaluation record"),
+            confidence=_literal_value(
+                data.get("confidence"),
+                key="confidence",
+                label="evaluation record",
+                allowed=_EVALUATION_CONFIDENCES,
+            ),
+            stage=_require_non_empty_str(data, "stage", "evaluation record"),
+            cost=_finite_float(data, "cost", "evaluation record"),
+            metrics=dict(_require_mapping_value(data, "metrics", "evaluation record")),
+            metadata=dict(_require_mapping_value(data, "metadata", "evaluation record")),
+        )
+    except FitnessError as exc:
+        raise CheckpointError(str(exc)) from exc
 
 
 def batch_to_checkpoint(batch: CandidateBatch) -> dict[str, Any]:
@@ -167,13 +346,17 @@ def batch_from_checkpoint(payload: object) -> CandidateBatch:
     samples_payload = data.get("continuous_samples_by_id") or {}
     if not isinstance(samples_payload, Mapping):
         raise CheckpointError("checkpoint batch.continuous_samples_by_id must be an object.")
+    continuous_samples_by_id = {}
+    for candidate_id, values in samples_payload.items():
+        if not isinstance(values, list):
+            raise CheckpointError(
+                "checkpoint batch.continuous_samples_by_id values must be lists."
+            )
+        continuous_samples_by_id[str(candidate_id)] = [float(value) for value in values]
     batch = CandidateBatch(
-        batch_id=str(data.get("batch_id") or ""),
+        batch_id=_require_non_empty_str(data, "batch_id", "batch"),
         candidate_ids=candidate_ids,
-        continuous_samples_by_id={
-            str(candidate_id): [float(value) for value in values]
-            for candidate_id, values in samples_payload.items()
-        },
+        continuous_samples_by_id=continuous_samples_by_id,
     )
     for record_payload in _require_list(data, "records", "batch"):
         try:
@@ -192,25 +375,25 @@ def telemetry_to_checkpoint(telemetry: OptimizationTelemetry) -> dict[str, Any]:
 def telemetry_from_checkpoint(payload: object) -> OptimizationTelemetry:
     """Deserialise OptimizationTelemetry from a checkpoint payload."""
     data = _require_mapping(payload, "telemetry")
+    unique_hashes = data.get("unique_candidate_hashes") or []
+    if not isinstance(unique_hashes, list):
+        raise CheckpointError("checkpoint telemetry.unique_candidate_hashes must be a list.")
     return OptimizationTelemetry(
-        total_candidates_proposed=int(data.get("total_candidates_proposed", 0)),
-        unique_candidate_hashes=set(data.get("unique_candidate_hashes") or ()),
-        candidates_screened=int(data.get("candidates_screened", 0)),
-        candidates_partial_evaluated=int(data.get("candidates_partial_evaluated", 0)),
-        candidates_full_evaluated=int(data.get("candidates_full_evaluated", 0)),
-        candidates_cached=int(data.get("candidates_cached", 0)),
-        promoted_by_stage={
-            str(stage): int(count)
-            for stage, count in dict(data.get("promoted_by_stage") or {}).items()
-        },
-        eliminated_by_stage={
-            str(stage): int(count)
-            for stage, count in dict(data.get("eliminated_by_stage") or {}).items()
-        },
-        cost_by_stage={
-            str(stage): float(cost)
-            for stage, cost in dict(data.get("cost_by_stage") or {}).items()
-        },
+        total_candidates_proposed=_non_negative_int(
+            data, "total_candidates_proposed", "telemetry"
+        ),
+        unique_candidate_hashes=set(unique_hashes),
+        candidates_screened=_non_negative_int(data, "candidates_screened", "telemetry"),
+        candidates_partial_evaluated=_non_negative_int(
+            data, "candidates_partial_evaluated", "telemetry"
+        ),
+        candidates_full_evaluated=_non_negative_int(
+            data, "candidates_full_evaluated", "telemetry"
+        ),
+        candidates_cached=_non_negative_int(data, "candidates_cached", "telemetry"),
+        promoted_by_stage=_counter_mapping(data, "promoted_by_stage", "telemetry"),
+        eliminated_by_stage=_counter_mapping(data, "eliminated_by_stage", "telemetry"),
+        cost_by_stage=_cost_mapping(data, "cost_by_stage", "telemetry"),
     )
 
 
@@ -222,26 +405,53 @@ def event_record_to_checkpoint(event: EventRecord) -> dict[str, Any]:
 def event_record_from_checkpoint(payload: object) -> EventRecord:
     """Deserialise an EventRecord from a checkpoint payload."""
     data = _require_mapping(payload, "event")
-    return EventRecord(
-        event_index=int(data.get("event_index", 0)),
-        event_type=data.get("event_type"),
-        batch_id=data.get("batch_id"),
-        candidate_id=data.get("candidate_id"),
-        candidate_hash=data.get("candidate_hash"),
-        generation=data.get("generation"),
-        stage=data.get("stage"),
-        confidence=data.get("confidence"),
-        raw_score=data.get("raw_score"),
-        comparison_score=data.get("comparison_score"),
-        cost=float(data.get("cost", 0.0)),
-        status=data.get("status"),
-        origin=data.get("origin"),
-        parents=tuple(data.get("parents") or ()),
-        genes=tuple(data.get("genes") or ()),
-        params=dict(data["params"]) if isinstance(data.get("params"), Mapping) else None,
-        metrics=dict(data.get("metrics") or {}),
-        metadata=dict(data.get("metadata") or {}),
-    )
+    params = _optional_mapping_value(data, "params", "event")
+    try:
+        return EventRecord(
+            event_index=_non_negative_int(data, "event_index", "event"),
+            event_type=_literal_value(
+                data.get("event_type"),
+                key="event_type",
+                label="event",
+                allowed=_EVENT_TYPES,
+            ),
+            batch_id=_optional_str(data, "batch_id", "event"),
+            candidate_id=_optional_str(data, "candidate_id", "event"),
+            candidate_hash=_optional_str(data, "candidate_hash", "event"),
+            generation=data.get("generation"),
+            stage=_optional_str(data, "stage", "event"),
+            confidence=_literal_value(
+                data.get("confidence"),
+                key="confidence",
+                label="event",
+                allowed=_EVALUATION_CONFIDENCES,
+                optional=True,
+            ),
+            raw_score=_optional_finite_float(data, "raw_score", "event"),
+            comparison_score=_optional_finite_float(data, "comparison_score", "event"),
+            cost=_finite_float(data, "cost", "event"),
+            status=_literal_value(
+                data.get("status"),
+                key="status",
+                label="event",
+                allowed=_CANDIDATE_STATUSES,
+                optional=True,
+            ),
+            origin=_literal_value(
+                data.get("origin"),
+                key="origin",
+                label="event",
+                allowed=_CANDIDATE_ORIGINS,
+                optional=True,
+            ),
+            parents=tuple(data.get("parents") or ()),
+            genes=tuple(data.get("genes") or ()),
+            params=dict(params) if params is not None else None,
+            metrics=dict(_require_mapping_value(data, "metrics", "event")),
+            metadata=dict(_require_mapping_value(data, "metadata", "event")),
+        )
+    except ConfigurationError as exc:
+        raise CheckpointError(str(exc)) from exc
 
 
 def event_history_to_checkpoint(history: EventHistory) -> list[dict[str, Any]]:

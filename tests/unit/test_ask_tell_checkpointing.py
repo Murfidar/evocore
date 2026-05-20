@@ -17,6 +17,7 @@ from evocore.lifecycle import (
     telemetry_from_checkpoint,
     telemetry_to_checkpoint,
 )
+from evocore.lifecycle.checkpointing import evaluation_record_from_checkpoint
 
 
 def _record(candidate_id: str, *, batch_id: str, stage: str = "full") -> EvaluationRecord:
@@ -108,6 +109,39 @@ def test_batch_checkpoint_rejects_record_for_candidate_outside_batch() -> None:
         batch_from_checkpoint(payload)
 
 
+def test_candidate_checkpoint_rejects_missing_identity() -> None:
+    payload = {
+        "genes": [0.1],
+        "batch_id": "b-1",
+        "origin": "random",
+        "parents": [],
+        "event_index": 0,
+        "status": "proposed",
+        "cost": 0.0,
+        "scores": {},
+        "metadata": {},
+    }
+
+    with pytest.raises(CheckpointError, match="candidate_id"):
+        candidate_from_checkpoint(payload)
+
+
+def test_evaluation_record_checkpoint_rejects_invalid_cost_as_checkpoint_error() -> None:
+    payload = {
+        "candidate_id": "c-1",
+        "batch_id": "b-1",
+        "score": 1.0,
+        "confidence": "trusted_full",
+        "stage": "full",
+        "cost": "not-a-number",
+        "metrics": {},
+        "metadata": {},
+    }
+
+    with pytest.raises(CheckpointError, match="cost"):
+        evaluation_record_from_checkpoint(payload)
+
+
 def test_telemetry_checkpoint_round_trip_restores_unique_hash_set() -> None:
     telemetry = OptimizationTelemetry()
     telemetry.record_proposed(3)
@@ -122,6 +156,16 @@ def test_telemetry_checkpoint_round_trip_restores_unique_hash_set() -> None:
     assert restored.candidates_full_evaluated == 2
     assert restored.candidates_cached == 1
     assert restored.cost_by_stage == {"cache": 0.5, "full": 5.0}
+
+
+def test_telemetry_checkpoint_rejects_invalid_counter_as_checkpoint_error() -> None:
+    payload = {
+        "total_candidates_proposed": "not-an-int",
+        "unique_candidate_hashes": [],
+    }
+
+    with pytest.raises(CheckpointError, match="total_candidates_proposed"):
+        telemetry_from_checkpoint(payload)
 
 
 def test_event_history_checkpoint_round_trip_preserves_append_order() -> None:
@@ -142,6 +186,11 @@ def test_event_history_checkpoint_round_trip_preserves_append_order() -> None:
     restored = event_history_from_checkpoint(event_history_to_checkpoint(history))
 
     assert restored.to_rows() == history.to_rows()
+
+
+def test_event_history_checkpoint_rejects_missing_event_type() -> None:
+    with pytest.raises(CheckpointError, match="event_type"):
+        event_history_from_checkpoint([{"event_index": 0}])
 
 
 def _ga() -> GeneticAlgorithmOptimizer:
@@ -339,3 +388,31 @@ def test_ga_resume_ask_tell_checkpoint_rejects_batch_unknown_candidate_reference
 
     with pytest.raises(CheckpointError, match="references unknown candidate_id"):
         source.resume_ask_tell_checkpoint(payload)
+
+
+def test_ga_partial_confidence_records_keep_batch_pending_after_resume(tmp_path) -> None:
+    source = _ga()
+    candidates = source.ask(4)
+    partial_records = [
+        EvaluationRecord(
+            candidate_id=candidate.candidate_id,
+            batch_id=candidate.batch_id,
+            score=0.5,
+            confidence="partial",
+            stage="cheap",
+            cost=0.1,
+        )
+        for candidate in candidates
+    ]
+
+    partial_result = source.tell(partial_records)
+    checkpoint_path = tmp_path / "ga-partial-confidence.evocore-checkpoint.json"
+    source.save_checkpoint(checkpoint_path, source.ask_tell_checkpoint())
+
+    restored = _ga()
+    summary = restored.resume_ask_tell_checkpoint(checkpoint_path)
+
+    assert partial_result.consumed_batch_ids == ()
+    assert partial_result.pending_batch_ids == (candidates[0].batch_id,)
+    assert summary.pending_batch_ids == (candidates[0].batch_id,)
+    assert restored.tell(_records_for(candidates)).pending_batch_ids == ()

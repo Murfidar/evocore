@@ -297,7 +297,7 @@ class GeneticAlgorithmOptimizer(
         return tuple(
             batch_id
             for batch_id, batch in self._batches_by_id.items()
-            if len(batch.records_by_key) < len(batch.candidate_ids)
+            if batch.ordered_state_update_records() is None
         )
 
     def _best_candidate_id_and_score(self) -> tuple[str | None, float | None]:

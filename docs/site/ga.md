@@ -75,9 +75,11 @@ resumed = GeneticAlgorithmOptimizer(
 ```
 
 The receiving optimizer must match the checkpoint seed, direction, gene space,
-and optimizer configuration. Policy-driven `run(evaluator)` and manual ask/tell
-checkpointing are not part of checkpoint v1. Result JSON and event rows are not
-checkpoint files.
+and optimizer configuration. Policy-driven `run(evaluator, policy=...)`
+mid-loop resume and CMA-ES resume are not part of checkpoint v1. Manual GA
+ask/tell checkpoints are supported with `ask_tell_checkpoint()` and
+`resume_ask_tell_checkpoint(...)`. Result JSON and event rows are not checkpoint
+files.
 
 ## Result Export
 
@@ -101,6 +103,8 @@ Runtime timing is excluded from deterministic exports by default. Pass
         - resume
         - resume_from_checkpoint
         - checkpoint
+        - ask_tell_checkpoint
+        - resume_ask_tell_checkpoint
         - save_checkpoint
         - load_checkpoint
 
