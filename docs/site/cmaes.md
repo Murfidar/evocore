@@ -32,10 +32,40 @@ CMA-ES adaptation state needed for deterministic continuation, including mean,
 sigma, covariance, evolution paths, generation, bounds, and lazy
 eigendecomposition state.
 
-`CMAESOptimizer` checkpoint/resume is still unsupported in checkpoint v1. The
-Rust state primitive is the foundation for that later optimizer-level work,
-which also needs Python candidate ledgers, pending batches, telemetry, and event
-indexes.
+`CMAESOptimizer` supports stable ask/tell checkpoints for manual external-evaluation
+workflows:
+
+```python
+from evocore import CMAESOptimizer, EvaluationRecord, GeneSpace
+
+space = GeneSpace.uniform(-2.0, 2.0, 3)
+optimizer = CMAESOptimizer(space, population_size=8, seed=42)
+candidates = optimizer.ask()
+
+optimizer.save_checkpoint(
+    "cmaes-ask-tell.evocore-checkpoint.json",
+    optimizer.ask_tell_checkpoint(metadata={"phase": "submitted"}),
+)
+
+restored = CMAESOptimizer(space, population_size=8, seed=42)
+summary = restored.resume_ask_tell_checkpoint("cmaes-ask-tell.evocore-checkpoint.json")
+
+records = [
+    EvaluationRecord(
+        candidate_id=candidate.candidate_id,
+        batch_id=candidate.batch_id,
+        score=-sum(float(value) ** 2 for value in candidate.genes),
+        confidence="trusted_full",
+        stage="full",
+    )
+    for candidate in candidates
+]
+restored.tell(records)
+```
+
+The checkpoint combines the Rust CMA-ES state snapshot with Python candidate
+ledgers, pending batches, telemetry, and audit events. Generation-loop and
+policy-driven CMA-ES resume remain unsupported.
 
 Use `OptimizationResult.to_dict()` for completed-run export and `engine.events`
 for ask/tell audit rows. Those exports are not checkpoint files and are not

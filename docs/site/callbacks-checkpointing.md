@@ -57,11 +57,10 @@ Policy-driven `run(evaluator, policy=...)` mid-loop resume is not part of
 checkpoint v1. `EventHistory` remains audit data and is not replayed to rebuild
 optimizer state.
 
-`CMAESOptimizer` checkpoint/resume is unsupported in checkpoint v1. The
-Rust-backed `PyCMAESState` now has a stable state snapshot primitive, but full
-optimizer resume still needs the Python optimizer ledger and pending-batch state
-to be wired into the checkpoint envelope. CMA-ES result export and event audit
-history remain available.
+CMA-ES generation-loop resume and policy-driven `run(evaluator, policy=...)`
+resume remain unsupported in checkpoint v1. Manual CMA-ES ask/tell checkpoints
+are supported through `CMAESOptimizer.ask_tell_checkpoint()` and
+`resume_ask_tell_checkpoint(...)`.
 
 ## GA Ask/Tell Checkpoints
 
@@ -100,3 +99,40 @@ restored.tell(records)
 Pending batches and partial tells are valid checkpoint state. Resume restores
 candidate and batch ledgers directly; event history is audit data and is not
 replayed to rebuild optimizer state.
+
+## CMA-ES Ask/Tell Checkpoints
+
+CMA-ES ask/tell checkpoints use the same stable envelope as GA and additionally
+store the Rust-backed CMA-ES state snapshot. This preserves covariance
+adaptation, pending batches, partial records, telemetry, and audit events for
+manual external-evaluation workflows.
+
+```python
+from evocore import CMAESOptimizer, EvaluationRecord, GeneSpace
+
+gene_space = GeneSpace.uniform(-1.0, 1.0, 3)
+optimizer = CMAESOptimizer(gene_space, population_size=8, seed=42)
+candidates = optimizer.ask()
+optimizer.save_checkpoint(
+    "cmaes-ask-tell.evocore-checkpoint.json",
+    optimizer.ask_tell_checkpoint(metadata={"phase": "submitted"}),
+)
+
+restored = CMAESOptimizer(gene_space, population_size=8, seed=42)
+summary = restored.resume_ask_tell_checkpoint("cmaes-ask-tell.evocore-checkpoint.json")
+
+records = [
+    EvaluationRecord(
+        candidate_id=candidate.candidate_id,
+        batch_id=candidate.batch_id,
+        score=-sum(float(value) ** 2 for value in candidate.genes),
+        confidence="trusted_full",
+        stage="full",
+    )
+    for candidate in candidates
+]
+restored.tell(records)
+```
+
+Events are restored as audit history. Resume restores structured optimizer
+state directly and does not replay events to rebuild CMA-ES state.
