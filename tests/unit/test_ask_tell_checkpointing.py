@@ -246,3 +246,96 @@ def test_ga_resume_ask_tell_checkpoint_rejects_duplicate_tell(tmp_path) -> None:
 
     with pytest.raises(FitnessError, match="already has a state update record"):
         restored.tell([_record(candidates[0].candidate_id, batch_id=candidates[0].batch_id)])
+
+
+def test_ga_resume_ask_tell_checkpoint_next_ask_matches_uninterrupted(tmp_path) -> None:
+    source = _ga()
+    first_batch = source.ask(4)
+    source.tell(_records_for(first_batch))
+    checkpoint_path = tmp_path / "ga-complete.evocore-checkpoint.json"
+    source.save_checkpoint(checkpoint_path, source.ask_tell_checkpoint())
+
+    restored = _ga()
+    restored.resume_ask_tell_checkpoint(checkpoint_path)
+    restored_next = restored.ask(4)
+    source_next = source.ask(4)
+
+    assert [candidate.candidate_id for candidate in restored_next] == [
+        candidate.candidate_id for candidate in source_next
+    ]
+    assert [candidate.batch_id for candidate in restored_next] == [
+        candidate.batch_id for candidate in source_next
+    ]
+    assert [candidate.genes for candidate in restored_next] == [
+        candidate.genes for candidate in source_next
+    ]
+
+
+def test_ga_resume_ask_tell_checkpoint_rejects_config_mismatch(tmp_path) -> None:
+    source = _ga()
+    source.ask(4)
+    checkpoint_path = tmp_path / "ga-config.evocore-checkpoint.json"
+    source.save_checkpoint(checkpoint_path, source.ask_tell_checkpoint())
+
+    mismatched = GeneticAlgorithmOptimizer(
+        source.gene_space,
+        population_size=6,
+        max_generations=5,
+        seed=123,
+    )
+
+    with pytest.raises(CheckpointError, match="optimizer_config_hash"):
+        mismatched.resume_ask_tell_checkpoint(checkpoint_path)
+
+
+def test_ga_resume_ask_tell_checkpoint_rejects_seed_and_direction_mismatch(tmp_path) -> None:
+    source = _ga()
+    source.ask(4)
+    checkpoint_path = tmp_path / "ga-identity.evocore-checkpoint.json"
+    source.save_checkpoint(checkpoint_path, source.ask_tell_checkpoint())
+
+    with pytest.raises(CheckpointError, match="seed"):
+        GeneticAlgorithmOptimizer(
+            source.gene_space,
+            population_size=4,
+            max_generations=5,
+            seed=999,
+        ).resume_ask_tell_checkpoint(checkpoint_path)
+
+    with pytest.raises(CheckpointError, match="direction"):
+        GeneticAlgorithmOptimizer(
+            source.gene_space,
+            population_size=4,
+            max_generations=5,
+            seed=123,
+            direction="minimize",
+        ).resume_ask_tell_checkpoint(checkpoint_path)
+
+
+def test_ga_resume_ask_tell_checkpoint_rejects_wrong_state_kind() -> None:
+    source = _ga()
+    checkpoint = source.checkpoint(generation=0, population=source._initial_population())
+
+    with pytest.raises(CheckpointError, match="ask/tell resume"):
+        source.resume_ask_tell_checkpoint(checkpoint.to_dict())
+
+
+def test_ga_resume_ask_tell_checkpoint_rejects_unknown_best_candidate() -> None:
+    source = _ga()
+    source.ask(4)
+    payload = source.ask_tell_checkpoint().to_dict()
+    payload["state"]["payload"]["best_candidate_id"] = "c-missing"
+
+    with pytest.raises(CheckpointError, match="best_candidate_id"):
+        source.resume_ask_tell_checkpoint(payload)
+
+
+def test_ga_resume_ask_tell_checkpoint_rejects_batch_unknown_candidate_reference() -> None:
+    source = _ga()
+    candidates = source.ask(4)
+    payload = source.ask_tell_checkpoint().to_dict()
+    batch_payload = payload["state"]["payload"]["batches_by_id"][candidates[0].batch_id]
+    batch_payload["candidate_ids"].append("c-missing")
+
+    with pytest.raises(CheckpointError, match="references unknown candidate_id"):
+        source.resume_ask_tell_checkpoint(payload)

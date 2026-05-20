@@ -188,20 +188,19 @@ def validate_checkpoint_identity(
             "checkpoint gene_space_hash "
             f"{optimizer.get('gene_space_hash')!r} does not match {gene_space_hash!r}."
         )
+    if optimizer.get("seed") != seed:
+        raise CheckpointError(
+            f"checkpoint seed {optimizer.get('seed')!r} does not match {seed!r}."
+        )
+    if optimizer.get("direction") != direction:
+        raise CheckpointError(
+            f"checkpoint direction {optimizer.get('direction')!r} does not match {direction!r}."
+        )
     if optimizer.get("optimizer_config_hash") != optimizer_config_hash:
         raise CheckpointError(
             "checkpoint optimizer_config_hash "
             f"{optimizer.get('optimizer_config_hash')!r} does not match "
             f"{optimizer_config_hash!r}."
-        )
-    if int(optimizer.get("seed")) != int(seed):
-        raise CheckpointError(
-            f"checkpoint seed {optimizer.get('seed')!r} does not match optimizer seed {seed!r}."
-        )
-    if optimizer.get("direction") != direction:
-        raise CheckpointError(
-            "checkpoint direction "
-            f"{optimizer.get('direction')!r} does not match optimizer direction {direction!r}."
         )
 
 
