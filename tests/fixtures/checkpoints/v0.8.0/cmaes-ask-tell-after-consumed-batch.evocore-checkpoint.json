@@ -1,0 +1,853 @@
+{
+  "audit": {
+    "events": [
+      {
+        "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+        "candidate_hash": "005da7748eee871173e505805db89e59bc42c1d2d82bbc4b97e5c82799f47736",
+        "candidate_id": "c-0c682feedbf83917a6b7c586f9814404",
+        "comparison_score": null,
+        "confidence": null,
+        "cost": 0.0,
+        "event_index": 0,
+        "event_type": "ask",
+        "generation": null,
+        "genes": [
+          2.332338022567378,
+          17
+        ],
+        "metadata": {},
+        "metrics": {},
+        "origin": "cma_sample",
+        "params": {
+          "period": 17,
+          "x": 2.332338022567378
+        },
+        "parents": [],
+        "raw_score": null,
+        "stage": null,
+        "status": null
+      },
+      {
+        "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+        "candidate_hash": "b98f853e0da0f57dea8af3361d6f90b1bd935561f8fdb42e612b612877b102d2",
+        "candidate_id": "c-4c33a0b41c474cf810006b12e851179a",
+        "comparison_score": null,
+        "confidence": null,
+        "cost": 0.0,
+        "event_index": 1,
+        "event_type": "ask",
+        "generation": null,
+        "genes": [
+          4.631541020637425,
+          20
+        ],
+        "metadata": {},
+        "metrics": {},
+        "origin": "cma_sample",
+        "params": {
+          "period": 20,
+          "x": 4.631541020637425
+        },
+        "parents": [],
+        "raw_score": null,
+        "stage": null,
+        "status": null
+      },
+      {
+        "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+        "candidate_hash": "0d9d35c6e18df63382fbb8a8f9c7d418efc81479093aaa28863271a4eb18c914",
+        "candidate_id": "c-d022905f2aea99371e2bb7bcd023610a",
+        "comparison_score": null,
+        "confidence": null,
+        "cost": 0.0,
+        "event_index": 2,
+        "event_type": "ask",
+        "generation": null,
+        "genes": [
+          0.4618465928377944,
+          16
+        ],
+        "metadata": {},
+        "metrics": {},
+        "origin": "cma_sample",
+        "params": {
+          "period": 16,
+          "x": 0.4618465928377944
+        },
+        "parents": [],
+        "raw_score": null,
+        "stage": null,
+        "status": null
+      },
+      {
+        "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+        "candidate_hash": "aa7ef944953b14cd42a30b2dad5ad6771610276e17e95997c12d6976dbed0698",
+        "candidate_id": "c-a010c663d8b3c911f86d56b5153a7fa3",
+        "comparison_score": null,
+        "confidence": null,
+        "cost": 0.0,
+        "event_index": 3,
+        "event_type": "ask",
+        "generation": null,
+        "genes": [
+          2.5562886009712535,
+          14
+        ],
+        "metadata": {},
+        "metrics": {},
+        "origin": "cma_sample",
+        "params": {
+          "period": 14,
+          "x": 2.5562886009712535
+        },
+        "parents": [],
+        "raw_score": null,
+        "stage": null,
+        "status": null
+      },
+      {
+        "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+        "candidate_hash": "005da7748eee871173e505805db89e59bc42c1d2d82bbc4b97e5c82799f47736",
+        "candidate_id": "c-0c682feedbf83917a6b7c586f9814404",
+        "comparison_score": -294.4398006515135,
+        "confidence": "trusted_full",
+        "cost": 1.0,
+        "event_index": 4,
+        "event_type": "tell",
+        "generation": null,
+        "genes": [
+          2.332338022567378,
+          17
+        ],
+        "metadata": {
+          "source": "golden-fixture"
+        },
+        "metrics": {},
+        "origin": "cma_sample",
+        "params": {
+          "period": 17,
+          "x": 2.332338022567378
+        },
+        "parents": [],
+        "raw_score": -294.4398006515135,
+        "stage": "full",
+        "status": "trusted"
+      },
+      {
+        "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+        "candidate_hash": "b98f853e0da0f57dea8af3361d6f90b1bd935561f8fdb42e612b612877b102d2",
+        "candidate_id": "c-4c33a0b41c474cf810006b12e851179a",
+        "comparison_score": -421.45117222584713,
+        "confidence": "trusted_full",
+        "cost": 1.0,
+        "event_index": 5,
+        "event_type": "tell",
+        "generation": null,
+        "genes": [
+          4.631541020637425,
+          20
+        ],
+        "metadata": {
+          "source": "golden-fixture"
+        },
+        "metrics": {},
+        "origin": "cma_sample",
+        "params": {
+          "period": 20,
+          "x": 4.631541020637425
+        },
+        "parents": [],
+        "raw_score": -421.45117222584713,
+        "stage": "full",
+        "status": "trusted"
+      },
+      {
+        "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+        "candidate_hash": "0d9d35c6e18df63382fbb8a8f9c7d418efc81479093aaa28863271a4eb18c914",
+        "candidate_id": "c-d022905f2aea99371e2bb7bcd023610a",
+        "comparison_score": -256.21330227531587,
+        "confidence": "trusted_full",
+        "cost": 1.0,
+        "event_index": 6,
+        "event_type": "tell",
+        "generation": null,
+        "genes": [
+          0.4618465928377944,
+          16
+        ],
+        "metadata": {
+          "source": "golden-fixture"
+        },
+        "metrics": {},
+        "origin": "cma_sample",
+        "params": {
+          "period": 16,
+          "x": 0.4618465928377944
+        },
+        "parents": [],
+        "raw_score": -256.21330227531587,
+        "stage": "full",
+        "status": "trusted"
+      },
+      {
+        "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+        "candidate_hash": "aa7ef944953b14cd42a30b2dad5ad6771610276e17e95997c12d6976dbed0698",
+        "candidate_id": "c-a010c663d8b3c911f86d56b5153a7fa3",
+        "comparison_score": -202.53461141145556,
+        "confidence": "trusted_full",
+        "cost": 1.0,
+        "event_index": 7,
+        "event_type": "tell",
+        "generation": null,
+        "genes": [
+          2.5562886009712535,
+          14
+        ],
+        "metadata": {
+          "source": "golden-fixture"
+        },
+        "metrics": {},
+        "origin": "cma_sample",
+        "params": {
+          "period": 14,
+          "x": 2.5562886009712535
+        },
+        "parents": [],
+        "raw_score": -202.53461141145556,
+        "stage": "full",
+        "status": "trusted"
+      }
+    ],
+    "telemetry": {
+      "candidates_cached": 0,
+      "candidates_full_evaluated": 4,
+      "candidates_partial_evaluated": 0,
+      "candidates_screened": 0,
+      "cost_by_stage": {
+        "full": 4.0
+      },
+      "eliminated_by_stage": {},
+      "promoted_by_stage": {},
+      "total_candidates_proposed": 4,
+      "unique_candidate_count": 4,
+      "unique_candidate_hashes": [
+        "005da7748eee871173e505805db89e59bc42c1d2d82bbc4b97e5c82799f47736",
+        "0d9d35c6e18df63382fbb8a8f9c7d418efc81479093aaa28863271a4eb18c914",
+        "aa7ef944953b14cd42a30b2dad5ad6771610276e17e95997c12d6976dbed0698",
+        "b98f853e0da0f57dea8af3361d6f90b1bd935561f8fdb42e612b612877b102d2"
+      ]
+    }
+  },
+  "checkpoint_kind": "optimizer_state",
+  "checkpoint_schema_version": 1,
+  "created_by": {
+    "evocore_version": "0.8.0",
+    "platform": "fixture-platform",
+    "python_version": "fixture-python"
+  },
+  "metadata": {},
+  "optimizer": {
+    "direction": "maximize",
+    "gene_space_hash": "c6c6fde353f3a8ae8d9607910b3f56a5350d2c3729526bfafe0c29a8d5caf23e",
+    "gene_space_signature": {
+      "genes": [
+        {
+          "high": 5.0,
+          "is_fixed": false,
+          "kind": "float",
+          "low": -5.0,
+          "name": "x",
+          "sigma": null
+        },
+        {
+          "high": 20,
+          "is_fixed": false,
+          "kind": "int",
+          "low": 2,
+          "name": "period",
+          "sigma": null
+        }
+      ],
+      "has_names": true,
+      "length": 2,
+      "schema_version": 1
+    },
+    "optimizer_config": {
+      "components": {
+        "distribution": {
+          "parameters": {
+            "initial_sigma": 0.3
+          },
+          "type": "cma_es"
+        }
+      },
+      "optimizer_type": "CMAESOptimizer",
+      "parameters": {
+        "direction": "maximize",
+        "initial_mean": null,
+        "initial_sigma": 0.3,
+        "max_generations": 5,
+        "n_workers": null,
+        "parallel": "none",
+        "population_size": 4,
+        "seed": 7,
+        "track_diversity": false
+      },
+      "schema_version": 1
+    },
+    "optimizer_config_hash": "932ed94eb63bde8602cf9836af13e54520347b49a85284acf6c5680be823dbbd",
+    "optimizer_type": "CMAESOptimizer",
+    "seed": 7,
+    "seed_derivation": {
+      "algorithm": "py_derive_seed",
+      "version": 1
+    }
+  },
+  "position": {
+    "best_candidate_id": "c-a010c663d8b3c911f86d56b5153a7fa3",
+    "event_index": 1,
+    "mode": "ask_tell",
+    "pending_batch_ids": []
+  },
+  "state": {
+    "optimizer_type": "CMAESOptimizer",
+    "payload": {
+      "batches_by_id": {
+        "b-0c682feedbf83917a6b7c586f9814404": {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_ids": [
+            "c-0c682feedbf83917a6b7c586f9814404",
+            "c-4c33a0b41c474cf810006b12e851179a",
+            "c-d022905f2aea99371e2bb7bcd023610a",
+            "c-a010c663d8b3c911f86d56b5153a7fa3"
+          ],
+          "consumed": true,
+          "continuous_samples_by_id": {
+            "c-0c682feedbf83917a6b7c586f9814404": [
+              2.332338022567378,
+              17.21776339989256
+            ],
+            "c-4c33a0b41c474cf810006b12e851179a": [
+              4.631541020637425,
+              19.519404711671275
+            ],
+            "c-a010c663d8b3c911f86d56b5153a7fa3": [
+              2.5562886009712535,
+              14.172926455389364
+            ],
+            "c-d022905f2aea99371e2bb7bcd023610a": [
+              0.4618465928377944,
+              16.330312051221156
+            ]
+          },
+          "records": [
+            {
+              "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+              "candidate_id": "c-0c682feedbf83917a6b7c586f9814404",
+              "confidence": "trusted_full",
+              "cost": 1.0,
+              "metadata": {
+                "source": "golden-fixture"
+              },
+              "metrics": {},
+              "score": -294.4398006515135,
+              "stage": "full"
+            },
+            {
+              "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+              "candidate_id": "c-4c33a0b41c474cf810006b12e851179a",
+              "confidence": "trusted_full",
+              "cost": 1.0,
+              "metadata": {
+                "source": "golden-fixture"
+              },
+              "metrics": {},
+              "score": -421.45117222584713,
+              "stage": "full"
+            },
+            {
+              "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+              "candidate_id": "c-a010c663d8b3c911f86d56b5153a7fa3",
+              "confidence": "trusted_full",
+              "cost": 1.0,
+              "metadata": {
+                "source": "golden-fixture"
+              },
+              "metrics": {},
+              "score": -202.53461141145556,
+              "stage": "full"
+            },
+            {
+              "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+              "candidate_id": "c-d022905f2aea99371e2bb7bcd023610a",
+              "confidence": "trusted_full",
+              "cost": 1.0,
+              "metadata": {
+                "source": "golden-fixture"
+              },
+              "metrics": {},
+              "score": -256.21330227531587,
+              "stage": "full"
+            }
+          ]
+        }
+      },
+      "best_candidate_id": "c-a010c663d8b3c911f86d56b5153a7fa3",
+      "candidates_by_id": {
+        "c-0c682feedbf83917a6b7c586f9814404": {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_id": "c-0c682feedbf83917a6b7c586f9814404",
+          "confidence": "trusted_full",
+          "cost": 1.0,
+          "event_index": 0,
+          "generation": null,
+          "genes": [
+            2.332338022567378,
+            17
+          ],
+          "metadata": {
+            "metrics": {},
+            "record_metadata": {
+              "source": "golden-fixture"
+            }
+          },
+          "origin": "cma_sample",
+          "params": {
+            "period": 17,
+            "x": 2.332338022567378
+          },
+          "parents": [],
+          "scores": {
+            "full": {
+              "confidence": "trusted_full",
+              "cost": 1.0,
+              "metadata": {
+                "source": "golden-fixture"
+              },
+              "metrics": {},
+              "score": -294.4398006515135,
+              "stage": "full"
+            }
+          },
+          "stage": "full",
+          "status": "trusted"
+        },
+        "c-4c33a0b41c474cf810006b12e851179a": {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_id": "c-4c33a0b41c474cf810006b12e851179a",
+          "confidence": "trusted_full",
+          "cost": 1.0,
+          "event_index": 0,
+          "generation": null,
+          "genes": [
+            4.631541020637425,
+            20
+          ],
+          "metadata": {
+            "metrics": {},
+            "record_metadata": {
+              "source": "golden-fixture"
+            }
+          },
+          "origin": "cma_sample",
+          "params": {
+            "period": 20,
+            "x": 4.631541020637425
+          },
+          "parents": [],
+          "scores": {
+            "full": {
+              "confidence": "trusted_full",
+              "cost": 1.0,
+              "metadata": {
+                "source": "golden-fixture"
+              },
+              "metrics": {},
+              "score": -421.45117222584713,
+              "stage": "full"
+            }
+          },
+          "stage": "full",
+          "status": "trusted"
+        },
+        "c-a010c663d8b3c911f86d56b5153a7fa3": {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_id": "c-a010c663d8b3c911f86d56b5153a7fa3",
+          "confidence": "trusted_full",
+          "cost": 1.0,
+          "event_index": 0,
+          "generation": null,
+          "genes": [
+            2.5562886009712535,
+            14
+          ],
+          "metadata": {
+            "metrics": {},
+            "record_metadata": {
+              "source": "golden-fixture"
+            }
+          },
+          "origin": "cma_sample",
+          "params": {
+            "period": 14,
+            "x": 2.5562886009712535
+          },
+          "parents": [],
+          "scores": {
+            "full": {
+              "confidence": "trusted_full",
+              "cost": 1.0,
+              "metadata": {
+                "source": "golden-fixture"
+              },
+              "metrics": {},
+              "score": -202.53461141145556,
+              "stage": "full"
+            }
+          },
+          "stage": "full",
+          "status": "trusted"
+        },
+        "c-d022905f2aea99371e2bb7bcd023610a": {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_id": "c-d022905f2aea99371e2bb7bcd023610a",
+          "confidence": "trusted_full",
+          "cost": 1.0,
+          "event_index": 0,
+          "generation": null,
+          "genes": [
+            0.4618465928377944,
+            16
+          ],
+          "metadata": {
+            "metrics": {},
+            "record_metadata": {
+              "source": "golden-fixture"
+            }
+          },
+          "origin": "cma_sample",
+          "params": {
+            "period": 16,
+            "x": 0.4618465928377944
+          },
+          "parents": [],
+          "scores": {
+            "full": {
+              "confidence": "trusted_full",
+              "cost": 1.0,
+              "metadata": {
+                "source": "golden-fixture"
+              },
+              "metrics": {},
+              "score": -256.21330227531587,
+              "stage": "full"
+            }
+          },
+          "stage": "full",
+          "status": "trusted"
+        }
+      },
+      "cmaes_state": {
+        "optimizer_type": "cmaes",
+        "schema_version": 1,
+        "state": {
+          "bounds": [
+            [
+              -5.0,
+              5.0
+            ],
+            [
+              2.0,
+              20.0
+            ]
+          ],
+          "cov": [
+            [
+              0.8688371155543236,
+              0.13018946191168215
+            ],
+            [
+              0.13018946191168215,
+              1.1886585057565549
+            ]
+          ],
+          "eigen_cache": {
+            "eigenvalues_sqrt": [
+              1.0,
+              1.0
+            ],
+            "eigenvectors": [
+              [
+                1.0,
+                0.0
+              ],
+              [
+                0.0,
+                1.0
+              ]
+            ],
+            "valid": true
+          },
+          "eigendecomp_interval": 1,
+          "generation": 1,
+          "lambda": 4,
+          "mean": [
+            2.146119068061646,
+            14.595422680499388
+          ],
+          "n": 2,
+          "pc": [
+            -0.5166073951658354,
+            -1.4468954379391221
+          ],
+          "pending_eigen_updates": 1,
+          "ps": [
+            -0.44778085059012723,
+            -1.2541285238616762
+          ],
+          "sigma": 4.248634883039464
+        }
+      },
+      "event_index": 1,
+      "events": [
+        {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_hash": "005da7748eee871173e505805db89e59bc42c1d2d82bbc4b97e5c82799f47736",
+          "candidate_id": "c-0c682feedbf83917a6b7c586f9814404",
+          "comparison_score": null,
+          "confidence": null,
+          "cost": 0.0,
+          "event_index": 0,
+          "event_type": "ask",
+          "generation": null,
+          "genes": [
+            2.332338022567378,
+            17
+          ],
+          "metadata": {},
+          "metrics": {},
+          "origin": "cma_sample",
+          "params": {
+            "period": 17,
+            "x": 2.332338022567378
+          },
+          "parents": [],
+          "raw_score": null,
+          "stage": null,
+          "status": null
+        },
+        {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_hash": "b98f853e0da0f57dea8af3361d6f90b1bd935561f8fdb42e612b612877b102d2",
+          "candidate_id": "c-4c33a0b41c474cf810006b12e851179a",
+          "comparison_score": null,
+          "confidence": null,
+          "cost": 0.0,
+          "event_index": 1,
+          "event_type": "ask",
+          "generation": null,
+          "genes": [
+            4.631541020637425,
+            20
+          ],
+          "metadata": {},
+          "metrics": {},
+          "origin": "cma_sample",
+          "params": {
+            "period": 20,
+            "x": 4.631541020637425
+          },
+          "parents": [],
+          "raw_score": null,
+          "stage": null,
+          "status": null
+        },
+        {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_hash": "0d9d35c6e18df63382fbb8a8f9c7d418efc81479093aaa28863271a4eb18c914",
+          "candidate_id": "c-d022905f2aea99371e2bb7bcd023610a",
+          "comparison_score": null,
+          "confidence": null,
+          "cost": 0.0,
+          "event_index": 2,
+          "event_type": "ask",
+          "generation": null,
+          "genes": [
+            0.4618465928377944,
+            16
+          ],
+          "metadata": {},
+          "metrics": {},
+          "origin": "cma_sample",
+          "params": {
+            "period": 16,
+            "x": 0.4618465928377944
+          },
+          "parents": [],
+          "raw_score": null,
+          "stage": null,
+          "status": null
+        },
+        {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_hash": "aa7ef944953b14cd42a30b2dad5ad6771610276e17e95997c12d6976dbed0698",
+          "candidate_id": "c-a010c663d8b3c911f86d56b5153a7fa3",
+          "comparison_score": null,
+          "confidence": null,
+          "cost": 0.0,
+          "event_index": 3,
+          "event_type": "ask",
+          "generation": null,
+          "genes": [
+            2.5562886009712535,
+            14
+          ],
+          "metadata": {},
+          "metrics": {},
+          "origin": "cma_sample",
+          "params": {
+            "period": 14,
+            "x": 2.5562886009712535
+          },
+          "parents": [],
+          "raw_score": null,
+          "stage": null,
+          "status": null
+        },
+        {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_hash": "005da7748eee871173e505805db89e59bc42c1d2d82bbc4b97e5c82799f47736",
+          "candidate_id": "c-0c682feedbf83917a6b7c586f9814404",
+          "comparison_score": -294.4398006515135,
+          "confidence": "trusted_full",
+          "cost": 1.0,
+          "event_index": 4,
+          "event_type": "tell",
+          "generation": null,
+          "genes": [
+            2.332338022567378,
+            17
+          ],
+          "metadata": {
+            "source": "golden-fixture"
+          },
+          "metrics": {},
+          "origin": "cma_sample",
+          "params": {
+            "period": 17,
+            "x": 2.332338022567378
+          },
+          "parents": [],
+          "raw_score": -294.4398006515135,
+          "stage": "full",
+          "status": "trusted"
+        },
+        {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_hash": "b98f853e0da0f57dea8af3361d6f90b1bd935561f8fdb42e612b612877b102d2",
+          "candidate_id": "c-4c33a0b41c474cf810006b12e851179a",
+          "comparison_score": -421.45117222584713,
+          "confidence": "trusted_full",
+          "cost": 1.0,
+          "event_index": 5,
+          "event_type": "tell",
+          "generation": null,
+          "genes": [
+            4.631541020637425,
+            20
+          ],
+          "metadata": {
+            "source": "golden-fixture"
+          },
+          "metrics": {},
+          "origin": "cma_sample",
+          "params": {
+            "period": 20,
+            "x": 4.631541020637425
+          },
+          "parents": [],
+          "raw_score": -421.45117222584713,
+          "stage": "full",
+          "status": "trusted"
+        },
+        {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_hash": "0d9d35c6e18df63382fbb8a8f9c7d418efc81479093aaa28863271a4eb18c914",
+          "candidate_id": "c-d022905f2aea99371e2bb7bcd023610a",
+          "comparison_score": -256.21330227531587,
+          "confidence": "trusted_full",
+          "cost": 1.0,
+          "event_index": 6,
+          "event_type": "tell",
+          "generation": null,
+          "genes": [
+            0.4618465928377944,
+            16
+          ],
+          "metadata": {
+            "source": "golden-fixture"
+          },
+          "metrics": {},
+          "origin": "cma_sample",
+          "params": {
+            "period": 16,
+            "x": 0.4618465928377944
+          },
+          "parents": [],
+          "raw_score": -256.21330227531587,
+          "stage": "full",
+          "status": "trusted"
+        },
+        {
+          "batch_id": "b-0c682feedbf83917a6b7c586f9814404",
+          "candidate_hash": "aa7ef944953b14cd42a30b2dad5ad6771610276e17e95997c12d6976dbed0698",
+          "candidate_id": "c-a010c663d8b3c911f86d56b5153a7fa3",
+          "comparison_score": -202.53461141145556,
+          "confidence": "trusted_full",
+          "cost": 1.0,
+          "event_index": 7,
+          "event_type": "tell",
+          "generation": null,
+          "genes": [
+            2.5562886009712535,
+            14
+          ],
+          "metadata": {
+            "source": "golden-fixture"
+          },
+          "metrics": {},
+          "origin": "cma_sample",
+          "params": {
+            "period": 14,
+            "x": 2.5562886009712535
+          },
+          "parents": [],
+          "raw_score": -202.53461141145556,
+          "stage": "full",
+          "status": "trusted"
+        }
+      ],
+      "state_kind": "cmaes_ask_tell",
+      "telemetry": {
+        "candidates_cached": 0,
+        "candidates_full_evaluated": 4,
+        "candidates_partial_evaluated": 0,
+        "candidates_screened": 0,
+        "cost_by_stage": {
+          "full": 4.0
+        },
+        "eliminated_by_stage": {},
+        "promoted_by_stage": {},
+        "total_candidates_proposed": 4,
+        "unique_candidate_count": 4,
+        "unique_candidate_hashes": [
+          "005da7748eee871173e505805db89e59bc42c1d2d82bbc4b97e5c82799f47736",
+          "0d9d35c6e18df63382fbb8a8f9c7d418efc81479093aaa28863271a4eb18c914",
+          "aa7ef944953b14cd42a30b2dad5ad6771610276e17e95997c12d6976dbed0698",
+          "b98f853e0da0f57dea8af3361d6f90b1bd935561f8fdb42e612b612877b102d2"
+        ]
+      }
+    },
+    "schema_version": 1
+  }
+}
