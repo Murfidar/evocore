@@ -296,7 +296,7 @@ def test_mixed_bool_numeric_operator_matrix_accepts_typed_ga_defaults():
 
 
 @pytest.mark.parametrize(
-    "operator, pattern",
+    ("operator", "pattern"),
     [
         (CrossoverOperator.sbx(), r"crossover='sbx'.*bool.*float.*int"),
         (CrossoverOperator.blx(), r"crossover='blx'.*bool.*float.*int"),
