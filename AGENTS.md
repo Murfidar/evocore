@@ -133,6 +133,11 @@ Default branch naming:
 
 Common types: `feature`, `bugfix`, `hotfix`, `release`, `docs`, `refactor`, `test`.
 
+Branch names must exactly match this pattern unless the user explicitly requests
+another name. Do not add tool, agent, username, or workspace prefixes such as
+`codex/`; for example, use `docs/branch-naming-rules`, not
+`codex/docs/branch-naming-rules`.
+
 ## Commit Workflow
 
 After verification passes, commit task-related files only.
