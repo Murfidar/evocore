@@ -15,6 +15,7 @@ from evocore.optimizers.operators import (
     custom_crossover_operator,
     custom_mutation_operator,
     custom_selection_operator,
+    gene_space_profile,
     normalize_bounds_policy,
     normalize_crossover_operator,
     normalize_mutation_operator,
@@ -245,11 +246,77 @@ def test_incompatible_operator_errors_name_domain_and_actual_kinds():
         validate_operator_compatibility(CrossoverOperator.sbx(), space)
 
 
-def test_mixed_bool_numeric_space_is_rejected():
-    space = GeneSpace([Gene("x", "float", 0.0, 1.0), Gene("flag", "bool")])
+def _mixed_bool_numeric_space():
+    return GeneSpace(
+        [
+            Gene("threshold", "float", 0.0, 1.0),
+            Gene("period", "int", 2, 50),
+            Gene("enabled", "bool"),
+        ]
+    )
 
-    with pytest.raises(ConfigurationError, match="bool genes alongside"):
-        validate_operator_compatibility(CrossoverOperator.uniform(), space)
+
+def test_gene_space_profile_distinguishes_numeric_binary_and_mixed():
+    assert gene_space_profile(GeneSpace.uniform(-1.0, 1.0, 2)) == "numeric"
+    assert gene_space_profile(GeneSpace([Gene("a", "bool"), Gene("b", "bool")])) == "binary"
+    assert gene_space_profile(_mixed_bool_numeric_space()) == "mixed"
+
+
+def test_mixed_bool_numeric_operator_matrix_accepts_typed_ga_defaults():
+    space = _mixed_bool_numeric_space()
+
+    crossover = resolve_operator_domain(CrossoverOperator.uniform(), space)
+    gaussian = resolve_operator_domain(MutationOperator.gaussian(), space)
+    uniform = resolve_operator_domain(MutationOperator.uniform(), space)
+    bit_flip = resolve_operator_domain(MutationOperator.bit_flip(), space)
+
+    assert crossover.signature() == {
+        "type": "uniform",
+        "operator_type": "crossover",
+        "domain": "mixed",
+        "parameters": {"probability": 0.9},
+    }
+    assert gaussian.signature() == {
+        "type": "gaussian",
+        "operator_type": "mutation",
+        "domain": "mixed",
+        "parameters": {
+            "individual_probability": 1.0,
+            "probability": 0.1,
+            "sigma": 0.2,
+        },
+    }
+    assert uniform.signature()["domain"] == "mixed"
+    assert bit_flip.signature()["domain"] == "mixed"
+
+    validate_operator_compatibility(CrossoverOperator.uniform(), space)
+    validate_operator_compatibility(MutationOperator.gaussian(), space)
+    validate_operator_compatibility(MutationOperator.uniform(), space)
+    validate_operator_compatibility(MutationOperator.bit_flip(), space)
+
+
+@pytest.mark.parametrize(
+    "operator, pattern",
+    [
+        (CrossoverOperator.sbx(), r"crossover='sbx'.*bool.*float.*int"),
+        (CrossoverOperator.blx(), r"crossover='blx'.*bool.*float.*int"),
+        (CrossoverOperator.one_point(), r"crossover='one_point'.*bool.*float.*int"),
+        (CrossoverOperator.two_point(), r"crossover='two_point'.*bool.*float.*int"),
+    ],
+)
+def test_mixed_bool_numeric_operator_matrix_rejects_incompatible_crossovers(
+    operator,
+    pattern,
+):
+    with pytest.raises(ConfigurationError, match=pattern):
+        validate_operator_compatibility(operator, _mixed_bool_numeric_space())
+
+
+def test_custom_mutation_operator_must_cover_mixed_bool_gene_kind():
+    operator = custom_mutation_operator(ShiftMutation())
+
+    with pytest.raises(ConfigurationError, match=r"mutation='shift'.*bool.*float.*int"):
+        validate_operator_compatibility(operator, _mixed_bool_numeric_space())
 
 
 def test_bounds_policy_clamps_rounds_thresholds_and_preserves_fixed_values():

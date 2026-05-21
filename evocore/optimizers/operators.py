@@ -14,7 +14,16 @@ from evocore.search_space.genes import GeneKind, GeneSpace
 from evocore.search_space.solutions import GeneValue
 
 OperatorType = Literal["crossover", "mutation", "selection", "bounds"]
-OperatorDomain = Literal["numeric", "binary", "score", "repair", "auto", "custom"]
+OperatorDomain = Literal[
+    "numeric",
+    "binary",
+    "mixed",
+    "score",
+    "repair",
+    "auto",
+    "custom",
+]
+GeneSpaceProfile = Literal["numeric", "binary", "mixed"]
 
 NUMERIC_GENE_KINDS: frozenset[GeneKind] = frozenset({"float", "int"})
 BINARY_GENE_KINDS: frozenset[GeneKind] = frozenset({"bool"})
@@ -407,36 +416,62 @@ def normalize_bounds_policy(value: str | BoundsPolicy | None) -> BoundsPolicy:
     raise ConfigurationError(f"Unknown bounds policy: {value!r}. Valid: 'clamp'.")
 
 
-def gene_space_domain(gene_space: GeneSpace) -> Literal["numeric", "binary"]:
-    """Return the GA operator domain implied by a gene space."""
+def gene_space_profile(gene_space: GeneSpace) -> GeneSpaceProfile:
+    """Return the flat GA profile implied by a gene space."""
     kinds = set(gene_space.kinds)
-    if "bool" in kinds and len(kinds) > 1:
-        raise ConfigurationError(
-            "GeneSpace contains bool genes alongside float/int genes. "
-            "Use a binary-only space or encode booleans as int genes with low=0, high=1."
-        )
     if kinds == {"bool"}:
         return "binary"
+    if "bool" in kinds:
+        return "mixed"
     return "numeric"
+
+
+def gene_space_domain(gene_space: GeneSpace) -> GeneSpaceProfile:
+    """Return the GA operator domain implied by a gene space."""
+    return gene_space_profile(gene_space)
+
+
+def _supported_gene_kinds_for_profile(profile: GeneSpaceProfile) -> frozenset[GeneKind]:
+    if profile == "numeric":
+        return NUMERIC_GENE_KINDS
+    if profile == "binary":
+        return BINARY_GENE_KINDS
+    return ALL_FLAT_GENE_KINDS
 
 
 def resolve_operator_domain(
     operator: CrossoverOperator | MutationOperator | SelectionOperator | BoundsPolicy,
     gene_space: GeneSpace,
 ) -> CrossoverOperator | MutationOperator | SelectionOperator | BoundsPolicy:
-    """Resolve auto-domain operators against a concrete gene space."""
-    if not isinstance(operator, CrossoverOperator) or operator.domain != "auto":
-        return operator
-    resolved_domain = gene_space_domain(gene_space)
-    resolved_kinds = NUMERIC_GENE_KINDS if resolved_domain == "numeric" else BINARY_GENE_KINDS
-    return CrossoverOperator(
-        operator.name,
-        dict(operator.parameters),
-        resolved_kinds,
-        resolved_domain,
-        custom=operator.custom,
-        implementation=operator.implementation,
-    )
+    """Resolve profile-sensitive operators against a concrete gene space."""
+    profile = gene_space_profile(gene_space)
+
+    if isinstance(operator, CrossoverOperator) and operator.domain == "auto":
+        return CrossoverOperator(
+            operator.name,
+            dict(operator.parameters),
+            _supported_gene_kinds_for_profile(profile),
+            profile,
+            custom=operator.custom,
+            implementation=operator.implementation,
+        )
+
+    if (
+        isinstance(operator, MutationOperator)
+        and profile == "mixed"
+        and operator.name in ("gaussian", "uniform", "bit_flip")
+        and not operator.custom
+    ):
+        return MutationOperator(
+            operator.name,
+            dict(operator.parameters),
+            ALL_FLAT_GENE_KINDS,
+            "mixed",
+            custom=operator.custom,
+            implementation=operator.implementation,
+        )
+
+    return operator
 
 
 def validate_operator_compatibility(
@@ -713,6 +748,7 @@ __all__ = [
     "custom_mutation_operator",
     "custom_selection_operator",
     "gene_space_domain",
+    "gene_space_profile",
     "normalize_bounds_policy",
     "normalize_crossover_operator",
     "normalize_mutation_operator",
