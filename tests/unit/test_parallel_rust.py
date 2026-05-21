@@ -3,6 +3,7 @@ Smoke tests for evaluate_sequential and evaluate_parallel_rayon via PyO3.
 """
 
 import numpy as np
+import pytest
 
 from evocore._core import evaluate_parallel_rayon, evaluate_sequential
 
@@ -66,6 +67,10 @@ class TestEvaluateParallelRayon:
     def test_empty_population(self):
         result = evaluate_parallel_rayon([], numpy_neg_sphere, 2)
         assert result == []
+
+    def test_rejects_non_positive_thread_count(self):
+        with pytest.raises(ValueError, match="n_threads"):
+            evaluate_parallel_rayon([[1.0]], numpy_neg_sphere, 0)
 
 
 class TestEvaluationDeterminism:

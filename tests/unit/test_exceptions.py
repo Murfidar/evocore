@@ -2,7 +2,7 @@ import warnings
 
 import pytest
 
-from evocore.exceptions import (
+from evocore.core.errors import (
     CheckpointError,
     ConfigurationError,
     ConfigurationWarning,

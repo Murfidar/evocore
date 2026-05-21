@@ -6,19 +6,119 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-05-21
+
 ### Added
 
+- Structural `Optimizer` and `Evaluator` protocols for the clean-break ask/tell
+  lifecycle.
+- `EvaluationContext`, `UpdateResult`, and shared `OptimizerStateSummary` records for
+  evaluator calls, `tell(...)` summaries, and stable state inspection.
 - Public `batch_id` fields on vNext `Candidate` and `EvaluationRecord` so async
   evaluators can group results by ask batch.
+- Stable `OptimizationResult`, `OptimizationBatchResult`, `GenerationHistory`, and `OptimizationTelemetry` export
+  helpers with deterministic JSON output by default.
+- Append-only `EventRecord` and `EventHistory` APIs for ask/tell audit rows and
+  generation-level observations.
+- `ReproducibilityMetadata` on run results with version, optimizer, seed, direction,
+  gene-space signature/hash, and serializable optimizer configuration.
+- `GeneSpace` now owns stable `signature()`, `hash()`, `to_dict()`, `to_json()`,
+  and `validate_genes(...)` helpers for the flat search-space contract.
+- Schema-aware `GeneSpace.value_signature(...)` and `GeneSpace.value_hash(...)`
+  helpers for stable search-point identity.
+- Lifecycle conversion helpers for explicit `Candidate` to `Solution` and `Solution` to
+  `Candidate` transitions.
+- Public optimizer configuration signatures and hashes for `GeneticAlgorithmOptimizer`
+  and `CMAESOptimizer`, with hook-aware reproducibility metadata.
+- Public GA operator contract specs for crossover, mutation, selection, bounds policy,
+  compatibility validation, sigma semantics, and custom operator extension.
+- Stable JSON checkpoint envelope helpers and GA generation-loop checkpoint/resume
+  support with optimizer, gene-space, config, seed, direction, and seed-derivation
+  validation.
+- Added stable GA ask/tell checkpoints with pending-batch and partial-tell
+  resume support.
+- Added stable CMA-ES ask/tell checkpoints with Rust state snapshot resume,
+  pending-batch, and partial-tell support.
+- Rust-backed `PyCMAESState.to_dict()` and `PyCMAESState.from_dict(...)`
+  snapshots for deterministic CMA-ES state continuation primitives.
 
 ### Changed
 
-- `GAEngine` and `CMAESEngine` ask/tell flows now treat partial trusted batches as a
+- Budget and termination vocabulary now uses `max_generations` and
+  `max_evaluations` consistently. Legacy generation and policy-budget names, along
+  with the old `RunResult` stop booleans, were removed in favor of
+  `OptimizationResult.stop_reason`.
+- Whole-package Python imports now use domain packages: `evocore.search_space`,
+  `evocore.lifecycle`, `evocore.results`, `evocore.optimizers`, `evocore.core`, and
+  `evocore.surrogates`.
+- Public optimizer names are now `GeneticAlgorithmOptimizer` and `CMAESOptimizer`.
+  Result fields use `best_solution`, `best_score`, `final_solutions`, `generations`,
+  `events`, `elite_solutions`, and `diversity_by_generation`.
+- Public search-space names are now `Gene`, `Solution`, `SolutionSet`, and
+  `OperatorCodec`.
+- Compatibility aliases for `Solution.genes`, `Solution.fitness`,
+  `Solution.fitness_valid`, `SolutionSet.mean_fitness()`,
+  `SolutionSet.std_fitness()`, `OperatorCodec.encode_genes()`,
+  `OperatorCodec.decode_genes()`, and `OperatorCodec.decode_individual()` were
+  removed. Use `values`, `score`, `score_valid`, `mean_score()`, `std_score()`,
+  `encode_values()`, `decode_values()`, and `decode_solution()`.
+- Evaluator context and record fields now use `stage`; telemetry exports now use
+  `promoted_by_stage`, `eliminated_by_stage`, and `cost_by_stage`.
+- `callbacks`, `surrogates`, `lifecycle.events`, `lifecycle.telemetry`, and
+  `results.reproducibility` now own their implementations in focused modules instead
+  of using implementation-heavy `__init__.py` files or re-export shims.
+- `evocore.optimizers.ga` now splits ask/tell, generation-loop execution,
+  checkpoint resume, multi-run handling, and reproduction into separate modules.
+  `evocore.optimizers.cmaes` now keeps CMA-ES ask/tell state handling in its own
+  module.
+- `GeneticAlgorithmOptimizer` and `CMAESOptimizer` now expose `direction` and preserve raw scores while
+  using direction-aware comparisons for best-candidate tracking.
+- Policy-driven evaluators now receive `EvaluationContext` instead of a bare rung.
+- `GeneticAlgorithmOptimizer` and `CMAESOptimizer` ask/tell flows now treat partial trusted batches as a
   first-class API, with strict duplicate and batch-mismatch validation.
-- `GAEngine.run(...)` now fails fast when a synchronous evaluator omits assigned
+- `GeneticAlgorithmOptimizer.run(...)` now fails fast when a synchronous evaluator omits assigned
   candidates instead of stalling the policy loop.
-- `MultiFidelityPolicy` now requires exactly one `trusted_full` rung and it must be the
-  final rung.
+- `BudgetPolicy` now requires exactly one `trusted_full` stage and it must be the
+  final stage.
+- `ProcessParallel` now reuses a persistent process pool across repeated `evaluate(...)`
+  calls until closed.
+- Cached evaluation records remain eligible for optimizer state updates but no longer
+  consume fresh full-evaluation budget; they are counted through
+  `OptimizationTelemetry.candidates_cached` and `UpdateResult.cached_count`.
+- Objective records now reject non-finite scores uniformly, and `rejected` records must
+  use `score=None` with diagnostics in metrics or metadata.
+- Runtime timing in result exports now lives under `runtime` and is included only when
+  callers pass `include_runtime=True`.
+- Run reproducibility metadata now uses the canonical `GeneSpace` signature and hash,
+  including `schema_version` and per-gene `is_fixed` metadata.
+- Run reproducibility metadata now separates optimizer config hash, gene-space hash,
+  reproducibility status, notes, and runtime hook signatures.
+- Ask/tell event history and telemetry now use GeneSpace-backed candidate hashes in
+  optimizer internals while preserving the zero-argument `Candidate.candidate_hash()`
+  compatibility fallback.
+- `CheckpointCallback` now supports `format="stable"` for JSON checkpoint files
+  while keeping the legacy pickle population format as the checkpoint v1 default.
+
+### Fixed
+
+- Scheduler promotion now ranks candidates by the completed stage score, so surrogate or
+  later-stage observations cannot distort promotion from an earlier stage.
+- `exploration_fraction` now adds deterministic tail exploration candidates during
+  scheduler promotion.
+- `OptimizationTelemetry.unique_candidate_hashes` is populated from proposed candidate
+  genomes.
+- Rust-backed Rayon evaluation now honors `n_threads` and rejects non-positive thread
+  counts.
+- Numeric gene bounds now reject `nan` and infinite values.
+- The inverse-distance surrogate advisor now normalizes feature distances by gene-space
+  bounds when provided.
+- GA and CMA best-candidate tracking now ignores partial and surrogate observations when
+  selecting the optimizer state best candidate.
+- `CMAESOptimizer(direction="minimize").run(...)` now optimizes and reports the lowest raw
+  score instead of treating larger values as better.
+- `GeneticAlgorithmOptimizer.run_multiple(...)` now chooses the best child run using the engine direction.
+- Positional `EvaluationRecord(..., metrics, batch_id)` construction again preserves the
+  supplied batch ID after adding record metadata.
 
 ## [0.7.0] - 2026-05-09
 
@@ -70,8 +170,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   `GeneDef` values, fixed/variable gene metadata, initialization, mutation, and
   reproduction.
 - Exact GA evaluation budget caps through `max_evaluations`.
-- GA stop diagnostics on `RunResult`, including `max_evaluations`, `stop_reason`, and
-  `budget_reached`.
+- GA stop diagnostics on `RunResult`, including evaluation-budget metadata and a final
+  stop status.
 - Production CI gates for linting, Rust tests, Python tests, and platform smoke checks.
 - PEP 561 typing marker and PyO3 extension stubs.
 - MkDocs API documentation.

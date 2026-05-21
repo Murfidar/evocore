@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "evocore"
-version = "0.7.0"
+version = "0.8.0"
 requires-python = ">=3.11"
 description = "Rust-native Genetic Algorithms and CMA-ES for Python"
 readme = "README.md"
@@ -28,7 +28,9 @@ classifiers = [
 dev = [
     "hypothesis>=6.100",
     "maturin>=1.5,<2.0",
+    "matplotlib>=3.8.0",
     "numpy>=1.26",
+    "pandas>=2.2.2",
     "pre-commit>=4.0",
     "pytest>=8.0",
     "ruff>=0.8",

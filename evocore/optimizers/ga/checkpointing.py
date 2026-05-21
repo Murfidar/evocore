@@ -1,0 +1,380 @@
+from __future__ import annotations
+
+import os
+import pickle
+from collections.abc import Callable, Mapping, Sequence
+from typing import Any
+
+from evocore.core.errors import CheckpointError
+from evocore.lifecycle import (
+    batch_from_checkpoint,
+    batch_to_checkpoint,
+    candidate_from_checkpoint,
+    candidate_to_checkpoint,
+    event_history_from_checkpoint,
+    event_history_to_checkpoint,
+    score_for_direction,
+    telemetry_from_checkpoint,
+    telemetry_to_checkpoint,
+)
+from evocore.results import (
+    CheckpointSnapshot,
+    OptimizationResult,
+    validate_checkpoint_identity,
+)
+from evocore.results import (
+    load_checkpoint as load_checkpoint_payload,
+)
+from evocore.results import (
+    save_checkpoint as save_checkpoint_payload,
+)
+from evocore.search_space import Solution
+
+GA_GENERATION_LOOP_STATE_KIND = "ga_generation_loop"
+GA_ASK_TELL_STATE_KIND = "ga_ask_tell"
+GA_CHECKPOINT_STATE_SCHEMA_VERSION = 1
+
+
+def _solution_to_checkpoint(solution: Solution) -> dict[str, Any]:
+    """Export one solution into the GA checkpoint payload."""
+    return {
+        "values": list(solution.values),
+        "score": solution.score,
+        "score_valid": bool(solution.score_valid),
+        "metadata": dict(solution.metadata),
+    }
+
+
+def _solution_from_checkpoint(payload: Mapping[str, Any]) -> Solution:
+    """Restore one Solution from a GA checkpoint payload row."""
+    values = payload.get("values")
+    if not isinstance(values, list):
+        raise CheckpointError("checkpoint solution.values must be a list.")
+    return Solution(
+        values,
+        score=payload.get("score"),
+        score_valid=bool(payload.get("score_valid", False)),
+        metadata=dict(payload.get("metadata") or {}),
+    )
+
+
+class GeneticAlgorithmCheckpointingMixin:
+    """Checkpoint loading and resume helpers for GA."""
+
+    def checkpoint(
+        self,
+        *,
+        generation: int | None = None,
+        population: Sequence[Solution] | None = None,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> CheckpointSnapshot:
+        """Return a stable GA generation-loop checkpoint snapshot."""
+        if generation is None or population is None:
+            raise CheckpointError(
+                "GA stable checkpoint v1 requires generation and population. "
+                "Use CheckpointCallback during generation-loop runs or pass both arguments."
+            )
+        population_payload = [_solution_to_checkpoint(solution) for solution in population]
+        state_payload = {
+            "state_kind": GA_GENERATION_LOOP_STATE_KIND,
+            "generation": int(generation),
+            "population": population_payload,
+        }
+        best_payload = None
+        scored = [
+            solution
+            for solution in population
+            if solution.score is not None and solution.score_valid
+        ]
+        if scored:
+            best = max(
+                scored,
+                key=lambda solution: score_for_direction(float(solution.score), self.direction),
+            )
+            best_payload = _solution_to_checkpoint(best)
+        return CheckpointSnapshot(
+            optimizer_type="GeneticAlgorithmOptimizer",
+            optimizer_config=self.config_signature(),
+            optimizer_config_hash=self.config_hash(),
+            gene_space_signature=self.gene_space.signature(),
+            gene_space_hash=self.gene_space.hash(),
+            direction=self.direction,
+            seed=self.seed,
+            position={
+                "generation": int(generation),
+                "event_index": self.state_summary().event_index,
+                "n_evaluations": None,
+            },
+            state={
+                "optimizer_type": "GeneticAlgorithmOptimizer",
+                "schema_version": 1,
+                "payload": state_payload,
+            },
+            audit={
+                "events": self.events.to_dict(),
+                "telemetry": self.vnext_telemetry.to_dict(),
+                "best": best_payload,
+            },
+            metadata=dict(metadata or {}),
+        )
+
+    @staticmethod
+    def load_checkpoint(checkpoint: str | os.PathLike[str]) -> dict[str, Any]:
+        """Load a stable checkpoint file."""
+        return load_checkpoint_payload(checkpoint)
+
+    @staticmethod
+    def save_checkpoint(
+        checkpoint: str | os.PathLike[str],
+        snapshot: CheckpointSnapshot | Mapping[str, Any],
+    ) -> None:
+        """Save a stable checkpoint file."""
+        save_checkpoint_payload(checkpoint, snapshot)
+
+    def _validate_stable_checkpoint_identity(self, payload: Mapping[str, Any]) -> None:
+        validate_checkpoint_identity(
+            payload,
+            optimizer_type="GeneticAlgorithmOptimizer",
+            gene_space_hash=self.gene_space.hash(),
+            optimizer_config_hash=self.config_hash(),
+            seed=self.seed,
+            direction=self.direction,
+        )
+
+    def _population_from_stable_checkpoint(
+        self,
+        payload: Mapping[str, Any],
+    ) -> tuple[list[Solution], int]:
+        state = payload["state"]
+        state_payload = state["payload"]
+        if state_payload.get("state_kind") != GA_GENERATION_LOOP_STATE_KIND:
+            raise CheckpointError(
+                "checkpoint state_kind "
+                f"{state_payload.get('state_kind')!r} is not supported by "
+                "GA generation-loop resume."
+            )
+        raw_population = state_payload.get("population")
+        if not isinstance(raw_population, list):
+            raise CheckpointError("checkpoint state.payload.population must be a list.")
+        population = []
+        for row in raw_population:
+            if not isinstance(row, Mapping):
+                raise CheckpointError("checkpoint population entries must be objects.")
+            population.append(_solution_from_checkpoint(row))
+        generation = int(state_payload.get("generation", payload["position"]["generation"]))
+        return population, generation
+
+    def resume_from_checkpoint(
+        self,
+        objective_fn: Callable,
+        checkpoint: str | os.PathLike[str] | Mapping[str, Any],
+    ) -> OptimizationResult:
+        """Resume a GA generation-loop run from a stable checkpoint."""
+        payload = (
+            load_checkpoint_payload(checkpoint)
+            if isinstance(checkpoint, str | os.PathLike)
+            else dict(checkpoint)
+        )
+        self._validate_stable_checkpoint_identity(payload)
+        population, saved_generation = self._population_from_stable_checkpoint(payload)
+        return self._run_from_population(
+            population,
+            objective_fn,
+            start_generation=saved_generation + 1,
+        )
+
+    def _resume_legacy_pickle(self, objective_fn: Callable, checkpoint: str) -> OptimizationResult:
+        """Resume from the legacy GA pickle checkpoint format."""
+        if not os.path.exists(checkpoint):
+            directory = os.path.dirname(checkpoint) or "."
+            available = []
+            if os.path.isdir(directory):
+                available = sorted(
+                    name for name in os.listdir(directory) if name.startswith("checkpoint_gen_")
+                )
+            raise CheckpointError(
+                f"checkpoint file {checkpoint!r} not found. Available checkpoints: "
+                f"{', '.join(available) or 'none'}"
+            )
+
+        try:
+            with open(checkpoint, "rb") as handle:
+                payload = pickle.load(handle)
+        except Exception as exc:
+            raise CheckpointError(
+                f"checkpoint file {checkpoint!r} is corrupt or incompatible: {exc}"
+            ) from exc
+
+        solutions = payload.get("population")
+        if solutions is None:
+            solutions = payload.get("SolutionSet")
+        if not isinstance(solutions, list) or not all(
+            isinstance(solution, Solution) for solution in solutions
+        ):
+            raise CheckpointError(
+                "checkpoint payload must contain a list[Solution] under key 'population'."
+            )
+
+        saved_generation = int(payload.get("generation", -1))
+        saved_seed = payload.get("seed")
+        if saved_seed is not None and int(saved_seed) != self.seed:
+            raise CheckpointError(
+                f"checkpoint seed {saved_seed} does not match engine seed {self.seed}."
+            )
+
+        return self._run_from_population(
+            solutions,
+            objective_fn,
+            start_generation=saved_generation + 1,
+        )
+
+    def resume(self, objective_fn: Callable, checkpoint: str) -> OptimizationResult:
+        """Resume a GA run from a stable JSON checkpoint or legacy pickle checkpoint."""
+        if str(checkpoint).endswith(".json"):
+            return self.resume_from_checkpoint(objective_fn, checkpoint)
+        return self._resume_legacy_pickle(objective_fn, checkpoint)
+
+    def ask_tell_checkpoint(
+        self,
+        *,
+        metadata: Mapping[str, Any] | None = None,
+    ) -> CheckpointSnapshot:
+        """Return a stable GA ask/tell runtime checkpoint snapshot."""
+        trusted_ids = [candidate.candidate_id for candidate in self._trusted_population_vnext]
+        best_candidate_id = (
+            None if self.best_candidate is None else self.best_candidate.candidate_id
+        )
+        state_payload = {
+            "state_kind": GA_ASK_TELL_STATE_KIND,
+            "event_index": self._event_index,
+            "candidates_by_id": {
+                candidate_id: candidate_to_checkpoint(candidate)
+                for candidate_id, candidate in sorted(self._candidates_by_id.items())
+            },
+            "batches_by_id": {
+                batch_id: batch_to_checkpoint(batch)
+                for batch_id, batch in sorted(self._batches_by_id.items())
+            },
+            "trusted_candidate_ids": trusted_ids,
+            "best_candidate_id": best_candidate_id,
+            "telemetry": telemetry_to_checkpoint(self.vnext_telemetry),
+            "events": event_history_to_checkpoint(self.events),
+        }
+        return CheckpointSnapshot(
+            optimizer_type="GeneticAlgorithmOptimizer",
+            optimizer_config=self.config_signature(),
+            optimizer_config_hash=self.config_hash(),
+            gene_space_signature=self.gene_space.signature(),
+            gene_space_hash=self.gene_space.hash(),
+            direction=self.direction,
+            seed=self.seed,
+            position={
+                "mode": "ask_tell",
+                "event_index": self._event_index,
+                "pending_batch_ids": list(self._pending_batch_ids()),
+                "best_candidate_id": best_candidate_id,
+            },
+            state={
+                "optimizer_type": "GeneticAlgorithmOptimizer",
+                "schema_version": GA_CHECKPOINT_STATE_SCHEMA_VERSION,
+                "payload": state_payload,
+            },
+            audit={
+                "events": event_history_to_checkpoint(self.events),
+                "telemetry": telemetry_to_checkpoint(self.vnext_telemetry),
+            },
+            metadata=dict(metadata or {}),
+        )
+
+    def _ask_tell_payload_from_checkpoint(
+        self,
+        payload: Mapping[str, Any],
+    ) -> Mapping[str, Any]:
+        state = payload["state"]
+        if state.get("schema_version") != GA_CHECKPOINT_STATE_SCHEMA_VERSION:
+            raise CheckpointError("checkpoint state.schema_version must be 1.")
+        state_payload = state["payload"]
+        if state_payload.get("state_kind") != GA_ASK_TELL_STATE_KIND:
+            raise CheckpointError(
+                "checkpoint state_kind "
+                f"{state_payload.get('state_kind')!r} is not supported by "
+                "GA ask/tell resume."
+            )
+        return state_payload
+
+    def _restore_ask_tell_state(self, state_payload: Mapping[str, Any]) -> None:
+        raw_candidates = state_payload.get("candidates_by_id")
+        if not isinstance(raw_candidates, Mapping):
+            raise CheckpointError("checkpoint state.payload.candidates_by_id must be an object.")
+        candidates = {
+            str(candidate_id): candidate_from_checkpoint(candidate_payload)
+            for candidate_id, candidate_payload in raw_candidates.items()
+        }
+        for candidate_id, candidate in candidates.items():
+            if candidate.candidate_id != candidate_id:
+                raise CheckpointError(
+                    f"checkpoint candidate key {candidate_id!r} does not match "
+                    f"candidate_id {candidate.candidate_id!r}."
+                )
+
+        raw_batches = state_payload.get("batches_by_id")
+        if not isinstance(raw_batches, Mapping):
+            raise CheckpointError("checkpoint state.payload.batches_by_id must be an object.")
+        batches = {
+            str(batch_id): batch_from_checkpoint(batch_payload)
+            for batch_id, batch_payload in raw_batches.items()
+        }
+        for batch_id, batch in batches.items():
+            if batch.batch_id != batch_id:
+                raise CheckpointError(
+                    f"checkpoint batch key {batch_id!r} does not match "
+                    f"batch_id {batch.batch_id!r}."
+                )
+            for candidate_id in batch.candidate_ids:
+                if candidate_id not in candidates:
+                    raise CheckpointError(
+                        f"checkpoint batch {batch_id!r} references unknown "
+                        f"candidate_id {candidate_id!r}."
+                    )
+
+        trusted_ids = list(state_payload.get("trusted_candidate_ids") or ())
+        missing_trusted = [
+            candidate_id for candidate_id in trusted_ids if candidate_id not in candidates
+        ]
+        if missing_trusted:
+            raise CheckpointError(
+                "checkpoint trusted_candidate_ids reference unknown candidate_ids: "
+                f"{missing_trusted!r}."
+            )
+
+        best_candidate_id = state_payload.get("best_candidate_id")
+        if best_candidate_id is not None and best_candidate_id not in candidates:
+            raise CheckpointError(
+                f"checkpoint best_candidate_id {best_candidate_id!r} is unknown."
+            )
+
+        self._candidates_by_id = candidates
+        self._batches_by_id = batches
+        self._trusted_population_vnext = [candidates[candidate_id] for candidate_id in trusted_ids]
+        self.best_candidate = None if best_candidate_id is None else candidates[best_candidate_id]
+        self.vnext_telemetry = telemetry_from_checkpoint(state_payload.get("telemetry") or {})
+        self.events = event_history_from_checkpoint(state_payload.get("events") or [])
+        self._event_index = int(state_payload.get("event_index", 0))
+
+    def resume_ask_tell_checkpoint(
+        self,
+        checkpoint: str | os.PathLike[str] | Mapping[str, Any],
+    ):
+        """Resume GA ask/tell runtime state from a stable checkpoint."""
+        payload = (
+            load_checkpoint_payload(checkpoint)
+            if isinstance(checkpoint, str | os.PathLike)
+            else dict(checkpoint)
+        )
+        self._validate_stable_checkpoint_identity(payload)
+        state_payload = self._ask_tell_payload_from_checkpoint(payload)
+        self._restore_ask_tell_state(state_payload)
+        return self.state_summary()
+
+
+__all__ = ["GeneticAlgorithmCheckpointingMixin"]

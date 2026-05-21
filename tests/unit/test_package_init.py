@@ -2,7 +2,16 @@ def test_evocore_imports_without_error():
     import evocore  # noqa: F401
 
 
-def test_exceptions_accessible_from_top_level():
+def test_core_extension_accessible():
+    from evocore import _core
+
+    assert hasattr(_core, "FloatIndividual")
+    assert hasattr(_core, "IntegerIndividual")
+    assert hasattr(_core, "BinaryIndividual")
+    assert hasattr(_core, "py_derive_seed")
+
+
+def test_errors_accessible_from_top_level():
     from evocore import (
         CheckpointError,
         ConfigurationError,
@@ -23,70 +32,53 @@ def test_exceptions_accessible_from_top_level():
     assert issubclass(ParallelError, EvocoreError)
 
 
-def test_core_extension_accessible():
-    from evocore import _core
+def test_search_space_exports_accessible_from_top_level():
+    from evocore import Gene, GeneSpace, Solution, SolutionSet
 
-    assert hasattr(_core, "FloatIndividual")
-    assert hasattr(_core, "IntegerIndividual")
-    assert hasattr(_core, "BinaryIndividual")
-    assert hasattr(_core, "py_derive_seed")
+    space = GeneSpace.uniform(-1.0, 1.0, 2)
+    solution = Solution([1.0, 0.0])
+    solutions = SolutionSet([solution])
+
+    assert Gene("x", "float", -1.0, 1.0).name == "x"
+    assert space.length == 2
+    assert solution.values == [1.0, 0.0]
+    assert len(solutions) == 1
 
 
-def test_part5_exports_accessible_from_top_level():
+def test_optimizer_exports_accessible_from_top_level():
+    from evocore import CMAESOptimizer, GeneticAlgorithmOptimizer
+
+    assert CMAESOptimizer is not None
+    assert GeneticAlgorithmOptimizer is not None
+
+
+def test_result_exports_accessible_from_top_level():
     from evocore import (
-        Callback,
-        CheckpointCallback,
-        EarlyStopping,
-        GeneDef,
-        GenerationInfo,
-        GeneSpace,
-        Individual,
-        Logbook,
-        LogEntry,
-        MetricsLogger,
-        OperatorSet,
-        Population,
-        ProcessParallel,
-        ThreadParallel,
+        CheckpointSnapshot,
+        GenerationHistory,
+        GenerationRecord,
+        OptimizationBatchResult,
+        OptimizationResult,
     )
 
-    exports = (
-        Callback,
-        CheckpointCallback,
-        EarlyStopping,
-        GeneDef,
-        GenerationInfo,
-        LogEntry,
-        Logbook,
-        MetricsLogger,
-        OperatorSet,
-        Population,
-        ProcessParallel,
-        ThreadParallel,
-    )
-    assert all(export is not None for export in exports)
-    assert GeneSpace.uniform(-1.0, 1.0, 2).length == 2
-    assert Individual([1.0]).genes == [1.0]
+    assert CheckpointSnapshot is not None
+    assert GenerationHistory is not None
+    assert GenerationRecord is not None
+    assert OptimizationBatchResult is not None
+    assert OptimizationResult is not None
 
 
-def test_ga_exports_accessible_from_top_level():
-    from evocore import GAEngine, MultiRunResult, RunResult
-
-    assert GAEngine is not None
-    assert RunResult is not None
-    assert MultiRunResult is not None
-
-
-def test_cmaes_export_accessible_from_top_level():
-    from evocore import CMAESEngine
-
-    assert CMAESEngine is not None
-
-
-def test_vnext_public_exports_are_available() -> None:
+def test_lifecycle_exports_accessible_from_top_level():
     import evocore
 
     assert evocore.Candidate.__name__ == "Candidate"
     assert evocore.EvaluationRecord.__name__ == "EvaluationRecord"
-    assert evocore.Rung.__name__ == "Rung"
+    assert evocore.EvaluationStage.__name__ == "EvaluationStage"
+    assert evocore.BudgetPolicy.__name__ == "BudgetPolicy"
+    assert evocore.BudgetScheduler.__name__ == "BudgetScheduler"
     assert evocore.OptimizationTelemetry.__name__ == "OptimizationTelemetry"
+    assert evocore.UpdateResult.__name__ == "UpdateResult"
+    assert evocore.OptimizerStateSummary.__name__ == "OptimizerStateSummary"
+    assert evocore.EventRecord.__name__ == "EventRecord"
+    assert evocore.EventHistory.__name__ == "EventHistory"
+    assert evocore.ReproducibilityMetadata.__name__ == "ReproducibilityMetadata"

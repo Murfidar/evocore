@@ -84,7 +84,7 @@ class TestRankSelection:
     def test_nan_individual_lowest_rank(self):
         fitnesses = [float("nan"), float("nan"), 50.0]
         idx = rank_selection(fitnesses, 50, 42, 0)
-        assert all(i == 2 for i in idx), "NaN individual must have lowest rank"
+        assert all(i == 2 for i in idx), "NaN Solution must have lowest rank"
 
 
 class TestSelectionDeterminismInvariant:

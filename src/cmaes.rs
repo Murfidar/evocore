@@ -1,5 +1,7 @@
 use nalgebra::{DMatrix, DVector};
 use pyo3::prelude::*;
+use pyo3::types::PyType;
+use pyo3::{FromPyObject, IntoPyObject};
 use rand::prelude::*;
 use rand::rngs::StdRng;
 use rand_distr::{Distribution, Normal};
@@ -11,6 +13,10 @@ use crate::utils::{derive_seed, OP_CMAES_ASK};
 
 const MIN_SIGMA: f64 = 1e-20;
 const MIN_EIGENVALUE: f64 = 1e-20;
+const CMAES_SNAPSHOT_SCHEMA_VERSION: usize = 1;
+const CMAES_SNAPSHOT_OPTIMIZER_TYPE: &str = "cmaes";
+const COV_SYMMETRY_TOL: f64 = 1e-10;
+const COV_MIN_EIGEN_TOL: f64 = -1e-12;
 
 pub fn mirror_fold(x: f64, low: f64, high: f64) -> f64 {
     let range = high - low;
@@ -29,6 +35,7 @@ pub fn mirror_fold(x: f64, low: f64, high: f64) -> f64 {
     t + low
 }
 
+#[derive(Debug)]
 struct EigenCache {
     eigenvectors: DMatrix<f64>,
     eigenvalues_sqrt: DVector<f64>,
@@ -45,6 +52,138 @@ impl EigenCache {
     }
 }
 
+#[derive(Debug, Clone, IntoPyObject, FromPyObject)]
+struct CMAESStateSnapshotEnvelope {
+    #[pyo3(item)]
+    schema_version: usize,
+    #[pyo3(item)]
+    optimizer_type: String,
+    #[pyo3(item)]
+    state: CMAESStateSnapshotPayload,
+}
+
+#[derive(Debug, Clone, IntoPyObject, FromPyObject)]
+struct CMAESStateSnapshotPayload {
+    #[pyo3(item)]
+    n: usize,
+    #[pyo3(item("lambda"))]
+    lambda_: usize,
+    #[pyo3(item)]
+    generation: usize,
+    #[pyo3(item)]
+    mean: Vec<f64>,
+    #[pyo3(item)]
+    sigma: f64,
+    #[pyo3(item)]
+    cov: Vec<Vec<f64>>,
+    #[pyo3(item)]
+    pc: Vec<f64>,
+    #[pyo3(item)]
+    ps: Vec<f64>,
+    #[pyo3(item)]
+    bounds: Vec<Vec<f64>>,
+    #[pyo3(item)]
+    eigendecomp_interval: usize,
+    #[pyo3(item)]
+    pending_eigen_updates: usize,
+    #[pyo3(item)]
+    eigen_cache: CMAESEigenCacheSnapshot,
+}
+
+#[derive(Debug, Clone, IntoPyObject, FromPyObject)]
+struct CMAESEigenCacheSnapshot {
+    #[pyo3(item)]
+    valid: bool,
+    #[pyo3(item)]
+    eigenvectors: Vec<Vec<f64>>,
+    #[pyo3(item)]
+    eigenvalues_sqrt: Vec<f64>,
+}
+
+fn vector_to_vec(vector: &DVector<f64>) -> Vec<f64> {
+    vector.iter().copied().collect()
+}
+
+fn matrix_to_rows(matrix: &DMatrix<f64>) -> Vec<Vec<f64>> {
+    (0..matrix.nrows())
+        .map(|row| (0..matrix.ncols()).map(|col| matrix[(row, col)]).collect())
+        .collect()
+}
+
+fn bounds_to_rows(bounds: &[(f64, f64)]) -> Vec<Vec<f64>> {
+    bounds.iter().map(|(low, high)| vec![*low, *high]).collect()
+}
+
+fn ensure_finite_vector(name: &str, values: &[f64], expected_len: usize) -> Result<(), String> {
+    if values.len() != expected_len {
+        return Err(format!(
+            "{name} length must be {expected_len}, got {}",
+            values.len()
+        ));
+    }
+    if values.iter().any(|value| !value.is_finite()) {
+        return Err(format!("{name} values must be finite"));
+    }
+    Ok(())
+}
+
+fn matrix_from_rows(name: &str, rows: Vec<Vec<f64>>, n: usize) -> Result<DMatrix<f64>, String> {
+    if rows.len() != n {
+        return Err(format!("{name} must have {n} rows, got {}", rows.len()));
+    }
+    let mut flat = Vec::with_capacity(n * n);
+    for (row_idx, row) in rows.into_iter().enumerate() {
+        if row.len() != n {
+            return Err(format!("{name} row {row_idx} must have {n} columns"));
+        }
+        if row.iter().any(|value| !value.is_finite()) {
+            return Err(format!("{name} values must be finite"));
+        }
+        flat.extend(row);
+    }
+    Ok(DMatrix::from_row_slice(n, n, &flat))
+}
+
+fn bounds_from_rows(rows: Vec<Vec<f64>>, n: usize) -> Result<Vec<(f64, f64)>, String> {
+    if rows.len() != n {
+        return Err(format!("bounds length must be {n}, got {}", rows.len()));
+    }
+    rows.into_iter()
+        .enumerate()
+        .map(|(idx, row)| {
+            if row.len() != 2 {
+                return Err(format!("bounds row {idx} must contain low and high"));
+            }
+            let low = row[0];
+            let high = row[1];
+            if !low.is_finite() || !high.is_finite() || low >= high {
+                return Err(format!("bound {idx} must be finite with low < high"));
+            }
+            Ok((low, high))
+        })
+        .collect()
+}
+
+fn validate_covariance(cov: &DMatrix<f64>) -> Result<(), String> {
+    for row in 0..cov.nrows() {
+        for col in 0..cov.ncols() {
+            if (cov[(row, col)] - cov[(col, row)]).abs() > COV_SYMMETRY_TOL {
+                return Err("cov must be symmetric".to_string());
+            }
+        }
+    }
+    let eigen = cov.clone().symmetric_eigen();
+    if eigen
+        .eigenvalues
+        .iter()
+        .any(|value| *value < COV_MIN_EIGEN_TOL)
+    {
+        return Err("cov must not have clearly negative eigenvalues".to_string());
+    }
+    Ok(())
+}
+
+#[derive(Debug)]
 pub struct CMAESState {
     pub n: usize,
     pub lambda: usize,
@@ -148,6 +287,108 @@ impl CMAESState {
             eigen_cache: RefCell::new(EigenCache::invalid(n)),
             pending_eigen_updates: Cell::new(0),
         })
+    }
+
+    fn to_snapshot(&self) -> CMAESStateSnapshotEnvelope {
+        let cache = self.eigen_cache.borrow();
+        CMAESStateSnapshotEnvelope {
+            schema_version: CMAES_SNAPSHOT_SCHEMA_VERSION,
+            optimizer_type: CMAES_SNAPSHOT_OPTIMIZER_TYPE.to_string(),
+            state: CMAESStateSnapshotPayload {
+                n: self.n,
+                lambda_: self.lambda,
+                generation: self.generation,
+                mean: vector_to_vec(&self.mean),
+                sigma: self.sigma,
+                cov: matrix_to_rows(&self.cov),
+                pc: vector_to_vec(&self.pc),
+                ps: vector_to_vec(&self.ps),
+                bounds: bounds_to_rows(&self.bounds),
+                eigendecomp_interval: self.eigendecomp_interval,
+                pending_eigen_updates: self.pending_eigen_updates.get(),
+                eigen_cache: CMAESEigenCacheSnapshot {
+                    valid: cache.valid,
+                    eigenvectors: matrix_to_rows(&cache.eigenvectors),
+                    eigenvalues_sqrt: vector_to_vec(&cache.eigenvalues_sqrt),
+                },
+            },
+        }
+    }
+
+    fn try_from_snapshot(snapshot: CMAESStateSnapshotEnvelope) -> Result<Self, String> {
+        if snapshot.schema_version != CMAES_SNAPSHOT_SCHEMA_VERSION {
+            return Err(format!(
+                "unsupported CMA-ES state snapshot schema_version {}",
+                snapshot.schema_version
+            ));
+        }
+        if snapshot.optimizer_type != CMAES_SNAPSHOT_OPTIMIZER_TYPE {
+            return Err(format!(
+                "expected optimizer_type {CMAES_SNAPSHOT_OPTIMIZER_TYPE}, got {}",
+                snapshot.optimizer_type
+            ));
+        }
+
+        let payload = snapshot.state;
+        if payload.n == 0 {
+            return Err("n must be positive".to_string());
+        }
+        if payload.lambda_ < 2 {
+            return Err("lambda must be >= 2".to_string());
+        }
+        if payload.eigendecomp_interval == 0 {
+            return Err("eigendecomp_interval must be positive".to_string());
+        }
+        ensure_finite_vector("mean", &payload.mean, payload.n)?;
+        ensure_finite_vector("pc", &payload.pc, payload.n)?;
+        ensure_finite_vector("ps", &payload.ps, payload.n)?;
+        if payload.sigma <= 0.0 || !payload.sigma.is_finite() {
+            return Err("sigma must be finite and > 0".to_string());
+        }
+
+        let bounds = bounds_from_rows(payload.bounds, payload.n)?;
+        let cov = matrix_from_rows("cov", payload.cov, payload.n)?;
+        validate_covariance(&cov)?;
+
+        let eigenvectors = matrix_from_rows(
+            "eigen_cache.eigenvectors",
+            payload.eigen_cache.eigenvectors,
+            payload.n,
+        )?;
+        ensure_finite_vector(
+            "eigen_cache.eigenvalues_sqrt",
+            &payload.eigen_cache.eigenvalues_sqrt,
+            payload.n,
+        )?;
+        if payload
+            .eigen_cache
+            .eigenvalues_sqrt
+            .iter()
+            .any(|value| *value <= 0.0)
+        {
+            return Err("eigen_cache.eigenvalues_sqrt values must be > 0".to_string());
+        }
+
+        let mut state = Self::try_new(payload.mean, payload.sigma, payload.lambda_, bounds)?;
+        state.cov = cov;
+        state.pc = DVector::from_vec(payload.pc);
+        state.ps = DVector::from_vec(payload.ps);
+        state.generation = payload.generation;
+        state.eigendecomp_interval = payload.eigendecomp_interval;
+        state
+            .pending_eigen_updates
+            .set(payload.pending_eigen_updates);
+        state.eigen_cache.replace(if payload.eigen_cache.valid {
+            EigenCache {
+                eigenvectors,
+                eigenvalues_sqrt: DVector::from_vec(payload.eigen_cache.eigenvalues_sqrt),
+                valid: true,
+            }
+        } else {
+            EigenCache::invalid(payload.n)
+        });
+
+        Ok(state)
     }
 
     fn ensure_eigen_cache(&self) {
@@ -318,6 +559,24 @@ impl PyCMAESState {
     #[getter]
     fn eigendecomp_interval(&self) -> usize {
         self.inner.eigendecomp_interval
+    }
+
+    fn to_dict<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyAny>> {
+        Ok(self.inner.to_snapshot().into_pyobject(py)?.into_any())
+    }
+
+    #[classmethod]
+    fn from_dict(_cls: &Bound<'_, PyType>, snapshot: &Bound<'_, PyAny>) -> PyResult<Self> {
+        let snapshot = snapshot
+            .extract::<CMAESStateSnapshotEnvelope>()
+            .map_err(|err| {
+                pyo3::exceptions::PyValueError::new_err(format!(
+                    "invalid CMA-ES state snapshot: {err}"
+                ))
+            })?;
+        let inner = CMAESState::try_from_snapshot(snapshot)
+            .map_err(pyo3::exceptions::PyValueError::new_err)?;
+        Ok(Self { inner })
     }
 
     fn ask(&self, master_seed: u64, generation: u64) -> Vec<Vec<f64>> {
@@ -641,5 +900,89 @@ mod tests {
                 }
             }
         }
+    }
+
+    fn evolved_state_with_lazy_eigen_cache() -> CMAESState {
+        let mut s = make_state(4, 8);
+        for gen in 0..3 {
+            let samples = s.ask(99, gen as u64);
+            let fitnesses: Vec<f64> = samples
+                .iter()
+                .map(|samp| -samp.iter().map(|x| x * x).sum::<f64>())
+                .collect();
+            s.tell(&samples, &fitnesses);
+        }
+        s
+    }
+
+    #[test]
+    fn test_snapshot_round_trip_preserves_next_ask() {
+        let s = evolved_state_with_lazy_eigen_cache();
+        let restored = CMAESState::try_from_snapshot(s.to_snapshot()).unwrap();
+
+        assert_eq!(restored.generation, s.generation);
+        assert_eq!(
+            restored.ask(123, restored.generation as u64),
+            s.ask(123, s.generation as u64)
+        );
+    }
+
+    #[test]
+    fn test_snapshot_round_trip_after_same_tell_matches_snapshot() {
+        let mut s = evolved_state_with_lazy_eigen_cache();
+        let mut restored = CMAESState::try_from_snapshot(s.to_snapshot()).unwrap();
+        let samples = s.ask(123, s.generation as u64);
+        let fitnesses: Vec<f64> = samples
+            .iter()
+            .map(|samp| -samp.iter().map(|x| x * x).sum::<f64>())
+            .collect();
+
+        restored.tell(&samples, &fitnesses);
+        s.tell(&samples, &fitnesses);
+
+        assert_eq!(
+            restored.ask(456, restored.generation as u64),
+            s.ask(456, s.generation as u64)
+        );
+        assert_eq!(
+            restored.to_snapshot().state.pending_eigen_updates,
+            s.to_snapshot().state.pending_eigen_updates
+        );
+    }
+
+    #[test]
+    fn test_snapshot_rejects_invalid_schema_version() {
+        let mut snapshot = make_state(3, 6).to_snapshot();
+        snapshot.schema_version = 2;
+
+        let err = CMAESState::try_from_snapshot(snapshot).unwrap_err();
+        assert!(err.contains("schema_version"));
+    }
+
+    #[test]
+    fn test_snapshot_rejects_wrong_optimizer_type() {
+        let mut snapshot = make_state(3, 6).to_snapshot();
+        snapshot.optimizer_type = "ga".to_string();
+
+        let err = CMAESState::try_from_snapshot(snapshot).unwrap_err();
+        assert!(err.contains("optimizer_type"));
+    }
+
+    #[test]
+    fn test_snapshot_rejects_nonsymmetric_covariance() {
+        let mut snapshot = make_state(3, 6).to_snapshot();
+        snapshot.state.cov[0][1] = 0.25;
+
+        let err = CMAESState::try_from_snapshot(snapshot).unwrap_err();
+        assert!(err.contains("cov"));
+    }
+
+    #[test]
+    fn test_snapshot_rejects_negative_covariance_eigenvalue() {
+        let mut snapshot = make_state(3, 6).to_snapshot();
+        snapshot.state.cov[0][0] = -1.0;
+
+        let err = CMAESState::try_from_snapshot(snapshot).unwrap_err();
+        assert!(err.contains("cov"));
     }
 }

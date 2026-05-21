@@ -2,14 +2,17 @@
 
 EvoCore vNext lets evaluators own expensive evaluation strategy.
 
-`GAEngine.run()` calls your `Evaluator.evaluate(candidates, rung)` method for each scheduled
-batch. Put thread pools, process pools, remote jobs, cached backtests, or exchange-specific
-rate limits inside that evaluator.
+`GeneticAlgorithmOptimizer.run()` calls your `Evaluator.evaluate(candidates, context)` method for each scheduled
+batch. Put thread pools, process pools, remote jobs, cached simulations, or service rate limits
+inside that evaluator.
 
 The legacy generation-loop helpers still support three local modes:
 
-- `parallel="none"`: simplest mode for cheap Python fitness functions.
+- `parallel="none"`: simplest mode for cheap Python objective functions.
 - `parallel="thread"`: useful when the callable releases the GIL.
 - `parallel="process"`: useful for CPU-bound module-level callables that are pickle-safe.
 
-`CMAESEngine` supports only `parallel="none"` and `parallel="thread"`.
+`ProcessParallel` keeps its process pool alive across repeated `evaluate(...)` calls on the
+same helper. Use it as a context manager or call `close()` when an evaluator is finished.
+
+`CMAESOptimizer` supports only `parallel="none"` and `parallel="thread"`.

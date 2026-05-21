@@ -1,39 +1,68 @@
 # API Reference
 
-::: evocore.gene_space
+::: evocore.search_space.GeneSpace
 
-::: evocore.individual
+::: evocore.Solution
 
-::: evocore.operators
+::: evocore.search_space.OperatorCodec
 
-::: evocore.stats
+::: evocore.optimizers.operators.BoundsPolicy
 
-::: evocore.parallel
+::: evocore.optimizers.operators.CrossoverOperator
 
-::: evocore.exceptions
+::: evocore.optimizers.operators.MutationOperator
 
-## vNext Expensive Optimization
+::: evocore.optimizers.operators.SelectionOperator
 
-`Candidate.batch_id` groups candidates that came from the same `ask()` event.
-`EvaluationRecord.batch_id` may be supplied to make asynchronous evaluators explicit;
-when present, it must match the candidate batch. Batch IDs are especially useful when
-trusted records arrive in multiple `tell()` calls.
+::: evocore.results.GenerationHistory
 
-::: evocore.evaluation.Candidate
+::: evocore.core.parallel
 
-::: evocore.evaluation.EvaluationRecord
+::: evocore.core.errors
 
-::: evocore.evaluation.Rung
+## Optimizer Lifecycle
 
-::: evocore.evaluation.OptimizationTelemetry
+`Optimizer` and `Evaluator` are structural protocols. Engines and evaluators conform by
+shape, without subclassing.
 
-::: evocore.policies.MultiFidelityPolicy
+::: evocore.lifecycle.Optimizer
 
-::: evocore.scheduler.EvaluationScheduler
+::: evocore.lifecycle.Evaluator
 
-::: evocore.advisors.InverseDistanceSurrogateAdvisor
+::: evocore.lifecycle.Candidate
 
-::: evocore.mixed_cma.IntegerMargin
+::: evocore.lifecycle.EvaluationRecord
 
-::: evocore.mixed_cma.CategoricalState
+::: evocore.lifecycle.EvaluationContext
 
+::: evocore.lifecycle.UpdateResult
+
+::: evocore.lifecycle.OptimizerStateSummary
+
+::: evocore.lifecycle.EvaluationStage
+
+::: evocore.lifecycle.OptimizationTelemetry
+
+::: evocore.results.EventRecord
+
+::: evocore.results.EventHistory
+
+::: evocore.results.ReproducibilityMetadata
+
+::: evocore.lifecycle.BudgetPolicy
+
+::: evocore.lifecycle.BudgetScheduler
+
+::: evocore.surrogates.InverseDistanceAdvisor
+
+::: evocore.optimizers.cmaes.IntegerMarginDistribution
+
+::: evocore.optimizers.cmaes.CategoricalDistributionState
+
+::: evocore.optimizers.OptimizerConfig
+
+::: evocore.optimizers.RuntimeHookSignature
+
+::: evocore.optimizers.ConfigurableComponent
+
+::: evocore.optimizers.config_hash
