@@ -171,3 +171,10 @@ def test_cmaes_run_reports_max_generations_and_run_stop_event():
         "n_evaluations": result.n_evaluations,
         "stop_reason": "max_generations",
     }
+
+
+def test_cmaes_rejects_mixed_bool_numeric_genes():
+    space = GeneSpace([Gene("x", "float", 0.0, 1.0), Gene("flag", "bool")])
+
+    with pytest.raises(ConfigurationError, match="bool"):
+        CMAESOptimizer(space)
