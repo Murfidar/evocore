@@ -1,6 +1,6 @@
 import pytest
 
-from evocore import CheckpointError, FitnessError, GeneSpace, GeneticAlgorithmOptimizer
+from evocore import CheckpointError, FitnessError, Gene, GeneSpace, GeneticAlgorithmOptimizer
 from evocore.lifecycle import (
     Candidate,
     CandidateBatch,
@@ -416,3 +416,35 @@ def test_ga_partial_confidence_records_keep_batch_pending_after_resume(tmp_path)
     assert partial_result.pending_batch_ids == (candidates[0].batch_id,)
     assert summary.pending_batch_ids == (candidates[0].batch_id,)
     assert restored.tell(_records_for(candidates)).pending_batch_ids == ()
+
+
+def _mixed_ga() -> GeneticAlgorithmOptimizer:
+    return GeneticAlgorithmOptimizer(
+        GeneSpace(
+            [
+                Gene("threshold", "float", 0.0, 1.0),
+                Gene("period", "int", 2, 50),
+                Gene("enabled", "bool"),
+            ]
+        ),
+        population_size=4,
+        max_generations=5,
+        seed=123,
+    )
+
+
+def test_ga_mixed_bool_ask_tell_checkpoint_round_trip_preserves_bool_values(tmp_path) -> None:
+    source = _mixed_ga()
+    candidates = source.ask(4)
+    source.tell([_record(candidates[0].candidate_id, batch_id=candidates[0].batch_id)])
+    checkpoint_path = tmp_path / "ga-mixed-bool.evocore-checkpoint.json"
+    source.save_checkpoint(checkpoint_path, source.ask_tell_checkpoint())
+
+    restored = _mixed_ga()
+    summary = restored.resume_ask_tell_checkpoint(checkpoint_path)
+    restored_candidate = restored._candidates_by_id[candidates[0].candidate_id]
+
+    assert summary.best_candidate_id == candidates[0].candidate_id
+    assert type(restored_candidate.genes[2]) is bool
+    assert type(restored_candidate.params["enabled"]) is bool
+    assert restored_candidate.genes == candidates[0].genes

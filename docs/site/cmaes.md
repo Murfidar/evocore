@@ -2,6 +2,10 @@
 
 `CMAESOptimizer` provides covariance matrix adaptation backed by Rust and nalgebra.
 
+CMA-ES supports numeric `float` and `int` genes. It rejects `bool` genes,
+including spaces that mix booleans with numeric genes. Use
+`GeneticAlgorithmOptimizer` for mixed flat spaces with boolean switches.
+
 CMA-ES supports `parallel="none"` and `parallel="thread"`. It rejects `parallel="process"`
 because the Rust covariance state is not picklable.
 

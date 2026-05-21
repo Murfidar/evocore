@@ -10,6 +10,7 @@ from evocore.optimizers.operators import (
     MutationOperator,
     SelectionOperator,
     apply_bounds_policy,
+    resolve_operator_domain,
 )
 
 
@@ -69,4 +70,46 @@ def test_selection_and_bounds_signatures_are_json_safe():
         SelectionOperator.rank().signature(),
         BoundsPolicy.clamp().signature(),
     ]:
+        assert json.loads(stable_json_dumps(payload)) == payload
+
+
+@given(
+    probability=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+    mutation_probability=st.floats(
+        min_value=0.0,
+        max_value=1.0,
+        allow_nan=False,
+        allow_infinity=False,
+    ),
+    sigma=st.floats(min_value=0.0, max_value=1.0, allow_nan=False, allow_infinity=False),
+)
+def test_mixed_default_operator_signatures_are_json_safe(
+    probability,
+    mutation_probability,
+    sigma,
+):
+    space = GeneSpace(
+        [
+            Gene("x", "float", 0.0, 1.0),
+            Gene("period", "int", 2, 20),
+            Gene("flag", "bool"),
+        ]
+    )
+    payloads = [
+        resolve_operator_domain(
+            CrossoverOperator.uniform(probability=probability),
+            space,
+        ).signature(),
+        resolve_operator_domain(
+            MutationOperator.gaussian(probability=mutation_probability, sigma=sigma),
+            space,
+        ).signature(),
+        resolve_operator_domain(
+            MutationOperator.bit_flip(probability=mutation_probability),
+            space,
+        ).signature(),
+    ]
+
+    for payload in payloads:
+        assert payload["domain"] == "mixed"
         assert json.loads(stable_json_dumps(payload)) == payload

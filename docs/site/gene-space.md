@@ -43,6 +43,24 @@ assert params == {
 }
 ```
 
+`GeneticAlgorithmOptimizer` supports flat spaces that mix `float`, `int`, and
+`bool` genes. This lets users model real boolean switches directly instead of
+encoding them as integer genes.
+
+```python
+from evocore import Gene, GeneSpace, GeneticAlgorithmOptimizer
+
+space = GeneSpace(
+    [
+        Gene("threshold", "float", 0.0, 1.0),
+        Gene("period", "int", 2, 50),
+        Gene("enabled", "bool"),
+    ]
+)
+
+optimizer = GeneticAlgorithmOptimizer(space)
+```
+
 ## Validation
 
 `validate_genes(...)` checks decoded Python values without coercing, clamping, or mutating

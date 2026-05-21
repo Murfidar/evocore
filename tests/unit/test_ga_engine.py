@@ -932,3 +932,101 @@ def test_ga_custom_selection_rejects_non_integer_parent_indices():
             gen=1,
             offspring_count=4,
         )
+
+
+def _ga_mixed_bool_space():
+    return GeneSpace(
+        [
+            Gene("threshold", "float", 0.0, 1.0),
+            Gene("period", "int", 2, 50),
+            Gene("enabled", "bool"),
+        ]
+    )
+
+
+def test_ga_mixed_bool_default_uses_python_reproduction_path():
+    engine = GeneticAlgorithmOptimizer(
+        _ga_mixed_bool_space(),
+        population_size=4,
+        max_generations=1,
+        seed=42,
+    )
+    population = [
+        Solution([0.1, 5, False], score=1.0, score_valid=True),
+        Solution([0.2, 10, True], score=2.0, score_valid=True),
+        Solution([0.3, 15, False], score=3.0, score_valid=True),
+        Solution([0.4, 20, True], score=4.0, score_valid=True),
+    ]
+
+    assert engine._uses_python_reproduction() is True
+    offspring = engine._make_offspring(population, [1.0, 2.0, 3.0, 4.0], gen=1, offspring_count=4)
+
+    assert len(offspring) == 4
+    for solution in offspring:
+        assert type(solution.values[0]) is float
+        assert type(solution.values[1]) is int
+        assert type(solution.values[2]) is bool
+        engine.gene_space.validate_genes(solution.values)
+
+
+def test_gaussian_mutation_flips_bool_gene_in_mixed_space():
+    engine = GeneticAlgorithmOptimizer(
+        _ga_mixed_bool_space(),
+        crossover="uniform",
+        mutation="gaussian",
+        mutation_prob=1.0,
+        mutation_individual_prob=1.0,
+        seed=42,
+    )
+
+    mutated = engine._mutate_child_python(
+        [0.25, 10, False],
+        gen=1,
+        individual_index=0,
+        mutation_sigmas=[0.1, 2.0, 0.0],
+    )
+
+    assert mutated[2] is True
+    engine.gene_space.validate_genes(mutated)
+
+
+def test_uniform_mutation_flips_bool_gene_in_mixed_space():
+    engine = GeneticAlgorithmOptimizer(
+        _ga_mixed_bool_space(),
+        crossover="uniform",
+        mutation="uniform",
+        mutation_prob=1.0,
+        mutation_individual_prob=1.0,
+        seed=42,
+    )
+
+    mutated = engine._mutate_child_python(
+        [0.25, 10, True],
+        gen=1,
+        individual_index=0,
+        mutation_sigmas=[0.1, 2.0, 0.0],
+    )
+
+    assert mutated[2] is False
+    engine.gene_space.validate_genes(mutated)
+
+
+def test_bit_flip_mutation_only_changes_bool_gene_in_mixed_space():
+    engine = GeneticAlgorithmOptimizer(
+        _ga_mixed_bool_space(),
+        crossover="uniform",
+        mutation="bit_flip",
+        mutation_prob=1.0,
+        mutation_individual_prob=1.0,
+        seed=42,
+    )
+
+    mutated = engine._mutate_child_python(
+        [0.25, 10, False],
+        gen=1,
+        individual_index=0,
+        mutation_sigmas=[0.1, 2.0, 0.0],
+    )
+
+    assert mutated == [0.25, 10, True]
+    engine.gene_space.validate_genes(mutated)

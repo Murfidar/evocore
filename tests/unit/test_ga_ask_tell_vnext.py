@@ -502,3 +502,59 @@ def test_ga_run_final_solutions_use_candidate_conversion_provenance() -> None:
     assert "stage" not in result.best_solution.metadata
     assert all("candidate_hash" in solution.metadata for solution in result.final_solutions)
     assert all("status" not in solution.metadata for solution in result.final_solutions)
+
+
+def _mixed_bool_space() -> GeneSpace:
+    return GeneSpace(
+        [
+            Gene("threshold", "float", 0.0, 1.0),
+            Gene("period", "int", 2, 50),
+            Gene("enabled", "bool"),
+        ]
+    )
+
+
+def test_ga_ask_returns_mixed_bool_candidates_with_bool_params() -> None:
+    engine = GeneticAlgorithmOptimizer(
+        _mixed_bool_space(),
+        population_size=6,
+        max_generations=5,
+        seed=321,
+    )
+
+    candidates = engine.ask(6)
+
+    assert candidates
+    assert all(type(candidate.genes[2]) is bool for candidate in candidates)
+    assert all(type(candidate.params["enabled"]) is bool for candidate in candidates)
+    assert all(candidate.origin == "random" for candidate in candidates)
+
+
+def test_ga_ask_tell_next_generation_preserves_mixed_bool_types() -> None:
+    engine = GeneticAlgorithmOptimizer(
+        _mixed_bool_space(),
+        population_size=6,
+        max_generations=5,
+        seed=321,
+    )
+    first = engine.ask(6)
+    engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=float(index),
+                confidence="trusted_full",
+                stage="full",
+                cost=1.0,
+            )
+            for index, candidate in enumerate(first)
+        ]
+    )
+
+    second = engine.ask(6)
+
+    assert second
+    assert all(type(candidate.genes[2]) is bool for candidate in second)
+    assert all(type(candidate.params["enabled"]) is bool for candidate in second)
+    assert all(candidate.origin == "mutation" for candidate in second)

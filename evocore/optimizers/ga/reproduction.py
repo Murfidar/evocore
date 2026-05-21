@@ -11,6 +11,7 @@ from evocore.optimizers.operators import (
     MutationContext,
     SelectionContext,
     apply_bounds_policy,
+    gene_space_profile,
 )
 from evocore.search_space import Solution, SolutionSet
 
@@ -59,7 +60,7 @@ class GeneticAlgorithmReproductionMixin:
         if offspring_count <= 0:
             return []
 
-        if self._uses_custom_operator():
+        if self._uses_python_reproduction():
             return self._make_offspring_python(
                 working_population,
                 fitnesses,
@@ -141,6 +142,12 @@ class GeneticAlgorithmReproductionMixin:
                 self.selection_operator,
             )
         )
+
+    def _uses_mixed_gene_space(self) -> bool:
+        return gene_space_profile(self.gene_space) == "mixed"
+
+    def _uses_python_reproduction(self) -> bool:
+        return self._uses_custom_operator() or self._uses_mixed_gene_space()
 
     def _crossover_children_python(
         self,
@@ -275,7 +282,10 @@ class GeneticAlgorithmReproductionMixin:
                 mutated[index] = rng.uniform(float(gene.low), float(gene.high))
             elif self.mutation_operator.name == "uniform" and gene.kind == "int":
                 mutated[index] = rng.randint(int(gene.low), int(gene.high))
-            elif self.mutation_operator.name == "bit_flip" and gene.kind == "bool":
+            elif (
+                self.mutation_operator.name in ("gaussian", "uniform", "bit_flip")
+                and gene.kind == "bool"
+            ):
                 mutated[index] = not bool(mutated[index])
         return apply_bounds_policy(mutated, self.gene_space, self.bounds_policy)
 
