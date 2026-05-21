@@ -38,6 +38,20 @@ gene-space hash, optimizer config hash, and seed derivation version before
 resuming. Resume fails with `CheckpointError` when the receiving optimizer does
 not match the checkpoint identity.
 
+## Compatibility Baseline
+
+Stable JSON checkpoints produced by EvoCore 0.8.0 are the forward compatibility
+baseline for checkpoint schema v1. Compatible patch and minor releases should
+continue to load 0.8.0 stable checkpoint files for GA generation-loop, GA
+ask/tell, and CMA-ES ask/tell workflows, or fail with an explicit
+`CheckpointError` when a documented incompatibility is introduced.
+
+The guarantee covers stable JSON checkpoint files only. Legacy GA pickle
+checkpoints remain legacy support, but they are not part of the forward
+compatibility guarantee. `OptimizationResult.to_dict()` exports and
+`EventHistory.to_rows()` exports are not checkpoint files and are not replayed
+to rebuild optimizer state.
+
 ## Legacy Pickle Checkpoints
 
 The old pickle format remains the checkpoint v1 default for compatibility and is

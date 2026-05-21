@@ -64,8 +64,10 @@ restored.tell(records)
 ```
 
 The checkpoint combines the Rust CMA-ES state snapshot with Python candidate
-ledgers, pending batches, telemetry, and audit events. Generation-loop and
-policy-driven CMA-ES resume remain unsupported.
+ledgers, pending batches, telemetry, and audit events. Stable JSON checkpoints
+produced by EvoCore 0.8.0 are the checkpoint schema v1 compatibility baseline
+for manual CMA-ES ask/tell resume. Generation-loop and policy-driven CMA-ES
+resume remain unsupported.
 
 Use `OptimizationResult.to_dict()` for completed-run export and `engine.events`
 for ask/tell audit rows. Those exports are not checkpoint files and are not
