@@ -197,9 +197,7 @@ def test_ga_generation_loop_fixture_resumes_to_manifest_continuation() -> None:
     )
 
     assert result.best_score == pytest.approx(expected["best_score"])
-    assert [solution.values for solution in result.final_solutions] == expected[
-        "final_values"
-    ]
+    assert [solution.values for solution in result.final_solutions] == expected["final_values"]
     assert result.stop_reason == expected["stop_reason"]
 
 
@@ -316,9 +314,7 @@ def test_fixture_derived_identity_mismatches_raise_checkpoint_error() -> None:
         ).resume_ask_tell_checkpoint(_fixture_path(entry))
 
     with pytest.raises(CheckpointError, match="optimizer_config_hash"):
-        _ga_ask_tell_optimizer(population_size=6).resume_ask_tell_checkpoint(
-            _fixture_path(entry)
-        )
+        _ga_ask_tell_optimizer(population_size=6).resume_ask_tell_checkpoint(_fixture_path(entry))
 
 
 def test_fixture_derived_malformed_cmaes_state_raises_checkpoint_error() -> None:
