@@ -1,0 +1,222 @@
+{
+  "audit": {
+    "best": {
+      "metadata": {
+        "metrics": {}
+      },
+      "score": -0.31960095853797993,
+      "score_valid": true,
+      "values": [
+        0.35078006347157276,
+        -0.4433444544691758,
+        1.7328826784623885e-05
+      ]
+    },
+    "events": [],
+    "telemetry": {
+      "candidates_cached": 0,
+      "candidates_full_evaluated": 0,
+      "candidates_partial_evaluated": 0,
+      "candidates_screened": 0,
+      "cost_by_stage": {},
+      "eliminated_by_stage": {},
+      "promoted_by_stage": {},
+      "total_candidates_proposed": 0,
+      "unique_candidate_count": 0,
+      "unique_candidate_hashes": []
+    }
+  },
+  "checkpoint_kind": "optimizer_state",
+  "checkpoint_schema_version": 1,
+  "created_by": {
+    "evocore_version": "0.8.0",
+    "platform": "fixture-platform",
+    "python_version": "fixture-python"
+  },
+  "metadata": {},
+  "optimizer": {
+    "direction": "maximize",
+    "gene_space_hash": "a4033a66dd481126d2597a2c894e7613d78485b06acbceeb597cca7da31149cb",
+    "gene_space_signature": {
+      "genes": [
+        {
+          "high": 1.0,
+          "is_fixed": false,
+          "kind": "float",
+          "low": -1.0,
+          "name": "gene_0",
+          "sigma": null
+        },
+        {
+          "high": 1.0,
+          "is_fixed": false,
+          "kind": "float",
+          "low": -1.0,
+          "name": "gene_1",
+          "sigma": null
+        },
+        {
+          "high": 1.0,
+          "is_fixed": false,
+          "kind": "float",
+          "low": -1.0,
+          "name": "gene_2",
+          "sigma": null
+        }
+      ],
+      "has_names": false,
+      "length": 3,
+      "schema_version": 1
+    },
+    "optimizer_config": {
+      "components": {
+        "bounds_policy": {
+          "domain": "repair",
+          "operator_type": "bounds",
+          "parameters": {},
+          "type": "clamp"
+        },
+        "crossover": {
+          "domain": "numeric",
+          "operator_type": "crossover",
+          "parameters": {
+            "eta": 2.0,
+            "probability": 0.9
+          },
+          "type": "sbx"
+        },
+        "mutation": {
+          "domain": "numeric",
+          "operator_type": "mutation",
+          "parameters": {
+            "individual_probability": 1.0,
+            "probability": 0.1,
+            "sigma": 0.2
+          },
+          "type": "gaussian"
+        },
+        "mutation_schedule": {
+          "parameters": {
+            "sigma_end": 0.02
+          },
+          "type": "constant"
+        },
+        "selection": {
+          "domain": "score",
+          "operator_type": "selection",
+          "parameters": {
+            "tournament_size": 3
+          },
+          "type": "tournament"
+        }
+      },
+      "optimizer_type": "GeneticAlgorithmOptimizer",
+      "parameters": {
+        "direction": "maximize",
+        "elitism": 1,
+        "max_evaluations": null,
+        "max_generations": 3,
+        "n_workers": null,
+        "parallel": "none",
+        "population_size": 6,
+        "seed": 123,
+        "track_diversity": false
+      },
+      "schema_version": 1
+    },
+    "optimizer_config_hash": "18e7ab045e71861e4ce1704aa969c33a9cf5404bff8656fecb1ed562177f464e",
+    "optimizer_type": "GeneticAlgorithmOptimizer",
+    "seed": 123,
+    "seed_derivation": {
+      "algorithm": "py_derive_seed",
+      "version": 1
+    }
+  },
+  "position": {
+    "event_index": 0,
+    "generation": 0,
+    "n_evaluations": null
+  },
+  "state": {
+    "optimizer_type": "GeneticAlgorithmOptimizer",
+    "payload": {
+      "generation": 0,
+      "population": [
+        {
+          "metadata": {
+            "metrics": {}
+          },
+          "score": -0.31960095853797993,
+          "score_valid": true,
+          "values": [
+            0.35078006347157276,
+            -0.4433444544691758,
+            1.7328826784623885e-05
+          ]
+        },
+        {
+          "metadata": {
+            "metrics": {}
+          },
+          "score": -0.6662923370551539,
+          "score_valid": true,
+          "values": [
+            -0.7443943481434832,
+            -0.016527118686526343,
+            0.3345089622941577
+          ]
+        },
+        {
+          "metadata": {
+            "metrics": {}
+          },
+          "score": -0.6662923370551539,
+          "score_valid": true,
+          "values": [
+            -0.7443943481434832,
+            -0.016527118686526343,
+            0.3345089622941577
+          ]
+        },
+        {
+          "metadata": {
+            "metrics": {}
+          },
+          "score": -0.8560214418162035,
+          "score_valid": true,
+          "values": [
+            0.48145928320370335,
+            -0.44525660194404226,
+            0.6526599105647783
+          ]
+        },
+        {
+          "metadata": {
+            "metrics": {}
+          },
+          "score": -1.4438672262345222,
+          "score_valid": true,
+          "values": [
+            -0.8731795026102988,
+            -0.39581906229030805,
+            -0.7243977169921056
+          ]
+        },
+        {
+          "metadata": {
+            "metrics": {}
+          },
+          "score": -0.6556102562002162,
+          "score_valid": true,
+          "values": [
+            -0.7441789936827103,
+            -0.04110274079726678,
+            0.3164149905749684
+          ]
+        }
+      ],
+      "state_kind": "ga_generation_loop"
+    },
+    "schema_version": 1
+  }
+}

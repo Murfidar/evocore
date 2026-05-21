@@ -1,0 +1,519 @@
+{
+  "audit": {
+    "events": [
+      {
+        "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+        "candidate_hash": "e799b4aa6722fa5e5488c8acc2b7f81527fdfc552e720b137f43b9a5427054cb",
+        "candidate_id": "c-a8d53675a91be5503a59dc578be944d2",
+        "comparison_score": null,
+        "confidence": null,
+        "cost": 0.0,
+        "event_index": 0,
+        "event_type": "ask",
+        "generation": null,
+        "genes": [
+          -0.027304875202495804,
+          0.2612883253330289
+        ],
+        "metadata": {},
+        "metrics": {},
+        "origin": "random",
+        "params": null,
+        "parents": [],
+        "raw_score": null,
+        "stage": null,
+        "status": null
+      },
+      {
+        "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+        "candidate_hash": "2fb9e88f89710b50b6c035e5d856c7fdc3c6f6c3ae7853a71bddc92a7864fb1f",
+        "candidate_id": "c-e04b42b5c90de5164736736196189c2d",
+        "comparison_score": null,
+        "confidence": null,
+        "cost": 0.0,
+        "event_index": 1,
+        "event_type": "ask",
+        "generation": null,
+        "genes": [
+          0.15770899735256183,
+          0.17802049079204352
+        ],
+        "metadata": {},
+        "metrics": {},
+        "origin": "random",
+        "params": null,
+        "parents": [],
+        "raw_score": null,
+        "stage": null,
+        "status": null
+      },
+      {
+        "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+        "candidate_hash": "a93e77c320c116f0a40e2cdc48184888752b797d88f5be92b52928ebe37905eb",
+        "candidate_id": "c-38877e58ca102c025b5eadbb6879f70f",
+        "comparison_score": null,
+        "confidence": null,
+        "cost": 0.0,
+        "event_index": 2,
+        "event_type": "ask",
+        "generation": null,
+        "genes": [
+          -0.6169206090734298,
+          -0.2053922285487766
+        ],
+        "metadata": {},
+        "metrics": {},
+        "origin": "random",
+        "params": null,
+        "parents": [],
+        "raw_score": null,
+        "stage": null,
+        "status": null
+      },
+      {
+        "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+        "candidate_hash": "6dc72c8a64fabdf221333fff06c604b6dd22ce2063da61ea12104793f1ae2ad5",
+        "candidate_id": "c-b3e36787df3354cd2562be05aca73431",
+        "comparison_score": null,
+        "confidence": null,
+        "cost": 0.0,
+        "event_index": 3,
+        "event_type": "ask",
+        "generation": null,
+        "genes": [
+          0.34138748336690394,
+          -0.31359007572600417
+        ],
+        "metadata": {},
+        "metrics": {},
+        "origin": "random",
+        "params": null,
+        "parents": [],
+        "raw_score": null,
+        "stage": null,
+        "status": null
+      },
+      {
+        "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+        "candidate_hash": "e799b4aa6722fa5e5488c8acc2b7f81527fdfc552e720b137f43b9a5427054cb",
+        "candidate_id": "c-a8d53675a91be5503a59dc578be944d2",
+        "comparison_score": -0.06901714516516264,
+        "confidence": "trusted_full",
+        "cost": 1.0,
+        "event_index": 4,
+        "event_type": "tell",
+        "generation": null,
+        "genes": [
+          -0.027304875202495804,
+          0.2612883253330289
+        ],
+        "metadata": {
+          "source": "golden-fixture"
+        },
+        "metrics": {},
+        "origin": "random",
+        "params": null,
+        "parents": [],
+        "raw_score": -0.06901714516516264,
+        "stage": "full",
+        "status": "trusted"
+      }
+    ],
+    "telemetry": {
+      "candidates_cached": 0,
+      "candidates_full_evaluated": 1,
+      "candidates_partial_evaluated": 0,
+      "candidates_screened": 0,
+      "cost_by_stage": {
+        "full": 1.0
+      },
+      "eliminated_by_stage": {},
+      "promoted_by_stage": {},
+      "total_candidates_proposed": 4,
+      "unique_candidate_count": 4,
+      "unique_candidate_hashes": [
+        "2fb9e88f89710b50b6c035e5d856c7fdc3c6f6c3ae7853a71bddc92a7864fb1f",
+        "6dc72c8a64fabdf221333fff06c604b6dd22ce2063da61ea12104793f1ae2ad5",
+        "a93e77c320c116f0a40e2cdc48184888752b797d88f5be92b52928ebe37905eb",
+        "e799b4aa6722fa5e5488c8acc2b7f81527fdfc552e720b137f43b9a5427054cb"
+      ]
+    }
+  },
+  "checkpoint_kind": "optimizer_state",
+  "checkpoint_schema_version": 1,
+  "created_by": {
+    "evocore_version": "0.8.0",
+    "platform": "fixture-platform",
+    "python_version": "fixture-python"
+  },
+  "metadata": {},
+  "optimizer": {
+    "direction": "maximize",
+    "gene_space_hash": "ec4a75561953f0f9e1225959f773ddda5c009a15bd6daae5bd688e87c049af6a",
+    "gene_space_signature": {
+      "genes": [
+        {
+          "high": 1.0,
+          "is_fixed": false,
+          "kind": "float",
+          "low": -1.0,
+          "name": "gene_0",
+          "sigma": null
+        },
+        {
+          "high": 1.0,
+          "is_fixed": false,
+          "kind": "float",
+          "low": -1.0,
+          "name": "gene_1",
+          "sigma": null
+        }
+      ],
+      "has_names": false,
+      "length": 2,
+      "schema_version": 1
+    },
+    "optimizer_config": {
+      "components": {
+        "bounds_policy": {
+          "domain": "repair",
+          "operator_type": "bounds",
+          "parameters": {},
+          "type": "clamp"
+        },
+        "crossover": {
+          "domain": "numeric",
+          "operator_type": "crossover",
+          "parameters": {
+            "eta": 2.0,
+            "probability": 0.9
+          },
+          "type": "sbx"
+        },
+        "mutation": {
+          "domain": "numeric",
+          "operator_type": "mutation",
+          "parameters": {
+            "individual_probability": 1.0,
+            "probability": 0.1,
+            "sigma": 0.2
+          },
+          "type": "gaussian"
+        },
+        "mutation_schedule": {
+          "parameters": {
+            "sigma_end": 0.02
+          },
+          "type": "constant"
+        },
+        "selection": {
+          "domain": "score",
+          "operator_type": "selection",
+          "parameters": {
+            "tournament_size": 3
+          },
+          "type": "tournament"
+        }
+      },
+      "optimizer_type": "GeneticAlgorithmOptimizer",
+      "parameters": {
+        "direction": "maximize",
+        "elitism": 1,
+        "max_evaluations": null,
+        "max_generations": 5,
+        "n_workers": null,
+        "parallel": "none",
+        "population_size": 4,
+        "seed": 123,
+        "track_diversity": false
+      },
+      "schema_version": 1
+    },
+    "optimizer_config_hash": "a66ea2fac884b61d8d57fc00943154262d8041c8ed449ae094f0a1933e345679",
+    "optimizer_type": "GeneticAlgorithmOptimizer",
+    "seed": 123,
+    "seed_derivation": {
+      "algorithm": "py_derive_seed",
+      "version": 1
+    }
+  },
+  "position": {
+    "best_candidate_id": "c-a8d53675a91be5503a59dc578be944d2",
+    "event_index": 1,
+    "mode": "ask_tell",
+    "pending_batch_ids": [
+      "b-a8d53675a91be5503a59dc578be944d2"
+    ]
+  },
+  "state": {
+    "optimizer_type": "GeneticAlgorithmOptimizer",
+    "payload": {
+      "batches_by_id": {
+        "b-a8d53675a91be5503a59dc578be944d2": {
+          "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+          "candidate_ids": [
+            "c-a8d53675a91be5503a59dc578be944d2",
+            "c-e04b42b5c90de5164736736196189c2d",
+            "c-38877e58ca102c025b5eadbb6879f70f",
+            "c-b3e36787df3354cd2562be05aca73431"
+          ],
+          "consumed": false,
+          "continuous_samples_by_id": {},
+          "records": [
+            {
+              "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+              "candidate_id": "c-a8d53675a91be5503a59dc578be944d2",
+              "confidence": "trusted_full",
+              "cost": 1.0,
+              "metadata": {
+                "source": "golden-fixture"
+              },
+              "metrics": {},
+              "score": -0.06901714516516264,
+              "stage": "full"
+            }
+          ]
+        }
+      },
+      "best_candidate_id": "c-a8d53675a91be5503a59dc578be944d2",
+      "candidates_by_id": {
+        "c-38877e58ca102c025b5eadbb6879f70f": {
+          "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+          "candidate_id": "c-38877e58ca102c025b5eadbb6879f70f",
+          "confidence": null,
+          "cost": 0.0,
+          "event_index": 0,
+          "generation": null,
+          "genes": [
+            -0.6169206090734298,
+            -0.2053922285487766
+          ],
+          "metadata": {},
+          "origin": "random",
+          "params": null,
+          "parents": [],
+          "scores": {},
+          "stage": null,
+          "status": "proposed"
+        },
+        "c-a8d53675a91be5503a59dc578be944d2": {
+          "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+          "candidate_id": "c-a8d53675a91be5503a59dc578be944d2",
+          "confidence": "trusted_full",
+          "cost": 1.0,
+          "event_index": 0,
+          "generation": null,
+          "genes": [
+            -0.027304875202495804,
+            0.2612883253330289
+          ],
+          "metadata": {
+            "metrics": {},
+            "record_metadata": {
+              "source": "golden-fixture"
+            }
+          },
+          "origin": "random",
+          "params": null,
+          "parents": [],
+          "scores": {
+            "full": {
+              "confidence": "trusted_full",
+              "cost": 1.0,
+              "metadata": {
+                "source": "golden-fixture"
+              },
+              "metrics": {},
+              "score": -0.06901714516516264,
+              "stage": "full"
+            }
+          },
+          "stage": "full",
+          "status": "trusted"
+        },
+        "c-b3e36787df3354cd2562be05aca73431": {
+          "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+          "candidate_id": "c-b3e36787df3354cd2562be05aca73431",
+          "confidence": null,
+          "cost": 0.0,
+          "event_index": 0,
+          "generation": null,
+          "genes": [
+            0.34138748336690394,
+            -0.31359007572600417
+          ],
+          "metadata": {},
+          "origin": "random",
+          "params": null,
+          "parents": [],
+          "scores": {},
+          "stage": null,
+          "status": "proposed"
+        },
+        "c-e04b42b5c90de5164736736196189c2d": {
+          "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+          "candidate_id": "c-e04b42b5c90de5164736736196189c2d",
+          "confidence": null,
+          "cost": 0.0,
+          "event_index": 0,
+          "generation": null,
+          "genes": [
+            0.15770899735256183,
+            0.17802049079204352
+          ],
+          "metadata": {},
+          "origin": "random",
+          "params": null,
+          "parents": [],
+          "scores": {},
+          "stage": null,
+          "status": "proposed"
+        }
+      },
+      "event_index": 1,
+      "events": [
+        {
+          "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+          "candidate_hash": "e799b4aa6722fa5e5488c8acc2b7f81527fdfc552e720b137f43b9a5427054cb",
+          "candidate_id": "c-a8d53675a91be5503a59dc578be944d2",
+          "comparison_score": null,
+          "confidence": null,
+          "cost": 0.0,
+          "event_index": 0,
+          "event_type": "ask",
+          "generation": null,
+          "genes": [
+            -0.027304875202495804,
+            0.2612883253330289
+          ],
+          "metadata": {},
+          "metrics": {},
+          "origin": "random",
+          "params": null,
+          "parents": [],
+          "raw_score": null,
+          "stage": null,
+          "status": null
+        },
+        {
+          "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+          "candidate_hash": "2fb9e88f89710b50b6c035e5d856c7fdc3c6f6c3ae7853a71bddc92a7864fb1f",
+          "candidate_id": "c-e04b42b5c90de5164736736196189c2d",
+          "comparison_score": null,
+          "confidence": null,
+          "cost": 0.0,
+          "event_index": 1,
+          "event_type": "ask",
+          "generation": null,
+          "genes": [
+            0.15770899735256183,
+            0.17802049079204352
+          ],
+          "metadata": {},
+          "metrics": {},
+          "origin": "random",
+          "params": null,
+          "parents": [],
+          "raw_score": null,
+          "stage": null,
+          "status": null
+        },
+        {
+          "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+          "candidate_hash": "a93e77c320c116f0a40e2cdc48184888752b797d88f5be92b52928ebe37905eb",
+          "candidate_id": "c-38877e58ca102c025b5eadbb6879f70f",
+          "comparison_score": null,
+          "confidence": null,
+          "cost": 0.0,
+          "event_index": 2,
+          "event_type": "ask",
+          "generation": null,
+          "genes": [
+            -0.6169206090734298,
+            -0.2053922285487766
+          ],
+          "metadata": {},
+          "metrics": {},
+          "origin": "random",
+          "params": null,
+          "parents": [],
+          "raw_score": null,
+          "stage": null,
+          "status": null
+        },
+        {
+          "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+          "candidate_hash": "6dc72c8a64fabdf221333fff06c604b6dd22ce2063da61ea12104793f1ae2ad5",
+          "candidate_id": "c-b3e36787df3354cd2562be05aca73431",
+          "comparison_score": null,
+          "confidence": null,
+          "cost": 0.0,
+          "event_index": 3,
+          "event_type": "ask",
+          "generation": null,
+          "genes": [
+            0.34138748336690394,
+            -0.31359007572600417
+          ],
+          "metadata": {},
+          "metrics": {},
+          "origin": "random",
+          "params": null,
+          "parents": [],
+          "raw_score": null,
+          "stage": null,
+          "status": null
+        },
+        {
+          "batch_id": "b-a8d53675a91be5503a59dc578be944d2",
+          "candidate_hash": "e799b4aa6722fa5e5488c8acc2b7f81527fdfc552e720b137f43b9a5427054cb",
+          "candidate_id": "c-a8d53675a91be5503a59dc578be944d2",
+          "comparison_score": -0.06901714516516264,
+          "confidence": "trusted_full",
+          "cost": 1.0,
+          "event_index": 4,
+          "event_type": "tell",
+          "generation": null,
+          "genes": [
+            -0.027304875202495804,
+            0.2612883253330289
+          ],
+          "metadata": {
+            "source": "golden-fixture"
+          },
+          "metrics": {},
+          "origin": "random",
+          "params": null,
+          "parents": [],
+          "raw_score": -0.06901714516516264,
+          "stage": "full",
+          "status": "trusted"
+        }
+      ],
+      "state_kind": "ga_ask_tell",
+      "telemetry": {
+        "candidates_cached": 0,
+        "candidates_full_evaluated": 1,
+        "candidates_partial_evaluated": 0,
+        "candidates_screened": 0,
+        "cost_by_stage": {
+          "full": 1.0
+        },
+        "eliminated_by_stage": {},
+        "promoted_by_stage": {},
+        "total_candidates_proposed": 4,
+        "unique_candidate_count": 4,
+        "unique_candidate_hashes": [
+          "2fb9e88f89710b50b6c035e5d856c7fdc3c6f6c3ae7853a71bddc92a7864fb1f",
+          "6dc72c8a64fabdf221333fff06c604b6dd22ce2063da61ea12104793f1ae2ad5",
+          "a93e77c320c116f0a40e2cdc48184888752b797d88f5be92b52928ebe37905eb",
+          "e799b4aa6722fa5e5488c8acc2b7f81527fdfc552e720b137f43b9a5427054cb"
+        ]
+      },
+      "trusted_candidate_ids": [
+        "c-a8d53675a91be5503a59dc578be944d2"
+      ]
+    },
+    "schema_version": 1
+  }
+}

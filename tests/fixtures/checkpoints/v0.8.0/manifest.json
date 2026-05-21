@@ -1,0 +1,165 @@
+{
+  "checkpoint_schema_version": 1,
+  "fixture_format_version": 1,
+  "fixtures": [
+    {
+      "checkpoint_schema_version": 1,
+      "continuation": {
+        "best_score": -0.21292731887403937,
+        "final_values": [
+          [
+            0.35078006347157276,
+            -0.4433444544691758,
+            1.7328826784623885e-05
+          ],
+          [
+            0.35078006347157276,
+            -0.4433444544691758,
+            1.7328826784623885e-05
+          ],
+          [
+            0.35078006347157276,
+            -0.4433444544691758,
+            -0.7503538803600356
+          ],
+          [
+            0.35078006347157276,
+            -0.4433444544691758,
+            1.7328826784623885e-05
+          ],
+          [
+            -0.7428560427736907,
+            -0.1726022274049333,
+            0.25845762142650514
+          ],
+          [
+            0.17179194079673654,
+            -0.42789805527780916,
+            0.01783542095939745
+          ]
+        ],
+        "stop_reason": "max_generations"
+      },
+      "direction": "maximize",
+      "file": "ga-generation-loop.evocore-checkpoint.json",
+      "gene_space_hash": "a4033a66dd481126d2597a2c894e7613d78485b06acbceeb597cca7da31149cb",
+      "name": "ga_generation_loop",
+      "optimizer_config_hash": "18e7ab045e71861e4ce1704aa969c33a9cf5404bff8656fecb1ed562177f464e",
+      "optimizer_type": "GeneticAlgorithmOptimizer",
+      "seed": 123,
+      "sha256": "2b09a2264f6af5a592d03791f25371057a39954766e2aba3e5fa4ee10191dbf7",
+      "source_evocore_version": "0.8.0",
+      "state_kind": "ga_generation_loop"
+    },
+    {
+      "checkpoint_schema_version": 1,
+      "continuation": {
+        "pending_batch_ids": [
+          "b-a8d53675a91be5503a59dc578be944d2"
+        ],
+        "trusted_count_after_tell": 4
+      },
+      "direction": "maximize",
+      "file": "ga-ask-tell-after-ask.evocore-checkpoint.json",
+      "gene_space_hash": "ec4a75561953f0f9e1225959f773ddda5c009a15bd6daae5bd688e87c049af6a",
+      "name": "ga_ask_tell_after_ask",
+      "optimizer_config_hash": "a66ea2fac884b61d8d57fc00943154262d8041c8ed449ae094f0a1933e345679",
+      "optimizer_type": "GeneticAlgorithmOptimizer",
+      "seed": 123,
+      "sha256": "c64b4806eaaa4bcb406010e6608fbb2feffd01bac9d2736f5b2fdcb0adf8d886",
+      "source_evocore_version": "0.8.0",
+      "state_kind": "ga_ask_tell"
+    },
+    {
+      "checkpoint_schema_version": 1,
+      "continuation": {
+        "accepted_count_after_tell": 3,
+        "best_candidate_id": "c-a8d53675a91be5503a59dc578be944d2",
+        "pending_batch_ids": [
+          "b-a8d53675a91be5503a59dc578be944d2"
+        ]
+      },
+      "direction": "maximize",
+      "file": "ga-ask-tell-after-partial-tell.evocore-checkpoint.json",
+      "gene_space_hash": "ec4a75561953f0f9e1225959f773ddda5c009a15bd6daae5bd688e87c049af6a",
+      "name": "ga_ask_tell_after_partial_tell",
+      "optimizer_config_hash": "a66ea2fac884b61d8d57fc00943154262d8041c8ed449ae094f0a1933e345679",
+      "optimizer_type": "GeneticAlgorithmOptimizer",
+      "seed": 123,
+      "sha256": "10315c36033d293ebedde30928b14b1c77ec1cd13d7aa18d82fcb659520ce34c",
+      "source_evocore_version": "0.8.0",
+      "state_kind": "ga_ask_tell"
+    },
+    {
+      "checkpoint_schema_version": 1,
+      "continuation": {
+        "consumed_batch_ids": [
+          "b-0c682feedbf83917a6b7c586f9814404"
+        ],
+        "generation_after_tell": 1,
+        "pending_batch_ids": [
+          "b-0c682feedbf83917a6b7c586f9814404"
+        ],
+        "trusted_count_after_tell": 4
+      },
+      "direction": "maximize",
+      "file": "cmaes-ask-tell-after-ask.evocore-checkpoint.json",
+      "gene_space_hash": "c6c6fde353f3a8ae8d9607910b3f56a5350d2c3729526bfafe0c29a8d5caf23e",
+      "name": "cmaes_ask_tell_after_ask",
+      "optimizer_config_hash": "932ed94eb63bde8602cf9836af13e54520347b49a85284acf6c5680be823dbbd",
+      "optimizer_type": "CMAESOptimizer",
+      "seed": 7,
+      "sha256": "24f63d029c04a6405496a0522751b4281a7189c3e7b3be09b1bda91890ad15ea",
+      "source_evocore_version": "0.8.0",
+      "state_kind": "cmaes_ask_tell"
+    },
+    {
+      "checkpoint_schema_version": 1,
+      "continuation": {
+        "next_ask": {
+          "batch_ids": [
+            "b-72321937b052ee67461b05376f76b472",
+            "b-72321937b052ee67461b05376f76b472",
+            "b-72321937b052ee67461b05376f76b472",
+            "b-72321937b052ee67461b05376f76b472"
+          ],
+          "candidate_ids": [
+            "c-72321937b052ee67461b05376f76b472",
+            "c-21d9a40db54b4a3ff93b16eaf599d053",
+            "c-1098611675c2285cdd2a9d98835aff53",
+            "c-f0b357654982e3788070076c328f2721"
+          ],
+          "genes": [
+            [
+              4.260993310000705,
+              15
+            ],
+            [
+              1.0319375215598292,
+              10
+            ],
+            [
+              -1.2469083525143358,
+              11
+            ],
+            [
+              1.64121311373475,
+              15
+            ]
+          ]
+        }
+      },
+      "direction": "maximize",
+      "file": "cmaes-ask-tell-after-consumed-batch.evocore-checkpoint.json",
+      "gene_space_hash": "c6c6fde353f3a8ae8d9607910b3f56a5350d2c3729526bfafe0c29a8d5caf23e",
+      "name": "cmaes_ask_tell_after_consumed_batch",
+      "optimizer_config_hash": "932ed94eb63bde8602cf9836af13e54520347b49a85284acf6c5680be823dbbd",
+      "optimizer_type": "CMAESOptimizer",
+      "seed": 7,
+      "sha256": "06ddbca402e9ccf418ee5d483ef630db616465d27bbf6a2feca101faa498babb",
+      "source_evocore_version": "0.8.0",
+      "state_kind": "cmaes_ask_tell"
+    }
+  ],
+  "source_evocore_version": "0.8.0"
+}

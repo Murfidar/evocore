@@ -75,11 +75,11 @@ resumed = GeneticAlgorithmOptimizer(
 ```
 
 The receiving optimizer must match the checkpoint seed, direction, gene space,
-and optimizer configuration. Policy-driven `run(evaluator, policy=...)`
-mid-loop resume and CMA-ES resume are not part of checkpoint v1. Manual GA
-ask/tell checkpoints are supported with `ask_tell_checkpoint()` and
-`resume_ask_tell_checkpoint(...)`. Result JSON and event rows are not checkpoint
-files.
+and optimizer configuration. Stable JSON checkpoints produced by EvoCore 0.8.0
+are the checkpoint schema v1 compatibility baseline for GA generation-loop and
+manual GA ask/tell resume. Policy-driven `run(evaluator, policy=...)` mid-loop
+resume remains outside checkpoint v1. Result JSON and event rows are not
+checkpoint files.
 
 ## Result Export
 
