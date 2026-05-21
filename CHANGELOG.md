@@ -6,6 +6,12 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+### Added
+
+- `GeneticAlgorithmOptimizer` now accepts mixed flat `float`/`int`/`bool`
+  `GeneSpace` values with profile-aware default operators, typed bool mutation,
+  ask/tell, run, and checkpoint coverage. CMA-ES continues to reject bool genes.
+
 ## [0.8.1] - 2026-05-21
 
 ### Added

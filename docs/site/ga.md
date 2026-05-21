@@ -17,6 +17,29 @@ when external evaluation work may outlive the Python process. Restore with
 `resume_ask_tell_checkpoint(...)`, inspect `state_summary().pending_batch_ids`,
 and continue with normal `tell()` or `ask()` calls.
 
+## Mixed Bool Spaces
+
+GA can optimize flat spaces that combine numeric parameters with boolean switches.
+Omitted operators resolve to `uniform` crossover and typed `gaussian` mutation for
+mixed spaces.
+
+```python
+from evocore import Gene, GeneSpace, GeneticAlgorithmOptimizer
+
+space = GeneSpace(
+    [
+        Gene("threshold", "float", 0.0, 1.0),
+        Gene("period", "int", 2, 50),
+        Gene("enabled", "bool"),
+    ]
+)
+
+optimizer = GeneticAlgorithmOptimizer(space, population_size=32, seed=42)
+candidates = optimizer.ask(4)
+
+assert isinstance(candidates[0].params["enabled"], bool)
+```
+
 ## Budgeted Evaluation
 
 `GeneticAlgorithmOptimizer.run()` expects an evaluator object:

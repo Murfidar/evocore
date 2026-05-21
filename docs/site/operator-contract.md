@@ -43,22 +43,38 @@ optimizer = GeneticAlgorithmOptimizer(
 
 ## Compatibility
 
-| Operator | Type | Supported genes |
+| Operator | Type | Supported GA spaces |
 | --- | --- | --- |
-| `sbx` | crossover | `float`, `int` |
-| `blx` | crossover | `float`, `int` |
-| `uniform` | crossover | `float`, `int`, or `bool` depending on the space |
-| `one_point` | crossover | `bool` |
-| `two_point` | crossover | `bool` |
-| `gaussian` | mutation | `float`, `int` |
-| `uniform` | mutation | `float`, `int` |
-| `bit_flip` | mutation | `bool` |
+| `sbx` | crossover | numeric-only `float`/`int` spaces |
+| `blx` | crossover | numeric-only `float`/`int` spaces |
+| `uniform` | crossover | numeric-only, bool-only, and mixed `float`/`int`/`bool` spaces |
+| `one_point` | crossover | bool-only spaces |
+| `two_point` | crossover | bool-only spaces |
+| `gaussian` | mutation | numeric-only and mixed `float`/`int`/`bool` spaces |
+| `uniform` | mutation | numeric-only and mixed `float`/`int`/`bool` spaces |
+| `bit_flip` | mutation | bool-only and mixed `float`/`int`/`bool` spaces |
 | `tournament` | selection | any GA-supported space |
 | `roulette` | selection | any GA-supported space |
 | `rank` | selection | any GA-supported space |
 
 Numeric spaces may mix `float` and `int` genes. Binary spaces contain only `bool`
-genes. Mixed `bool` and numeric spaces are rejected in this contract.
+genes. Mixed GA spaces contain at least one numeric gene and at least one `bool`
+gene.
+
+When GA operator arguments are omitted, EvoCore resolves defaults by space profile:
+
+| Space profile | Default crossover | Default mutation |
+| --- | --- | --- |
+| Numeric-only `float`/`int` | `sbx` | `gaussian` |
+| Bool-only `bool` | `uniform` | `bit_flip` |
+| Mixed `float`/`int` plus `bool` | `uniform` | `gaussian` |
+
+In mixed spaces, `gaussian` and `uniform` mutation mutate numeric genes using
+their numeric behavior and flip bool genes with `mutation_prob`. `bit_flip`
+mutation flips bool genes with `mutation_prob` and leaves numeric genes unchanged.
+
+`sbx`, `blx`, `one_point`, and `two_point` remain incompatible with mixed spaces.
+Choose `uniform` crossover for mixed GA spaces.
 
 ## Bounds Policy
 
