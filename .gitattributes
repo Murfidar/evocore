@@ -1,0 +1,2 @@
+# Checkpoint golden fixture hashes are byte-sensitive.
+tests/fixtures/checkpoints/**/*.json text eol=lf
