@@ -6,6 +6,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-05-21
+
 ### Added
 
 - Checkpoint golden fixtures documenting EvoCore 0.8.0 as the stable JSON
