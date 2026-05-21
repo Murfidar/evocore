@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from evocore import CheckpointError, GeneSpace, GeneticAlgorithmOptimizer
+from evocore import CheckpointError, Gene, GeneSpace, GeneticAlgorithmOptimizer
 from evocore.results import (
     CHECKPOINT_KIND,
     CHECKPOINT_SCHEMA_VERSION,
@@ -298,3 +298,31 @@ def test_ga_resume_keeps_legacy_pickle_path(tmp_path) -> None:
 
     assert result.seed == 42
     assert result.best_solution.score_valid
+
+
+def test_ga_generation_checkpoint_round_trip_preserves_mixed_bool_values(tmp_path) -> None:
+    space = GeneSpace(
+        [
+            Gene("threshold", "float", 0.0, 1.0),
+            Gene("period", "int", 2, 50),
+            Gene("enabled", "bool"),
+        ]
+    )
+    engine = GeneticAlgorithmOptimizer(space, population_size=4, max_generations=2, seed=42)
+    population = [
+        Solution(
+            [0.25, 10, True],
+            score=1.0,
+            score_valid=True,
+            metadata={"params": {"threshold": 0.25, "period": 10, "enabled": True}},
+        )
+    ]
+    path = tmp_path / "checkpoint_gen_0.evocore-checkpoint.json"
+
+    engine.save_checkpoint(path, engine.checkpoint(generation=0, population=population))
+    loaded = load_checkpoint(path)
+
+    row = loaded["state"]["payload"]["population"][0]
+    assert row["values"] == [0.25, 10, True]
+    assert type(row["values"][2]) is bool
+    assert row["metadata"]["params"]["enabled"] is True

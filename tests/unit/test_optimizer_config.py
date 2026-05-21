@@ -407,3 +407,57 @@ def test_ga_custom_operator_is_visible_in_reproducibility_metadata():
         hook["config"].get("component") == "mutation" and hook["reproducibility"] == "partial"
         for hook in payload["runtime_hooks"]
     )
+
+
+def _bool_space():
+    return GeneSpace([Gene("a", "bool"), Gene("b", "bool")])
+
+
+def _mixed_bool_space():
+    return GeneSpace(
+        [
+            Gene("threshold", "float", 0.0, 1.0),
+            Gene("period", "int", 2, 50),
+            Gene("enabled", "bool"),
+        ]
+    )
+
+
+def test_bool_only_default_ga_resolves_binary_operators():
+    default = GeneticAlgorithmOptimizer(_bool_space(), population_size=4, max_generations=1)
+    explicit = GeneticAlgorithmOptimizer(
+        _bool_space(),
+        population_size=4,
+        max_generations=1,
+        crossover="uniform",
+        mutation="bit_flip",
+    )
+
+    assert default.crossover == "uniform"
+    assert default.mutation == "bit_flip"
+    assert default.config_signature() == explicit.config_signature()
+    assert default.config_signature()["components"]["crossover"]["domain"] == "binary"
+    assert default.config_signature()["components"]["mutation"]["domain"] == "binary"
+
+
+def test_mixed_bool_default_ga_resolves_typed_defaults():
+    default = GeneticAlgorithmOptimizer(_mixed_bool_space(), population_size=4, max_generations=1)
+    explicit = GeneticAlgorithmOptimizer(
+        _mixed_bool_space(),
+        population_size=4,
+        max_generations=1,
+        crossover="uniform",
+        mutation="gaussian",
+    )
+
+    assert default.crossover == "uniform"
+    assert default.mutation == "gaussian"
+    assert default.config_signature() == explicit.config_signature()
+    assert default.config_signature()["components"]["crossover"]["domain"] == "mixed"
+    assert default.config_signature()["components"]["mutation"]["domain"] == "mixed"
+
+
+@pytest.mark.parametrize("crossover", ["sbx", "blx", "one_point", "two_point"])
+def test_explicit_incompatible_crossovers_still_reject_mixed_bool_spaces(crossover):
+    with pytest.raises(ConfigurationError, match=rf"crossover='{crossover}'.*bool"):
+        GeneticAlgorithmOptimizer(_mixed_bool_space(), crossover=crossover)

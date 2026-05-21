@@ -35,9 +35,29 @@ def test_binary_space_rejects_sbx():
         OperatorCodec(space, "sbx", "bit_flip")
 
 
-def test_mixed_bool_numeric_rejected():
+def test_mixed_bool_numeric_accepts_uniform_gaussian_and_decodes_bool():
+    space = GeneSpace(
+        [
+            Gene("x", "float", 0.0, 1.0),
+            Gene("period", "int", 2, 20),
+            Gene("flag", "bool"),
+        ]
+    )
+
+    ops = OperatorCodec(space, "uniform", "gaussian")
+
+    assert ops.crossover == "uniform"
+    assert ops.mutation == "gaussian"
+    assert ops.crossover_operator.domain == "mixed"
+    assert ops.mutation_operator.domain == "mixed"
+    assert ops.encode_values([0.25, 10, True]) == [0.25, 10.0, 1.0]
+    assert ops.decode_values([0.25, 10.2, 0.8]) == [0.25, 10, True]
+
+
+def test_mixed_bool_numeric_rejects_numeric_only_crossover():
     space = GeneSpace([Gene("x", "float", 0.0, 1.0), Gene("flag", "bool")])
-    with pytest.raises(ConfigurationError, match="bool genes alongside"):
+
+    with pytest.raises(ConfigurationError, match=r"crossover='sbx'.*bool.*float"):
         OperatorCodec(space, "sbx", "gaussian")
 
 

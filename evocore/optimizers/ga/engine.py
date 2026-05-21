@@ -38,6 +38,7 @@ from evocore.optimizers.operators import (
     CrossoverOperator,
     MutationOperator,
     SelectionOperator,
+    gene_space_profile,
     normalize_bounds_policy,
     normalize_crossover_operator,
     normalize_mutation_operator,
@@ -54,6 +55,20 @@ from evocore.search_space import GeneSpace, OperatorCodec
 
 logger = logging.getLogger(__name__)
 
+_DEFAULT_GA_OPERATOR = object()
+
+
+def _default_crossover_for_profile(profile: str) -> str:
+    if profile == "numeric":
+        return "sbx"
+    return "uniform"
+
+
+def _default_mutation_for_profile(profile: str) -> str:
+    if profile == "binary":
+        return "bit_flip"
+    return "gaussian"
+
 
 class GeneticAlgorithmOptimizer(
     GeneticAlgorithmAskTellMixin,
@@ -68,13 +83,13 @@ class GeneticAlgorithmOptimizer(
         gene_space: Gene definitions for individuals.
         population_size: Number of individuals per generation.
         max_generations: Maximum number of generations to run.
-        crossover: Crossover operator name. Numeric spaces support `"sbx"`, `"blx"`,
-            and `"uniform"`; binary spaces support `"one_point"`, `"two_point"`, and
-            `"uniform"`.
+        crossover: Crossover operator name or spec. When omitted, numeric spaces use
+            `"sbx"` and bool-only or mixed bool/numeric spaces use `"uniform"`.
         crossover_prob: Probability of applying crossover.
         crossover_eta: Eta parameter for simulated binary crossover.
         crossover_alpha: Alpha parameter for blend crossover.
-        mutation: Mutation operator name.
+        mutation: Mutation operator name or spec. When omitted, numeric and mixed
+            bool/numeric spaces use `"gaussian"` and bool-only spaces use `"bit_flip"`.
         mutation_prob: Per-gene mutation probability once an offspring is selected for mutation.
         mutation_individual_prob: Per-offspring probability of applying mutation.
         mutation_sigma: Global mutation sigma fraction.
@@ -103,11 +118,11 @@ class GeneticAlgorithmOptimizer(
         gene_space: GeneSpace,
         population_size: int = 100,
         max_generations: int = 100,
-        crossover: str | CrossoverOperator = "sbx",
+        crossover: str | CrossoverOperator | object = _DEFAULT_GA_OPERATOR,
         crossover_prob: float = 0.9,
         crossover_eta: float = 2.0,
         crossover_alpha: float = 0.5,
-        mutation: str | MutationOperator = "gaussian",
+        mutation: str | MutationOperator | object = _DEFAULT_GA_OPERATOR,
         mutation_prob: float = 0.1,
         mutation_individual_prob: float = 1.0,
         mutation_sigma: float = 0.2,
@@ -159,9 +174,21 @@ class GeneticAlgorithmOptimizer(
                 "mutation_sigma_schedule must be 'constant', 'linear_decay', or 'cosine_decay'."
             )
 
+        profile = gene_space_profile(gene_space)
+        crossover_value = (
+            _default_crossover_for_profile(profile)
+            if crossover is _DEFAULT_GA_OPERATOR
+            else crossover
+        )
+        mutation_value = (
+            _default_mutation_for_profile(profile)
+            if mutation is _DEFAULT_GA_OPERATOR
+            else mutation
+        )
+
         self._reject_typed_operator_scalar_conflicts(
             component="crossover",
-            provided=crossover,
+            provided=crossover_value,
             scalar_values={
                 "crossover_prob": crossover_prob,
                 "crossover_eta": crossover_eta,
@@ -175,7 +202,7 @@ class GeneticAlgorithmOptimizer(
         )
         self._reject_typed_operator_scalar_conflicts(
             component="mutation",
-            provided=mutation,
+            provided=mutation_value,
             scalar_values={
                 "mutation_prob": mutation_prob,
                 "mutation_individual_prob": mutation_individual_prob,
@@ -196,7 +223,7 @@ class GeneticAlgorithmOptimizer(
 
         crossover_operator = resolve_operator_domain(
             normalize_crossover_operator(
-                crossover,
+                crossover_value,
                 probability=crossover_prob,
                 eta=crossover_eta,
                 alpha=crossover_alpha,
@@ -205,7 +232,7 @@ class GeneticAlgorithmOptimizer(
         )
         mutation_operator = resolve_operator_domain(
             normalize_mutation_operator(
-                mutation,
+                mutation_value,
                 probability=mutation_prob,
                 individual_probability=mutation_individual_prob,
                 sigma=mutation_sigma,
