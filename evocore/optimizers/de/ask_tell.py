@@ -291,6 +291,45 @@ class DifferentialEvolutionAskTellMixin:
         }
         return all(candidate_id in terminal_candidate_ids for candidate_id in batch.candidate_ids)
 
+    def _apply_trial_replacement(
+        self,
+        candidate: Candidate,
+        record: EvaluationRecord,
+        batch: CandidateBatch,
+    ) -> AcceptanceDecision:
+        target_slot = self._trial_target_slots[candidate.candidate_id]
+        target_candidate_id = self._trial_target_candidate_ids[candidate.candidate_id]
+        target = self._candidates_by_id[target_candidate_id]
+        accepted = candidate.state_comparison_score(self.direction) >= target.state_comparison_score(
+            self.direction
+        )
+        if accepted:
+            self._target_candidate_ids[target_slot] = candidate.candidate_id
+            self._record_best_candidate(candidate)
+            reason = "trial_replaced_target"
+        else:
+            self._record_best_candidate(target)
+            reason = "trial_kept_target"
+        decision = AcceptanceDecision(
+            candidate_id=candidate.candidate_id,
+            batch_id=batch.batch_id,
+            accepted_for_state=accepted,
+            reason=reason,
+            target_candidate_id=target_candidate_id,
+            target_slot=target_slot,
+        )
+        self._append_tell_event(
+            candidate,
+            record,
+            metadata={
+                "accepted_for_state": accepted,
+                "acceptance_reason": reason,
+                "target_candidate_id": target_candidate_id,
+                "target_slot": target_slot,
+            },
+        )
+        return decision
+
     def tell(self, records: Sequence[EvaluationRecord]) -> UpdateResult:
         trusted = partial = surrogate = cached = rejected = 0
         touched_batch_ids: set[str] = set()
@@ -348,6 +387,11 @@ class DifferentialEvolutionAskTellMixin:
             if self._batch_complete_for_de(batch):
                 batch.consumed = True
                 consumed_batch_ids.add(batch.batch_id)
+                if all(candidate_id in self._trial_target_slots for candidate_id in batch.candidate_ids):
+                    self.generation += 1
+                for candidate_id in batch.candidate_ids:
+                    self._trial_target_slots.pop(candidate_id, None)
+                    self._trial_target_candidate_ids.pop(candidate_id, None)
         best_candidate_id, best_score = self._best_candidate_id_and_score()
         return UpdateResult(
             accepted_count=len(records),

@@ -130,3 +130,91 @@ def test_de_trial_generation_preserves_gene_types_and_fixed_values() -> None:
         assert type(trial.genes[2]) is bool
         assert trial.genes[3] == pytest.approx(1.5)
         _mixed_space().validate_genes(trial.genes)
+
+
+def test_de_tell_replaces_target_when_trial_is_better() -> None:
+    engine, targets = _trusted_engine()
+    trials = engine.ask()
+    trial = trials[0]
+    target_id = trial.metadata["target_candidate_id"]
+    target_slot = trial.metadata["target_slot"]
+
+    result = engine.tell(_records([trial], [100.0]))
+
+    assert result.state_accepted_count == 1
+    assert result.acceptance_decisions[0].accepted_for_state is True
+    assert result.acceptance_decisions[0].reason == "trial_replaced_target"
+    assert result.acceptance_decisions[0].target_candidate_id == target_id
+    assert result.acceptance_decisions[0].target_slot == target_slot
+    assert engine._target_candidate_ids[target_slot] == trial.candidate_id
+    assert targets[0].candidate_id not in engine._target_candidate_ids
+
+
+def test_de_tell_keeps_target_when_trial_is_worse() -> None:
+    engine, targets = _trusted_engine()
+    trials = engine.ask()
+    trial = trials[2]
+    target_slot = trial.metadata["target_slot"]
+    target_id = trial.metadata["target_candidate_id"]
+
+    result = engine.tell(_records([trial], [-100.0]))
+
+    assert result.state_accepted_count == 0
+    assert result.acceptance_decisions[0].accepted_for_state is False
+    assert result.acceptance_decisions[0].reason == "trial_kept_target"
+    assert result.acceptance_decisions[0].target_candidate_id == target_id
+    assert result.acceptance_decisions[0].target_slot == target_slot
+    assert engine._target_candidate_ids[target_slot] == targets[target_slot].candidate_id
+
+
+def test_de_tell_replaces_on_equal_score() -> None:
+    engine, _ = _trusted_engine()
+    trials = engine.ask()
+    trial = trials[1]
+
+    result = engine.tell(_records([trial], [1.0]))
+
+    assert result.acceptance_decisions[0].accepted_for_state is True
+    assert result.acceptance_decisions[0].reason == "trial_replaced_target"
+
+
+def test_de_minimize_replaces_when_trial_score_is_lower() -> None:
+    engine = DifferentialEvolutionOptimizer(
+        _mixed_space(),
+        population_size=6,
+        seed=42,
+        direction="minimize",
+    )
+    targets = engine.ask()
+    engine.tell(_records(targets, [10.0, 9.0, 8.0, 7.0, 6.0, 5.0]))
+    trial = engine.ask()[0]
+
+    result = engine.tell(_records([trial], [1.0]))
+
+    assert result.acceptance_decisions[0].accepted_for_state is True
+    assert result.best_candidate_id == trial.candidate_id
+    assert result.best_score == pytest.approx(1.0)
+
+
+def test_de_rejected_trial_does_not_replace_target_and_can_complete_batch() -> None:
+    engine, targets = _trusted_engine()
+    trials = engine.ask()
+    rejected = [
+        EvaluationRecord(
+            candidate_id=trial.candidate_id,
+            batch_id=trial.batch_id,
+            score=None,
+            confidence="rejected",
+            stage="full",
+            metadata={"reason": "constraint"},
+        )
+        for trial in trials
+    ]
+
+    result = engine.tell(rejected)
+
+    assert result.rejected_count == len(trials)
+    assert result.state_accepted_count == 0
+    assert result.consumed_batch_ids == (trials[0].batch_id,)
+    assert engine._target_candidate_ids == [target.candidate_id for target in targets]
+    assert engine.generation == 1
