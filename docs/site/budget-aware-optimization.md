@@ -19,5 +19,11 @@ policy = BudgetPolicy(
 )
 ```
 
+`GeneticAlgorithmOptimizer` and `DifferentialEvolutionOptimizer` can drive this
+policy directly through `run(evaluator, policy=policy)`. For DE, non-final
+stages screen candidates and final state-eligible records initialize or replace
+target slots. CMA-ES remains manual ask/tell for policy-shaped external
+evaluation in this release line.
+
 `max_evaluations` counts fresh `trusted_full` observations only. Cached records can
 update optimizer state, but they do not spend fresh full-evaluation budget.

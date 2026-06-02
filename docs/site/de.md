@@ -32,6 +32,56 @@ optimizer = DifferentialEvolutionOptimizer(
 result = optimizer.run(SphereEvaluator())
 ```
 
+## Budgeted Evaluation
+
+`DifferentialEvolutionOptimizer.run(evaluator, policy=...)` uses the same
+`BudgetPolicy` and `EvaluationStage` vocabulary as GA. Non-final stages can
+screen candidates, while DE target slots are initialized or replaced only after
+final state-eligible `trusted_full` or `cached` records.
+
+```python
+from evocore import (
+    BudgetPolicy,
+    DifferentialEvolutionOptimizer,
+    EvaluationRecord,
+    EvaluationStage,
+    GeneSpace,
+)
+
+
+class TwoStageSphere:
+    def evaluate(self, candidates, context):
+        stage = context.stage
+        scale = 0.5 if stage.name == "cheap" else 1.0
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=-scale * sum(float(value) ** 2 for value in candidate.genes),
+                confidence=stage.confidence,
+                stage=stage.name,
+                cost=stage.budget,
+            )
+            for candidate in candidates
+        ]
+
+
+policy = BudgetPolicy(
+    stages=[
+        EvaluationStage("cheap", budget=0.10, promote_fraction=0.50, confidence="partial"),
+        EvaluationStage("full", budget=1.00, promote_fraction=1.00, confidence="trusted_full"),
+    ],
+    max_evaluations=32,
+    batch_size=8,
+)
+
+result = DifferentialEvolutionOptimizer(
+    GeneSpace.uniform(-5.0, 5.0, 2),
+    population_size=8,
+    seed=42,
+).run(TwoStageSphere(), policy=policy)
+```
+
 ## When To Choose DE
 
 DE is a good fit for continuous or mostly numeric search spaces where objective
@@ -119,9 +169,23 @@ optimizer = DifferentialEvolutionOptimizer(space, population_size=10, seed=7)
 `accepted_for_state=True` means the trial replaced its target slot.
 `accepted_count` still counts records accepted by the ask/tell ledger.
 
+## Multi-Run Execution
+
+Use `run_multiple(...)` when you want deterministic child runs from one DE
+configuration:
+
+```python
+batch = optimizer.run_multiple(TwoStageSphere(), n_runs=5)
+best = batch.best
+scores = [run.best_score for run in batch.all_runs]
+```
+
+Child seeds are derived from the optimizer seed and results are sorted
+best-first using the optimizer direction.
+
 ## Current Limitations
 
-DE does not yet expose `run_multiple(...)`, policy-aware `run(...)`, custom
-strategy plugins, or a Rust-backed variation kernel. Those are future feature
-and performance parity tracks; the current DE checkpoint contract focuses on
-manual ask/tell continuation and synchronous evaluator-driven `run()`.
+DE does not yet expose custom strategy plugins or a Rust-backed variation
+kernel. Those remain future feature and performance tracks. Policy-driven
+mid-loop checkpoint resume is also outside checkpoint v1; use manual ask/tell
+checkpoints when evaluation work must survive process restarts.
