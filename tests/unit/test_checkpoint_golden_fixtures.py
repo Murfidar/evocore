@@ -443,7 +443,9 @@ def test_de_partial_initial_fixture_accepts_missing_records() -> None:
     assert summary.best_candidate_id == entry["continuation"]["best_candidate_id"]
     assert summary.pending_batch_ids == tuple(entry["continuation"]["pending_batch_ids"])
     assert result.accepted_count == entry["continuation"]["accepted_count_after_tell"]
-    assert restored.state_summary().trusted_count == entry["continuation"]["trusted_count_after_tell"]
+    assert (
+        restored.state_summary().trusted_count == entry["continuation"]["trusted_count_after_tell"]
+    )
     assert result.best_score == pytest.approx(entry["continuation"]["best_score_after_tell"])
     assert result.pending_batch_ids == ()
 
@@ -459,10 +461,12 @@ def test_de_initialized_population_fixture_next_ask_matches_manifest() -> None:
     assert [candidate.candidate_id for candidate in candidates] == expected["candidate_ids"]
     assert [candidate.batch_id for candidate in candidates] == expected["batch_ids"]
     assert [candidate.genes for candidate in candidates] == expected["genes"]
-    assert [candidate.metadata["target_slot"] for candidate in candidates] == expected["target_slots"]
-    assert [
-        candidate.metadata["target_candidate_id"] for candidate in candidates
-    ] == expected["target_candidate_ids"]
+    assert [candidate.metadata["target_slot"] for candidate in candidates] == expected[
+        "target_slots"
+    ]
+    assert [candidate.metadata["target_candidate_id"] for candidate in candidates] == expected[
+        "target_candidate_ids"
+    ]
 
 
 def test_de_trial_ask_fixture_accepts_first_trial_record() -> None:
@@ -494,9 +498,10 @@ def test_de_trial_ask_fixture_accepts_first_trial_record() -> None:
         is entry["continuation"]["first_decision"]["accepted_for_state"]
     )
     assert decision.reason == entry["continuation"]["first_decision"]["reason"]
-    assert decision.target_candidate_id == entry["continuation"]["first_decision"][
-        "target_candidate_id"
-    ]
+    assert (
+        decision.target_candidate_id
+        == entry["continuation"]["first_decision"]["target_candidate_id"]
+    )
     assert decision.target_slot == entry["continuation"]["first_decision"]["target_slot"]
 
 

@@ -92,9 +92,7 @@ def test_de_checkpoint_resume_matches_uninterrupted_initialization_completion() 
     assert _state_tuple(restored) == _state_tuple(uninterrupted)
     assert restored_result.best_score == pytest.approx(uninterrupted_result.best_score)
     assert restored_result.state_accepted_count == uninterrupted_result.state_accepted_count
-    assert [
-        decision.accepted_for_state for decision in restored_result.acceptance_decisions
-    ] == [
+    assert [decision.accepted_for_state for decision in restored_result.acceptance_decisions] == [
         decision.accepted_for_state for decision in uninterrupted_result.acceptance_decisions
     ]
 
@@ -211,9 +209,9 @@ def test_de_checkpoint_rejects_trial_mapping_with_mismatched_target_id() -> None
     engine.tell(_records(candidates, [0, 1, 2, 3, 4, 5]))
     trial = engine.ask()[0]
     payload = engine.ask_tell_checkpoint().to_dict()
-    payload["state"]["payload"]["trial_target_candidate_ids"][trial.candidate_id] = (
-        candidates[1].candidate_id
-    )
+    payload["state"]["payload"]["trial_target_candidate_ids"][trial.candidate_id] = candidates[
+        1
+    ].candidate_id
 
     restored = DifferentialEvolutionOptimizer(_space(), population_size=6, seed=42)
 

@@ -197,9 +197,7 @@ def _after_partial_initial_tell_fixture() -> dict[str, Any]:
 def _initialized_source() -> tuple[DifferentialEvolutionOptimizer, list[object]]:
     source = _optimizer()
     targets = source.ask()
-    source.tell(
-        _trusted_records_for_candidates(targets, scores=[0.0, 1.0, 2.0, 3.0, 4.0, 5.0])
-    )
+    source.tell(_trusted_records_for_candidates(targets, scores=[0.0, 1.0, 2.0, 3.0, 4.0, 5.0]))
     return source, targets
 
 
