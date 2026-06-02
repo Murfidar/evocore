@@ -15,6 +15,7 @@ from evocore.lifecycle import (
     OptimizerStateSummary,
 )
 from evocore.optimizers.config import OptimizerConfig
+from evocore.optimizers.de.ask_tell import DifferentialEvolutionAskTellMixin
 from evocore.optimizers.de.config import (
     build_de_config,
     de_reproducibility_status,
@@ -25,7 +26,7 @@ from evocore.results import EventHistory, ReproducibilityMetadata
 from evocore.search_space import GeneSpace
 
 
-class DifferentialEvolutionOptimizer:
+class DifferentialEvolutionOptimizer(DifferentialEvolutionAskTellMixin):
     """Run Differential Evolution over a flat EvoCore GeneSpace."""
 
     def __init__(
@@ -84,9 +85,6 @@ class DifferentialEvolutionOptimizer:
         self.vnext_telemetry = OptimizationTelemetry()
         self.best_candidate: Candidate | None = None
         self.events = EventHistory()
-
-    def _pending_batch_ids(self) -> tuple[str, ...]:
-        return tuple(batch_id for batch_id, batch in self._batches_by_id.items() if not batch.consumed)
 
     def _trusted_count(self) -> int:
         return len(self._target_candidate_ids)
