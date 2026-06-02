@@ -16,6 +16,7 @@ from evocore.lifecycle import (
 )
 from evocore.optimizers.config import OptimizerConfig
 from evocore.optimizers.de.ask_tell import DifferentialEvolutionAskTellMixin
+from evocore.optimizers.de.checkpointing import DifferentialEvolutionCheckpointingMixin
 from evocore.optimizers.de.config import (
     build_de_config,
     de_reproducibility_status,
@@ -26,7 +27,10 @@ from evocore.results import EventHistory, ReproducibilityMetadata
 from evocore.search_space import GeneSpace
 
 
-class DifferentialEvolutionOptimizer(DifferentialEvolutionAskTellMixin):
+class DifferentialEvolutionOptimizer(
+    DifferentialEvolutionCheckpointingMixin,
+    DifferentialEvolutionAskTellMixin,
+):
     """Run Differential Evolution over a flat EvoCore GeneSpace."""
 
     def __init__(
