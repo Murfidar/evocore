@@ -127,11 +127,7 @@ class TwoStageSphereEvaluator:
                 candidate_id=candidate.candidate_id,
                 batch_id=candidate.batch_id,
                 score=-scale
-                * sum(
-                    float(value) ** 2
-                    for value in candidate.genes
-                    if type(value) is not bool
-                ),
+                * sum(float(value) ** 2 for value in candidate.genes if type(value) is not bool),
                 confidence=context.stage.confidence,
                 stage=stage_name,
                 cost=context.stage.budget,
@@ -150,9 +146,7 @@ class CachedFinalEvaluator:
                 candidate_id=candidate.candidate_id,
                 batch_id=candidate.batch_id,
                 score=-sum(
-                    float(value) ** 2
-                    for value in candidate.genes
-                    if type(value) is not bool
+                    float(value) ** 2 for value in candidate.genes if type(value) is not bool
                 ),
                 confidence=confidence,
                 stage=context.stage.name,

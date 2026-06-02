@@ -109,9 +109,7 @@ def test_de_budgeted_run_supports_mixed_gene_space() -> None:
     policy = BudgetPolicy(
         stages=[
             EvaluationStage("cheap", budget=0.10, promote_fraction=0.50, confidence="partial"),
-            EvaluationStage(
-                "full", budget=1.00, promote_fraction=1.00, confidence="trusted_full"
-            ),
+            EvaluationStage("full", budget=1.00, promote_fraction=1.00, confidence="trusted_full"),
         ],
         max_evaluations=18,
         batch_size=6,

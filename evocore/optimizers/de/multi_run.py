@@ -91,13 +91,9 @@ class DifferentialEvolutionMultiRunMixin:
             )
             try:
                 futures = [
-                    pool.submit(run_child_optimizer, self, seed, evaluator)
-                    for seed in child_seeds
+                    pool.submit(run_child_optimizer, self, seed, evaluator) for seed in child_seeds
                 ]
-                results = [
-                    future.result()
-                    for future in concurrent.futures.as_completed(futures)
-                ]
+                results = [future.result() for future in concurrent.futures.as_completed(futures)]
             finally:
                 pool.shutdown(cancel_futures=True, wait=False)
         else:

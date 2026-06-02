@@ -291,10 +291,7 @@ class DifferentialEvolutionOptimizer(
         batch = self._batches_by_id[candidate.batch_id]
         return any(
             record.candidate_id == candidate.candidate_id
-            and (
-                is_state_update_confidence(record.confidence)
-                or record.confidence == "rejected"
-            )
+            and (is_state_update_confidence(record.confidence) or record.confidence == "rejected")
             for record in batch.records_by_key.values()
         )
 
@@ -439,9 +436,7 @@ class DifferentialEvolutionOptimizer(
             promoted = scheduler.promote(assigned, completed_stage=stage.name)
             promoted_ids = {candidate.candidate_id for candidate in promoted}
             screened_out = [
-                candidate
-                for candidate in assigned
-                if candidate.candidate_id not in promoted_ids
+                candidate for candidate in assigned if candidate.candidate_id not in promoted_ids
             ]
             self._reject_screened_out(screened_out, completed_stage=stage.name)
             active_candidates = promoted
@@ -523,12 +518,10 @@ class DifferentialEvolutionOptimizer(
 
         while (
             len(self._target_candidate_ids) < self.population_size
-            and self.vnext_telemetry.candidates_full_evaluated
-            < resolved_policy.max_evaluations
+            and self.vnext_telemetry.candidates_full_evaluated < resolved_policy.max_evaluations
         ):
             remaining = (
-                resolved_policy.max_evaluations
-                - self.vnext_telemetry.candidates_full_evaluated
+                resolved_policy.max_evaluations - self.vnext_telemetry.candidates_full_evaluated
             )
             candidate_limit = min(
                 resolved_policy.batch_size or self.population_size,
@@ -551,10 +544,7 @@ class DifferentialEvolutionOptimizer(
             )
             n_evaluations += fresh_count
 
-        if (
-            self.vnext_telemetry.candidates_full_evaluated
-            >= resolved_policy.max_evaluations
-        ):
+        if self.vnext_telemetry.candidates_full_evaluated >= resolved_policy.max_evaluations:
             stop_reason = "max_evaluations"
 
         for gen in range(self.max_generations):
@@ -572,8 +562,7 @@ class DifferentialEvolutionOptimizer(
             generation_had_final_candidates = False
             generation_full_target = min(
                 self.population_size,
-                resolved_policy.max_evaluations
-                - self.vnext_telemetry.candidates_full_evaluated,
+                resolved_policy.max_evaluations - self.vnext_telemetry.candidates_full_evaluated,
             )
             while generation_fresh_count < generation_full_target:
                 remaining = (
@@ -603,8 +592,8 @@ class DifferentialEvolutionOptimizer(
                 )
                 n_evaluations += fresh_count
                 generation_fresh_count += fresh_count
-                generation_had_final_candidates = (
-                    generation_had_final_candidates or bool(final_candidates)
+                generation_had_final_candidates = generation_had_final_candidates or bool(
+                    final_candidates
                 )
                 if (
                     fresh_count == 0
