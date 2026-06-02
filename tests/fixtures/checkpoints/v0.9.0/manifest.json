@@ -1,0 +1,231 @@
+{
+  "checkpoint_schema_version": 1,
+  "fixture_format_version": 1,
+  "fixtures": [
+    {
+      "checkpoint_schema_version": 1,
+      "continuation": {
+        "best_score_after_tell": 1.4086409854794493,
+        "pending_batch_ids": [
+          "b-382f2f340a90c4aa7fd345ee12f017e0"
+        ],
+        "state_accepted_count_after_tell": 6,
+        "trusted_count_after_tell": 6
+      },
+      "direction": "maximize",
+      "file": "de-after-initial-ask.evocore-checkpoint.json",
+      "gene_space_hash": "63bdbf661548414eabee012696811783110dda1b43202d8e16beae42b343eb54",
+      "name": "de_after_initial_ask",
+      "optimizer_config_hash": "e162e22623ca066ab4d0486845a831f33ea7c78c80da0f64d3c97ab06237a0cc",
+      "optimizer_type": "DifferentialEvolutionOptimizer",
+      "seed": 42,
+      "sha256": "42e2d60210993a040e99832ab9d374c27c9e563260c7f488218449ef0ab6f54c",
+      "source_evocore_version": "0.9.0",
+      "state_kind": "de_ask_tell"
+    },
+    {
+      "checkpoint_schema_version": 1,
+      "continuation": {
+        "accepted_count_after_tell": 4,
+        "best_candidate_id": "c-2cbc92b7ed987105bf6721a1acadc4b8",
+        "best_score_after_tell": 6.0,
+        "pending_batch_ids": [
+          "b-382f2f340a90c4aa7fd345ee12f017e0"
+        ],
+        "trusted_count_after_tell": 6
+      },
+      "direction": "maximize",
+      "file": "de-after-partial-initial-tell.evocore-checkpoint.json",
+      "gene_space_hash": "63bdbf661548414eabee012696811783110dda1b43202d8e16beae42b343eb54",
+      "name": "de_after_partial_initial_tell",
+      "optimizer_config_hash": "e162e22623ca066ab4d0486845a831f33ea7c78c80da0f64d3c97ab06237a0cc",
+      "optimizer_type": "DifferentialEvolutionOptimizer",
+      "seed": 42,
+      "sha256": "572f738dd2bebbebf0a6ee915883370764cfeaad5a78fb499d2334769ffca046",
+      "source_evocore_version": "0.9.0",
+      "state_kind": "de_ask_tell"
+    },
+    {
+      "checkpoint_schema_version": 1,
+      "continuation": {
+        "next_ask": {
+          "batch_ids": [
+            "b-2ecb9a886a1c5508197db432ebefc5b1",
+            "b-2ecb9a886a1c5508197db432ebefc5b1",
+            "b-2ecb9a886a1c5508197db432ebefc5b1",
+            "b-2ecb9a886a1c5508197db432ebefc5b1",
+            "b-2ecb9a886a1c5508197db432ebefc5b1",
+            "b-2ecb9a886a1c5508197db432ebefc5b1"
+          ],
+          "candidate_ids": [
+            "c-2ecb9a886a1c5508197db432ebefc5b1",
+            "c-f61cb32190a1eb220d5de69d29a9ecd7",
+            "c-f53cc27736ff8d1a0f22af8298c8e374",
+            "c-19f55af7a3d037b865a01a90e8d00068",
+            "c-3df85dda8060132d4d1c1ffd070710eb",
+            "c-1520ec64a9be278b82b86b1858f7ee28"
+          ],
+          "genes": [
+            [
+              1.5811814881513984,
+              2,
+              true,
+              1.5
+            ],
+            [
+              3.425316280812999,
+              2,
+              false,
+              1.5
+            ],
+            [
+              3.675373942863314,
+              8,
+              false,
+              1.5
+            ],
+            [
+              -3.555239267967455,
+              15,
+              false,
+              1.5
+            ],
+            [
+              -3.555239267967455,
+              9,
+              false,
+              1.5
+            ],
+            [
+              -2.116060077343211,
+              20,
+              true,
+              1.5
+            ]
+          ],
+          "target_candidate_ids": [
+            "c-382f2f340a90c4aa7fd345ee12f017e0",
+            "c-2cbc92b7ed987105bf6721a1acadc4b8",
+            "c-ec84919d88a5daf502621015cab24885",
+            "c-94f9f6ed54a156dcef0ce6e24b70faeb",
+            "c-cf94a104582cfb82c39e27c4c999a776",
+            "c-de524a1d189e7814cc0661c7b04151e0"
+          ],
+          "target_slots": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5
+          ]
+        }
+      },
+      "direction": "maximize",
+      "file": "de-after-initialized-population.evocore-checkpoint.json",
+      "gene_space_hash": "63bdbf661548414eabee012696811783110dda1b43202d8e16beae42b343eb54",
+      "name": "de_after_initialized_population",
+      "optimizer_config_hash": "e162e22623ca066ab4d0486845a831f33ea7c78c80da0f64d3c97ab06237a0cc",
+      "optimizer_type": "DifferentialEvolutionOptimizer",
+      "seed": 42,
+      "sha256": "0b151db786a5bf7ac2e75ddc30d8716abccc1cc27ac3594842f47e1e15c40e87",
+      "source_evocore_version": "0.9.0",
+      "state_kind": "de_ask_tell"
+    },
+    {
+      "checkpoint_schema_version": 1,
+      "continuation": {
+        "first_decision": {
+          "accepted_for_state": true,
+          "candidate_id": "c-2ecb9a886a1c5508197db432ebefc5b1",
+          "reason": "trial_replaced_target",
+          "target_candidate_id": "c-382f2f340a90c4aa7fd345ee12f017e0",
+          "target_slot": 0
+        },
+        "pending_batch_ids": [
+          "b-2ecb9a886a1c5508197db432ebefc5b1"
+        ]
+      },
+      "direction": "maximize",
+      "file": "de-after-trial-ask.evocore-checkpoint.json",
+      "gene_space_hash": "63bdbf661548414eabee012696811783110dda1b43202d8e16beae42b343eb54",
+      "name": "de_after_trial_ask",
+      "optimizer_config_hash": "e162e22623ca066ab4d0486845a831f33ea7c78c80da0f64d3c97ab06237a0cc",
+      "optimizer_type": "DifferentialEvolutionOptimizer",
+      "seed": 42,
+      "sha256": "10e74ff2f6d172b4327152d0a033db17d8ce13909a5d907fa0bff5dcc38bce2c",
+      "source_evocore_version": "0.9.0",
+      "state_kind": "de_ask_tell"
+    },
+    {
+      "checkpoint_schema_version": 1,
+      "continuation": {
+        "best_candidate_id": "c-2ecb9a886a1c5508197db432ebefc5b1",
+        "best_score": 100.0,
+        "consumed_batch_ids": [
+          "b-2ecb9a886a1c5508197db432ebefc5b1"
+        ],
+        "generation": 1,
+        "state_accepted_count": 2,
+        "target_candidate_ids": [
+          "c-2ecb9a886a1c5508197db432ebefc5b1",
+          "c-2cbc92b7ed987105bf6721a1acadc4b8",
+          "c-ec84919d88a5daf502621015cab24885",
+          "c-19f55af7a3d037b865a01a90e8d00068",
+          "c-cf94a104582cfb82c39e27c4c999a776",
+          "c-de524a1d189e7814cc0661c7b04151e0"
+        ],
+        "target_genes": [
+          [
+            1.5811814881513984,
+            2,
+            true,
+            1.5
+          ],
+          [
+            4.349627786243261,
+            11,
+            false,
+            1.5
+          ],
+          [
+            1.2491569964239835,
+            4,
+            true,
+            1.5
+          ],
+          [
+            -3.555239267967455,
+            15,
+            false,
+            1.5
+          ],
+          [
+            4.06155812000682,
+            3,
+            false,
+            1.5
+          ],
+          [
+            1.3413590145205507,
+            6,
+            true,
+            1.5
+          ]
+        ],
+        "trusted_count": 6
+      },
+      "direction": "maximize",
+      "file": "de-after-mixed-trial-tell.evocore-checkpoint.json",
+      "gene_space_hash": "63bdbf661548414eabee012696811783110dda1b43202d8e16beae42b343eb54",
+      "name": "de_after_mixed_trial_tell",
+      "optimizer_config_hash": "e162e22623ca066ab4d0486845a831f33ea7c78c80da0f64d3c97ab06237a0cc",
+      "optimizer_type": "DifferentialEvolutionOptimizer",
+      "seed": 42,
+      "sha256": "8ab7e0bdc110eaebe6e5a01ac45f0b576020114e2ad21622e9ded1e9d800bf70",
+      "source_evocore_version": "0.9.0",
+      "state_kind": "de_ask_tell"
+    }
+  ],
+  "source_evocore_version": "0.9.0"
+}

@@ -12,6 +12,7 @@ import pytest
 from evocore import (
     CheckpointError,
     CMAESOptimizer,
+    DifferentialEvolutionOptimizer,
     EvaluationRecord,
     Gene,
     GeneSpace,
@@ -29,6 +30,17 @@ EXPECTED_FILES = {
     "ga-ask-tell-after-partial-tell.evocore-checkpoint.json",
     "cmaes-ask-tell-after-ask.evocore-checkpoint.json",
     "cmaes-ask-tell-after-consumed-batch.evocore-checkpoint.json",
+}
+
+DE_FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "checkpoints" / "v0.9.0"
+DE_MANIFEST_PATH = DE_FIXTURE_DIR / "manifest.json"
+
+EXPECTED_DE_FILES = {
+    "de-after-initial-ask.evocore-checkpoint.json",
+    "de-after-partial-initial-tell.evocore-checkpoint.json",
+    "de-after-initialized-population.evocore-checkpoint.json",
+    "de-after-trial-ask.evocore-checkpoint.json",
+    "de-after-mixed-trial-tell.evocore-checkpoint.json",
 }
 
 
@@ -113,6 +125,97 @@ def _cmaes_optimizer(**overrides: object) -> CMAESOptimizer:
     return CMAESOptimizer(_cmaes_space(), **params)
 
 
+def _load_de_manifest() -> dict[str, Any]:
+    assert DE_MANIFEST_PATH.exists(), f"missing DE checkpoint fixture manifest: {DE_MANIFEST_PATH}"
+    return json.loads(DE_MANIFEST_PATH.read_text(encoding="utf-8"))
+
+
+def _de_fixture_entries() -> list[dict[str, Any]]:
+    return list(_load_de_manifest()["fixtures"])
+
+
+def _de_entry(name: str) -> dict[str, Any]:
+    for fixture in _de_fixture_entries():
+        if fixture["name"] == name:
+            return fixture
+    raise AssertionError(f"DE fixture entry {name!r} is missing from manifest")
+
+
+def _de_fixture_path(entry: dict[str, Any]) -> Path:
+    return DE_FIXTURE_DIR / entry["file"]
+
+
+def _de_space() -> GeneSpace:
+    return GeneSpace(
+        [
+            Gene("x", "float", -5.0, 5.0),
+            Gene("period", "int", 2, 20),
+            Gene("enabled", "bool"),
+            Gene("fixed", "float", 1.5, 1.5),
+        ]
+    )
+
+
+def _de_optimizer(**overrides: object) -> DifferentialEvolutionOptimizer:
+    params: dict[str, object] = {
+        "population_size": 6,
+        "max_generations": 5,
+        "seed": 42,
+    }
+    params.update(overrides)
+    return DifferentialEvolutionOptimizer(_de_space(), **params)
+
+
+def _de_score_from_genes(genes: Iterable[object]) -> float:
+    x, period, enabled, fixed = genes
+    score = -abs(float(x) - 0.25) - abs(int(period) - 7) + float(fixed)
+    if bool(enabled):
+        score += 2.0
+    return float(score)
+
+
+def _de_first_batch_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    batches = payload["state"]["payload"]["batches_by_id"]
+    assert len(batches) == 1
+    return next(iter(batches.values()))
+
+
+def _de_records_from_payload(
+    payload: dict[str, Any],
+    *,
+    skip_existing: bool = False,
+    scores: dict[str, float | None] | None = None,
+    rejected_candidate_ids: set[str] | None = None,
+) -> list[EvaluationRecord]:
+    state_payload = payload["state"]["payload"]
+    batch_payload = _de_first_batch_payload(payload)
+    existing_candidate_ids = {record["candidate_id"] for record in batch_payload["records"]}
+    rejected_candidate_ids = set(rejected_candidate_ids or set())
+    records: list[EvaluationRecord] = []
+    for candidate_id in batch_payload["candidate_ids"]:
+        if skip_existing and candidate_id in existing_candidate_ids:
+            continue
+        candidate_payload = state_payload["candidates_by_id"][candidate_id]
+        score = (
+            scores[candidate_id]
+            if scores is not None and candidate_id in scores
+            else _de_score_from_genes(candidate_payload["genes"])
+        )
+        confidence = "rejected" if candidate_id in rejected_candidate_ids else "trusted_full"
+        records.append(
+            EvaluationRecord(
+                candidate_id=candidate_id,
+                batch_id=batch_payload["batch_id"],
+                score=None if confidence == "rejected" else score,
+                confidence=confidence,
+                stage="full",
+                cost=1.0,
+                metadata={"source": "de-golden-fixture-test"},
+            )
+        )
+    return records
+
+
 def _first_batch_payload(payload: dict[str, Any]) -> dict[str, Any]:
     batches = payload["state"]["payload"]["batches_by_id"]
     assert len(batches) == 1
@@ -183,6 +286,48 @@ def test_fixture_payloads_do_not_embed_machine_local_paths() -> None:
 
     for entry in _fixture_entries():
         payload = load_checkpoint(_fixture_path(entry))
+        for text in _walk_strings(payload):
+            assert not any(fragment in text for fragment in forbidden_fragments)
+
+
+def test_manifest_lists_expected_v090_de_checkpoint_fixtures() -> None:
+    manifest = _load_de_manifest()
+
+    assert manifest["fixture_format_version"] == 1
+    assert manifest["source_evocore_version"] == "0.9.0"
+    assert manifest["checkpoint_schema_version"] == CHECKPOINT_SCHEMA_VERSION
+    assert {entry["file"] for entry in manifest["fixtures"]} == EXPECTED_DE_FILES
+
+    for entry in manifest["fixtures"]:
+        assert _de_fixture_path(entry).exists()
+
+
+def test_de_fixture_file_hashes_match_manifest() -> None:
+    for entry in _de_fixture_entries():
+        assert _sha256(_de_fixture_path(entry)) == entry["sha256"]
+
+
+def test_valid_de_fixtures_load_and_match_manifest_identity() -> None:
+    for entry in _de_fixture_entries():
+        payload = load_checkpoint(_de_fixture_path(entry))
+
+        assert payload["checkpoint_schema_version"] == CHECKPOINT_SCHEMA_VERSION
+        assert payload["created_by"]["evocore_version"] == "0.9.0"
+        assert payload["optimizer"]["optimizer_type"] == "DifferentialEvolutionOptimizer"
+        assert payload["optimizer"]["optimizer_type"] == entry["optimizer_type"]
+        assert payload["optimizer"]["seed"] == entry["seed"]
+        assert payload["optimizer"]["direction"] == entry["direction"]
+        assert payload["optimizer"]["gene_space_hash"] == entry["gene_space_hash"]
+        assert payload["optimizer"]["optimizer_config_hash"] == entry["optimizer_config_hash"]
+        assert payload["state"]["payload"]["state_kind"] == entry["state_kind"]
+
+
+def test_de_fixture_payloads_do_not_embed_machine_local_paths() -> None:
+    repo_root = str(Path(__file__).resolve().parents[2])
+    forbidden_fragments = (repo_root, "C:\\", "D:\\", "/home/", "/Users/")
+
+    for entry in _de_fixture_entries():
+        payload = load_checkpoint(_de_fixture_path(entry))
         for text in _walk_strings(payload):
             assert not any(fragment in text for fragment in forbidden_fragments)
 
