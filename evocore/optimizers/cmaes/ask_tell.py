@@ -6,6 +6,7 @@ from collections.abc import Sequence
 from evocore import _core
 from evocore.core.errors import ConfigurationError, FitnessError
 from evocore.lifecycle import (
+    AcceptanceDecision,
     Candidate,
     CandidateBatch,
     EvaluationRecord,
@@ -173,6 +174,7 @@ class CMAESAskTellMixin:
     def tell(self, records: Sequence[EvaluationRecord]) -> UpdateResult:
         """Update CMA state from trusted evaluation records."""
         trusted_records: list[EvaluationRecord] = []
+        acceptance_decisions: list[AcceptanceDecision] = []
         counts = {"partial": 0, "surrogate": 0, "cached": 0, "rejected": 0}
         touched_batch_ids: set[str] = set()
         consumed_batch_ids: set[str] = set()
@@ -183,6 +185,15 @@ class CMAESAskTellMixin:
             candidate.apply_record(record)
             self._append_tell_event(candidate, record)
             confidence = self._apply_record_confidence(candidate, record, trusted_records)
+            if is_state_update_confidence(record.confidence):
+                acceptance_decisions.append(
+                    AcceptanceDecision(
+                        candidate_id=record.candidate_id,
+                        batch_id=batch.batch_id,
+                        accepted_for_state=True,
+                        reason="state_record_accepted",
+                    )
+                )
             if confidence in counts:
                 counts[confidence] += 1
 
@@ -204,6 +215,8 @@ class CMAESAskTellMixin:
             consumed_batch_ids=tuple(sorted(consumed_batch_ids)),
             pending_batch_ids=self._pending_batch_ids(),
             telemetry=self.vnext_telemetry,
+            acceptance_decisions=tuple(acceptance_decisions),
+            state_accepted_count=len(acceptance_decisions),
         )
 
 
