@@ -41,10 +41,12 @@ not match the checkpoint identity.
 ## Compatibility Baseline
 
 Stable JSON checkpoints produced by EvoCore 0.8.0 are the forward compatibility
-baseline for checkpoint schema v1. Compatible patch and minor releases should
-continue to load 0.8.0 stable checkpoint files for GA generation-loop, GA
-ask/tell, and CMA-ES ask/tell workflows, or fail with an explicit
-`CheckpointError` when a documented incompatibility is introduced.
+baseline for checkpoint schema v1 across GA generation-loop, GA ask/tell, and
+CMA-ES ask/tell workflows. Differential Evolution ask/tell checkpoints join the
+stable checkpoint surface with the EvoCore 0.9.0 DE fixture baseline.
+Compatible patch and minor releases should continue to load these stable
+checkpoint files, or fail with an explicit `CheckpointError` when a documented
+incompatibility is introduced.
 
 The guarantee covers stable JSON checkpoint files only. Legacy GA pickle
 checkpoints remain legacy support, but they are not part of the forward
@@ -157,3 +159,34 @@ Differential Evolution ask/tell checkpoints store target slots and pending trial
 mappings in addition to candidates, batches, telemetry, and events. This lets a
 restored optimizer compare returned trial records against the same target
 candidate after resume.
+
+```python
+from evocore import DifferentialEvolutionOptimizer, EvaluationRecord, GeneSpace
+
+gene_space = GeneSpace.uniform(-5.0, 5.0, 3)
+optimizer = DifferentialEvolutionOptimizer(gene_space, population_size=6, seed=42)
+candidates = optimizer.ask()
+optimizer.save_checkpoint(
+    "de-ask-tell.evocore-checkpoint.json",
+    optimizer.ask_tell_checkpoint(metadata={"phase": "submitted"}),
+)
+
+restored = DifferentialEvolutionOptimizer(gene_space, population_size=6, seed=42)
+summary = restored.resume_ask_tell_checkpoint("de-ask-tell.evocore-checkpoint.json")
+
+records = [
+    EvaluationRecord(
+        candidate_id=candidate.candidate_id,
+        batch_id=candidate.batch_id,
+        score=-sum(float(value) ** 2 for value in candidate.genes),
+        confidence="trusted_full",
+        stage="full",
+    )
+    for candidate in candidates
+]
+restored.tell(records)
+```
+
+DE checkpoint identity validation covers optimizer type, seed, direction,
+gene-space hash, optimizer config hash, checkpoint state kind, schema version,
+and trial target mappings.

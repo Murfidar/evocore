@@ -196,6 +196,103 @@ def test_de_minimize_replaces_when_trial_score_is_lower() -> None:
     assert result.best_score == pytest.approx(1.0)
 
 
+def test_de_minimize_keeps_target_when_trial_score_is_higher() -> None:
+    engine = DifferentialEvolutionOptimizer(
+        _mixed_space(),
+        population_size=6,
+        seed=42,
+        direction="minimize",
+    )
+    targets = engine.ask()
+    engine.tell(_records(targets, [10.0, 9.0, 8.0, 7.0, 6.0, 5.0]))
+    trial = engine.ask()[0]
+    target_slot = trial.metadata["target_slot"]
+
+    result = engine.tell(_records([trial], [100.0]))
+
+    assert result.state_accepted_count == 0
+    assert result.acceptance_decisions[0].accepted_for_state is False
+    assert result.acceptance_decisions[0].reason == "trial_kept_target"
+    assert engine._target_candidate_ids[target_slot] == trial.metadata["target_candidate_id"]
+
+
+def test_de_cached_records_are_state_eligible_for_initialization_and_trial_replacement() -> None:
+    engine = DifferentialEvolutionOptimizer(_mixed_space(), population_size=6, seed=42)
+    targets = engine.ask()
+    init_result = engine.tell(
+        _records(targets, [0.0, 1.0, 2.0, 3.0, 4.0, 5.0], confidence="cached")
+    )
+    trial = engine.ask()[0]
+
+    replacement_result = engine.tell(_records([trial], [100.0], confidence="cached"))
+
+    assert init_result.cached_count == 6
+    assert init_result.state_accepted_count == 6
+    assert replacement_result.cached_count == 1
+    assert replacement_result.state_accepted_count == 1
+    assert replacement_result.acceptance_decisions[0].reason == "trial_replaced_target"
+
+
+def test_de_partial_and_surrogate_records_do_not_replace_trial_targets() -> None:
+    engine, targets = _trusted_engine()
+    trials = engine.ask()
+
+    result = engine.tell(
+        [
+            EvaluationRecord(
+                candidate_id=trials[0].candidate_id,
+                batch_id=trials[0].batch_id,
+                score=100.0,
+                confidence="partial",
+                stage="screen",
+            ),
+            EvaluationRecord(
+                candidate_id=trials[1].candidate_id,
+                batch_id=trials[1].batch_id,
+                score=100.0,
+                confidence="surrogate",
+                stage="surrogate",
+            ),
+        ]
+    )
+
+    assert result.partial_count == 1
+    assert result.surrogate_count == 1
+    assert result.state_accepted_count == 0
+    assert result.acceptance_decisions == ()
+    assert engine._target_candidate_ids == [target.candidate_id for target in targets]
+
+
+def test_de_rejects_state_record_for_consumed_trial_batch() -> None:
+    engine, _ = _trusted_engine()
+    trials = engine.ask()
+    rejected = [
+        EvaluationRecord(
+            candidate_id=trial.candidate_id,
+            batch_id=trial.batch_id,
+            score=None,
+            confidence="rejected",
+            stage="full",
+            metadata={"reason": "constraint"},
+        )
+        for trial in trials
+    ]
+    engine.tell(rejected)
+
+    with pytest.raises(FitnessError, match="already been consumed"):
+        engine.tell(
+            [
+                EvaluationRecord(
+                    candidate_id=trials[0].candidate_id,
+                    batch_id=trials[0].batch_id,
+                    score=100.0,
+                    confidence="trusted_full",
+                    stage="retry",
+                )
+            ]
+        )
+
+
 def test_de_rejected_trial_does_not_replace_target_and_can_complete_batch() -> None:
     engine, targets = _trusted_engine()
     trials = engine.ask()

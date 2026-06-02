@@ -12,6 +12,7 @@ from evocore.lifecycle import (
     candidate_to_checkpoint,
     event_history_from_checkpoint,
     event_history_to_checkpoint,
+    is_state_update_confidence,
     telemetry_from_checkpoint,
     telemetry_to_checkpoint,
 )
@@ -21,6 +22,36 @@ from evocore.results import save_checkpoint as save_checkpoint_payload
 
 DE_ASK_TELL_STATE_KIND = "de_ask_tell"
 DE_CHECKPOINT_STATE_SCHEMA_VERSION = 1
+
+
+def _required_payload_value(payload: Mapping[str, Any], key: str) -> object:
+    if key not in payload:
+        raise CheckpointError(f"checkpoint state.payload.{key} is required.")
+    return payload[key]
+
+
+def _required_mapping_payload(payload: Mapping[str, Any], key: str) -> Mapping[str, Any]:
+    value = _required_payload_value(payload, key)
+    if not isinstance(value, Mapping):
+        raise CheckpointError(f"checkpoint state.payload.{key} must be an object.")
+    return value
+
+
+def _required_sequence_payload(payload: Mapping[str, Any], key: str) -> list[Any]:
+    value = _required_payload_value(payload, key)
+    if not isinstance(value, list | tuple):
+        raise CheckpointError(f"checkpoint state.payload.{key} must be an array.")
+    return list(value)
+
+
+def _required_int_payload(payload: Mapping[str, Any], key: str) -> int:
+    value = _required_payload_value(payload, key)
+    if isinstance(value, bool):
+        raise CheckpointError(f"checkpoint state.payload.{key} must be an integer.")
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise CheckpointError(f"checkpoint state.payload.{key} must be an integer.") from exc
 
 
 class DifferentialEvolutionCheckpointingMixin:
@@ -117,9 +148,7 @@ class DifferentialEvolutionCheckpointingMixin:
         return state_payload
 
     def _restore_ask_tell_state(self, state_payload: Mapping[str, Any]) -> None:  # noqa: PLR0912
-        raw_candidates = state_payload.get("candidates_by_id")
-        if not isinstance(raw_candidates, Mapping):
-            raise CheckpointError("checkpoint state.payload.candidates_by_id must be an object.")
+        raw_candidates = _required_mapping_payload(state_payload, "candidates_by_id")
         candidates = {
             str(candidate_id): candidate_from_checkpoint(candidate_payload)
             for candidate_id, candidate_payload in raw_candidates.items()
@@ -131,9 +160,7 @@ class DifferentialEvolutionCheckpointingMixin:
                     f"candidate_id {candidate.candidate_id!r}."
                 )
 
-        raw_batches = state_payload.get("batches_by_id")
-        if not isinstance(raw_batches, Mapping):
-            raise CheckpointError("checkpoint state.payload.batches_by_id must be an object.")
+        raw_batches = _required_mapping_payload(state_payload, "batches_by_id")
         batches = {
             str(batch_id): batch_from_checkpoint(batch_payload)
             for batch_id, batch_payload in raw_batches.items()
@@ -148,10 +175,22 @@ class DifferentialEvolutionCheckpointingMixin:
                     raise CheckpointError(
                         f"checkpoint batch {batch_id!r} references unknown candidate_id {candidate_id!r}."
                     )
+        terminal_record_candidate_ids = {
+            record.candidate_id
+            for batch in batches.values()
+            for record in batch.records_by_key.values()
+            if is_state_update_confidence(record.confidence) or record.confidence == "rejected"
+        }
 
         target_candidate_ids = [
-            str(value) for value in state_payload.get("target_candidate_ids") or []
+            str(value)
+            for value in _required_sequence_payload(state_payload, "target_candidate_ids")
         ]
+        if len(target_candidate_ids) > self.population_size:
+            raise CheckpointError(
+                "checkpoint state.payload.target_candidate_ids cannot be larger than "
+                "the configured DE population_size."
+            )
         for candidate_id in target_candidate_ids:
             if candidate_id not in candidates:
                 raise CheckpointError(
@@ -159,12 +198,14 @@ class DifferentialEvolutionCheckpointingMixin:
                 )
         trial_target_slots = {
             str(candidate_id): int(slot)
-            for candidate_id, slot in (state_payload.get("trial_target_slots") or {}).items()
+            for candidate_id, slot in _required_mapping_payload(
+                state_payload, "trial_target_slots"
+            ).items()
         }
         trial_target_candidate_ids = {
             str(candidate_id): str(target_id)
             for candidate_id, target_id in (
-                state_payload.get("trial_target_candidate_ids") or {}
+                _required_mapping_payload(state_payload, "trial_target_candidate_ids")
             ).items()
         }
         for candidate_id in set(trial_target_slots) | set(trial_target_candidate_ids):
@@ -180,6 +221,19 @@ class DifferentialEvolutionCheckpointingMixin:
                     f"checkpoint trial candidate_id {candidate_id!r} must have slot and target mappings."
                 )
             target_id = trial_target_candidate_ids[candidate_id]
+            target_slot = trial_target_slots[candidate_id]
+            if target_slot < 0 or target_slot >= len(target_candidate_ids):
+                raise CheckpointError(
+                    f"checkpoint trial target slot {target_slot!r} is outside target_candidate_ids."
+                )
+            if (
+                candidate_id not in terminal_record_candidate_ids
+                and target_candidate_ids[target_slot] != target_id
+            ):
+                raise CheckpointError(
+                    "checkpoint trial target_candidate_id does not match "
+                    f"target_candidate_ids[{target_slot}]."
+                )
             if target_id not in candidates:
                 raise CheckpointError(
                     f"checkpoint trial target_candidate_id {target_id!r} is unknown."
@@ -196,10 +250,14 @@ class DifferentialEvolutionCheckpointingMixin:
         self._trial_target_slots = trial_target_slots
         self._trial_target_candidate_ids = trial_target_candidate_ids
         self.best_candidate = None if best_candidate_id is None else candidates[best_candidate_id]
-        self.vnext_telemetry = telemetry_from_checkpoint(state_payload.get("telemetry") or {})
-        self.events = event_history_from_checkpoint(state_payload.get("events") or [])
-        self._event_index = int(state_payload.get("event_index", 0))
-        self.generation = int(state_payload.get("generation", 0))
+        self.vnext_telemetry = telemetry_from_checkpoint(
+            _required_mapping_payload(state_payload, "telemetry")
+        )
+        self.events = event_history_from_checkpoint(
+            _required_sequence_payload(state_payload, "events")
+        )
+        self._event_index = _required_int_payload(state_payload, "event_index")
+        self.generation = _required_int_payload(state_payload, "generation")
 
     def resume_ask_tell_checkpoint(self, checkpoint: str | os.PathLike[str] | Mapping[str, Any]):
         """Resume DE ask/tell runtime state from a stable checkpoint."""
