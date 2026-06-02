@@ -42,6 +42,7 @@ from evocore.core import (
     ThreadParallel,
 )
 from evocore.lifecycle import (
+    AcceptanceDecision,
     BudgetPolicy,
     BudgetScheduler,
     Candidate,
@@ -103,6 +104,7 @@ from evocore.search_space import (
 from evocore.surrogates import InverseDistanceAdvisor, SurrogateScore
 
 __all__ = [
+    "AcceptanceDecision",
     "CHECKPOINT_KIND",
     "CHECKPOINT_SCHEMA_VERSION",
     "OP_CMAES_ASK",

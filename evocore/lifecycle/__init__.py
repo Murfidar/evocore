@@ -29,9 +29,15 @@ from evocore.lifecycle.records import (
     score_for_direction,
 )
 from evocore.lifecycle.scheduler import BudgetScheduler
-from evocore.lifecycle.telemetry import OptimizationTelemetry, OptimizerStateSummary, UpdateResult
+from evocore.lifecycle.telemetry import (
+    AcceptanceDecision,
+    OptimizationTelemetry,
+    OptimizerStateSummary,
+    UpdateResult,
+)
 
 __all__ = [
+    "AcceptanceDecision",
     "BudgetPolicy",
     "BudgetScheduler",
     "Candidate",

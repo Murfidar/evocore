@@ -2,6 +2,7 @@ import pytest
 
 from evocore.core.errors import ConfigurationError, FitnessError
 from evocore.lifecycle import (
+    AcceptanceDecision,
     Candidate,
     EvaluationContext,
     EvaluationRecord,
@@ -307,6 +308,38 @@ def test_tell_result_and_state_summary_have_stable_fields() -> None:
     assert tell_result.consumed_batch_ids == ("b-1",)
     assert state.best_candidate_id == "c-2"
     assert state.pending_batch_ids == ("b-2",)
+
+
+def test_acceptance_decision_exposes_state_acceptance_bool() -> None:
+    decision = AcceptanceDecision(
+        candidate_id="c-trial",
+        batch_id="b-1",
+        accepted_for_state=True,
+        reason="trial_replaced_target",
+        target_candidate_id="c-target",
+        target_slot=2,
+    )
+
+    assert decision.candidate_id == "c-trial"
+    assert decision.batch_id == "b-1"
+    assert decision.accepted_for_state is True
+    assert decision.reason == "trial_replaced_target"
+    assert decision.target_candidate_id == "c-target"
+    assert decision.target_slot == 2
+
+
+def test_update_result_defaults_acceptance_decisions_for_existing_callers() -> None:
+    result = UpdateResult(
+        accepted_count=0,
+        trusted_count=0,
+        partial_count=0,
+        surrogate_count=0,
+        cached_count=0,
+        rejected_count=0,
+    )
+
+    assert result.acceptance_decisions == ()
+    assert result.state_accepted_count == 0
 
 
 def test_candidate_best_observed_score_honors_direction() -> None:

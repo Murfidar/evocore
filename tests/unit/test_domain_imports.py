@@ -84,6 +84,7 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
         ProgressBar,
     )
     from evocore.lifecycle import (
+        AcceptanceDecision,
         OptimizationTelemetry,
         OptimizerStateSummary,
         UpdateResult,
@@ -133,6 +134,7 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
     assert append_run_stop_event.__module__ == "evocore.lifecycle.events"
     assert candidate_to_solution.__module__ == "evocore.lifecycle.conversion"
     assert solution_to_candidate.__module__ == "evocore.lifecycle.conversion"
+    assert AcceptanceDecision.__module__ == "evocore.lifecycle.telemetry"
     assert OptimizationTelemetry.__module__ == "evocore.lifecycle.telemetry"
     assert UpdateResult.__module__ == "evocore.lifecycle.telemetry"
     assert OptimizerStateSummary.__module__ == "evocore.lifecycle.telemetry"

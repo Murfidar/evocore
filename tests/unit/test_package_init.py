@@ -77,6 +77,7 @@ def test_lifecycle_exports_accessible_from_top_level():
     assert evocore.BudgetPolicy.__name__ == "BudgetPolicy"
     assert evocore.BudgetScheduler.__name__ == "BudgetScheduler"
     assert evocore.OptimizationTelemetry.__name__ == "OptimizationTelemetry"
+    assert evocore.AcceptanceDecision.__name__ == "AcceptanceDecision"
     assert evocore.UpdateResult.__name__ == "UpdateResult"
     assert evocore.OptimizerStateSummary.__name__ == "OptimizerStateSummary"
     assert evocore.EventRecord.__name__ == "EventRecord"
