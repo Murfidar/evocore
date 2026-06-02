@@ -341,7 +341,7 @@ class DifferentialEvolutionAskTellMixin:
         acceptance_decisions: list[AcceptanceDecision] = []
         for record in records:
             candidate, batch = self._candidate_and_batch_for_record(record)
-            batch.accept_record(record)
+            batch.accept_record(record, reject_consumed_state_record=True)
             candidate.apply_record(record)
             confidence = self._apply_telemetry_for_record(record)
             counts[confidence] += 1
