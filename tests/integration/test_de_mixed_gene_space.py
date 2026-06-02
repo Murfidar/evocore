@@ -1,4 +1,10 @@
-from evocore import DifferentialEvolutionOptimizer, EvaluationContext, EvaluationRecord, Gene, GeneSpace
+from evocore import (
+    DifferentialEvolutionOptimizer,
+    EvaluationContext,
+    EvaluationRecord,
+    Gene,
+    GeneSpace,
+)
 
 
 class NumericSphereEvaluator:
@@ -60,7 +66,9 @@ def test_de_runs_mixed_bool_numeric_space_smoke() -> None:
             Gene("enabled", "bool"),
         ]
     )
-    optimizer = DifferentialEvolutionOptimizer(space, population_size=10, max_generations=4, seed=7)
+    optimizer = DifferentialEvolutionOptimizer(
+        space, population_size=10, max_generations=4, seed=7
+    )
 
     result = optimizer.run(MixedSwitchEvaluator())
 

@@ -23,7 +23,9 @@ from evocore.search_space import Solution
 
 def _decode_de_values(gene_space, encoded: Sequence[float]) -> list[float | int | bool]:
     if len(encoded) != gene_space.length:
-        raise ConfigurationError(f"Expected {gene_space.length} encoded genes, got {len(encoded)}.")
+        raise ConfigurationError(
+            f"Expected {gene_space.length} encoded genes, got {len(encoded)}."
+        )
     decoded: list[float | int | bool] = []
     for value, gene in zip(encoded, gene_space.genes, strict=False):
         if gene.kind == "bool":
@@ -66,9 +68,7 @@ class DifferentialEvolutionAskTellMixin:
         candidate.metadata.update(dict(metadata or {}))
         return candidate
 
-    def _initial_candidates(
-        self, count: int, event_index: int, batch_id: str
-    ) -> list[Candidate]:
+    def _initial_candidates(self, count: int, event_index: int, batch_id: str) -> list[Candidate]:
         encoded_population = _core.init_population(
             self.gene_space.rust_bounds,
             self.gene_space.kinds,
@@ -118,7 +118,9 @@ class DifferentialEvolutionAskTellMixin:
         mask_rng = self._rng_for_trial(target_slot, _core.OP_CROSSOVER)
         bool_rng = self._rng_for_trial(target_slot, _core.OP_MUTATION)
         variable_indices = self.gene_space.variable_indices
-        forced_index = variable_indices[mask_rng.randrange(len(variable_indices))] if variable_indices else 0
+        forced_index = (
+            variable_indices[mask_rng.randrange(len(variable_indices))] if variable_indices else 0
+        )
         values: list[float | int | bool] = []
         for index, gene in enumerate(self.gene_space.genes):
             if gene.is_fixed:
@@ -135,10 +137,8 @@ class DifferentialEvolutionAskTellMixin:
                         trial_bool = not trial_bool
                 values.append(trial_bool)
                 continue
-            mutant = (
-                float(donor_a.genes[index])
-                + self.mutation_factor
-                * (float(donor_b.genes[index]) - float(donor_c.genes[index]))
+            mutant = float(donor_a.genes[index]) + self.mutation_factor * (
+                float(donor_b.genes[index]) - float(donor_c.genes[index])
             )
             values.append(self._repair_gene_value(mutant, gene))
         self.gene_space.validate_genes(values)
@@ -186,7 +186,9 @@ class DifferentialEvolutionAskTellMixin:
             )
 
     def _pending_batch_ids(self) -> tuple[str, ...]:
-        return tuple(batch_id for batch_id, batch in self._batches_by_id.items() if not batch.consumed)
+        return tuple(
+            batch_id for batch_id, batch in self._batches_by_id.items() if not batch.consumed
+        )
 
     def ask(self, n: int | None = None) -> list[Candidate]:
         count = self.population_size if n is None else int(n)
@@ -300,9 +302,9 @@ class DifferentialEvolutionAskTellMixin:
         target_slot = self._trial_target_slots[candidate.candidate_id]
         target_candidate_id = self._trial_target_candidate_ids[candidate.candidate_id]
         target = self._candidates_by_id[target_candidate_id]
-        accepted = candidate.state_comparison_score(self.direction) >= target.state_comparison_score(
+        accepted = candidate.state_comparison_score(
             self.direction
-        )
+        ) >= target.state_comparison_score(self.direction)
         if accepted:
             self._target_candidate_ids[target_slot] = candidate.candidate_id
             self._record_best_candidate(candidate)
@@ -387,7 +389,10 @@ class DifferentialEvolutionAskTellMixin:
             if self._batch_complete_for_de(batch):
                 batch.consumed = True
                 consumed_batch_ids.add(batch.batch_id)
-                if all(candidate_id in self._trial_target_slots for candidate_id in batch.candidate_ids):
+                if all(
+                    candidate_id in self._trial_target_slots
+                    for candidate_id in batch.candidate_ids
+                ):
                     self.generation += 1
                 for candidate_id in batch.candidate_ids:
                     self._trial_target_slots.pop(candidate_id, None)

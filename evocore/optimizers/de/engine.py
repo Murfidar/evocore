@@ -116,7 +116,9 @@ class DifferentialEvolutionOptimizer(
     def _best_candidate_id_and_score(self) -> tuple[str | None, float | None]:
         if self.best_candidate is None:
             return None, None
-        return self.best_candidate.candidate_id, self.best_candidate.best_state_score(self.direction)
+        return self.best_candidate.candidate_id, self.best_candidate.best_state_score(
+            self.direction
+        )
 
     def state_summary(self) -> OptimizerStateSummary:
         """Return a stable read-only DE state summary."""
@@ -180,7 +182,9 @@ class DifferentialEvolutionOptimizer(
         context: EvaluationContext,
     ):
         if self.parallel == "process":
-            ensure_picklable(evaluator, context="DifferentialEvolutionOptimizer.run parallel='process'")
+            ensure_picklable(
+                evaluator, context="DifferentialEvolutionOptimizer.run parallel='process'"
+            )
             with ProcessParallel(
                 self.n_workers,
                 initializer=self.process_initializer,

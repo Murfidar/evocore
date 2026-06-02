@@ -76,7 +76,9 @@ class SphereEvaluator:
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
                 batch_id=candidate.batch_id,
-                score=-sum(float(value) ** 2 for value in candidate.genes if type(value) is not bool),
+                score=-sum(
+                    float(value) ** 2 for value in candidate.genes if type(value) is not bool
+                ),
                 confidence=context.stage.confidence,
                 stage=context.stage.name,
                 cost=context.stage.budget,

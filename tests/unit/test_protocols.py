@@ -41,7 +41,9 @@ class StructuralSphereEvaluator:
 def test_ga_cma_and_de_satisfy_optimizer_protocol_at_runtime() -> None:
     assert isinstance(GeneticAlgorithmOptimizer(_space(), population_size=4, seed=1), Optimizer)
     assert isinstance(CMAESOptimizer(_space(), population_size=4, seed=1), Optimizer)
-    assert isinstance(DifferentialEvolutionOptimizer(_space(), population_size=4, seed=1), Optimizer)
+    assert isinstance(
+        DifferentialEvolutionOptimizer(_space(), population_size=4, seed=1), Optimizer
+    )
 
 
 def test_structural_evaluator_satisfies_evaluator_protocol_at_runtime() -> None:

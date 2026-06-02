@@ -52,7 +52,9 @@ class DifferentialEvolutionCheckpointingMixin:
         *,
         metadata: Mapping[str, Any] | None = None,
     ) -> CheckpointSnapshot:
-        best_candidate_id = None if self.best_candidate is None else self.best_candidate.candidate_id
+        best_candidate_id = (
+            None if self.best_candidate is None else self.best_candidate.candidate_id
+        )
         state_payload = {
             "state_kind": DE_ASK_TELL_STATE_KIND,
             "event_index": self._event_index,
@@ -144,10 +146,14 @@ class DifferentialEvolutionCheckpointingMixin:
                         f"checkpoint batch {batch_id!r} references unknown candidate_id {candidate_id!r}."
                     )
 
-        target_candidate_ids = [str(value) for value in state_payload.get("target_candidate_ids") or []]
+        target_candidate_ids = [
+            str(value) for value in state_payload.get("target_candidate_ids") or []
+        ]
         for candidate_id in target_candidate_ids:
             if candidate_id not in candidates:
-                raise CheckpointError(f"checkpoint target_candidate_id {candidate_id!r} is unknown.")
+                raise CheckpointError(
+                    f"checkpoint target_candidate_id {candidate_id!r} is unknown."
+                )
         trial_target_slots = {
             str(candidate_id): int(slot)
             for candidate_id, slot in (state_payload.get("trial_target_slots") or {}).items()
@@ -160,8 +166,13 @@ class DifferentialEvolutionCheckpointingMixin:
         }
         for candidate_id in set(trial_target_slots) | set(trial_target_candidate_ids):
             if candidate_id not in candidates:
-                raise CheckpointError(f"checkpoint trial candidate_id {candidate_id!r} is unknown.")
-            if candidate_id not in trial_target_slots or candidate_id not in trial_target_candidate_ids:
+                raise CheckpointError(
+                    f"checkpoint trial candidate_id {candidate_id!r} is unknown."
+                )
+            if (
+                candidate_id not in trial_target_slots
+                or candidate_id not in trial_target_candidate_ids
+            ):
                 raise CheckpointError(
                     f"checkpoint trial candidate_id {candidate_id!r} must have slot and target mappings."
                 )
@@ -172,7 +183,9 @@ class DifferentialEvolutionCheckpointingMixin:
                 )
         best_candidate_id = state_payload.get("best_candidate_id")
         if best_candidate_id is not None and best_candidate_id not in candidates:
-            raise CheckpointError(f"checkpoint best_candidate_id {best_candidate_id!r} is unknown.")
+            raise CheckpointError(
+                f"checkpoint best_candidate_id {best_candidate_id!r} is unknown."
+            )
 
         self._candidates_by_id = candidates
         self._batches_by_id = batches
