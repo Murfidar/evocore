@@ -41,6 +41,12 @@ metadata for the evaluator call.
 order, as long as each candidate/stage pair is reported at most once. `tell([])` is a
 valid no-op for queue polling integrations.
 
+`UpdateResult.accepted_count` counts records accepted by the ask/tell ledger.
+Optimizers that make a separate state decision also return
+`acceptance_decisions`. `AcceptanceDecision.accepted_for_state` is the per-record
+boolean for whether optimizer state changed. For Differential Evolution, this
+means a trial replaced its target slot.
+
 Confidence values are explicit:
 
 - `trusted_full` records carry finite raw scores from fresh full objective work. They

@@ -14,6 +14,8 @@
 
 ::: evocore.optimizers.operators.SelectionOperator
 
+::: evocore.optimizers.de.DifferentialEvolutionOptimizer
+
 ::: evocore.results.GenerationHistory
 
 ::: evocore.core.parallel
@@ -36,6 +38,8 @@ shape, without subclassing.
 ::: evocore.lifecycle.EvaluationContext
 
 ::: evocore.lifecycle.UpdateResult
+
+::: evocore.lifecycle.AcceptanceDecision
 
 ::: evocore.lifecycle.OptimizerStateSummary
 

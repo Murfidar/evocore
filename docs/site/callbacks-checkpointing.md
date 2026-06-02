@@ -150,3 +150,10 @@ restored.tell(records)
 
 Events are restored as audit history. Resume restores structured optimizer
 state directly and does not replay events to rebuild CMA-ES state.
+
+## Differential Evolution Ask/Tell Checkpoints
+
+Differential Evolution ask/tell checkpoints store target slots and pending trial
+mappings in addition to candidates, batches, telemetry, and events. This lets a
+restored optimizer compare returned trial records against the same target
+candidate after resume.
