@@ -28,6 +28,7 @@ class DifferentialEvolutionCheckpointingMixin:
 
     @staticmethod
     def load_checkpoint(checkpoint: str | os.PathLike[str]) -> dict[str, Any]:
+        """Load a stable checkpoint file."""
         return load_checkpoint_payload(checkpoint)
 
     @staticmethod
@@ -35,6 +36,7 @@ class DifferentialEvolutionCheckpointingMixin:
         checkpoint: str | os.PathLike[str],
         snapshot: CheckpointSnapshot | Mapping[str, Any],
     ) -> None:
+        """Write a stable checkpoint file."""
         save_checkpoint_payload(checkpoint, snapshot)
 
     def _validate_stable_checkpoint_identity(self, payload: Mapping[str, Any]) -> None:
@@ -52,6 +54,7 @@ class DifferentialEvolutionCheckpointingMixin:
         *,
         metadata: Mapping[str, Any] | None = None,
     ) -> CheckpointSnapshot:
+        """Return a stable DE ask/tell runtime checkpoint snapshot."""
         best_candidate_id = (
             None if self.best_candidate is None else self.best_candidate.candidate_id
         )
@@ -113,7 +116,7 @@ class DifferentialEvolutionCheckpointingMixin:
             )
         return state_payload
 
-    def _restore_ask_tell_state(self, state_payload: Mapping[str, Any]) -> None:
+    def _restore_ask_tell_state(self, state_payload: Mapping[str, Any]) -> None:  # noqa: PLR0912
         raw_candidates = state_payload.get("candidates_by_id")
         if not isinstance(raw_candidates, Mapping):
             raise CheckpointError("checkpoint state.payload.candidates_by_id must be an object.")
@@ -199,6 +202,7 @@ class DifferentialEvolutionCheckpointingMixin:
         self.generation = int(state_payload.get("generation", 0))
 
     def resume_ask_tell_checkpoint(self, checkpoint: str | os.PathLike[str] | Mapping[str, Any]):
+        """Resume DE ask/tell runtime state from a stable checkpoint."""
         payload = (
             load_checkpoint_payload(checkpoint)
             if isinstance(checkpoint, str | os.PathLike)

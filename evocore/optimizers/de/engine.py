@@ -15,6 +15,7 @@ from evocore.lifecycle import (
     CandidateBatch,
     Direction,
     EvaluationContext,
+    EvaluationRecord,
     EvaluationStage,
     Evaluator,
     OptimizationTelemetry,
@@ -42,7 +43,9 @@ from evocore.results import (
 from evocore.search_space import GeneSpace, SolutionSet
 
 
-def _evaluate_one_candidate(args):
+def _evaluate_one_candidate(
+    args: tuple[Evaluator, Candidate, EvaluationContext],
+) -> EvaluationRecord:
     evaluator, candidate, context = args
     return evaluator.evaluate([candidate], context)[0]
 
@@ -177,10 +180,10 @@ class DifferentialEvolutionOptimizer(
 
     def _evaluate_candidates(
         self,
-        candidates,
+        candidates: Sequence[Candidate],
         evaluator: Evaluator,
         context: EvaluationContext,
-    ):
+    ) -> list[EvaluationRecord]:
         if self.parallel == "process":
             ensure_picklable(
                 evaluator, context="DifferentialEvolutionOptimizer.run parallel='process'"
@@ -252,7 +255,8 @@ class DifferentialEvolutionOptimizer(
             )
         )
 
-    def run(self, evaluator: Evaluator, policy=None) -> OptimizationResult:
+    def run(self, evaluator: Evaluator, policy=None) -> OptimizationResult:  # noqa: PLR0912, PLR0915
+        """Run one synchronous evaluator-driven DE optimization."""
         if policy is not None:
             raise ConfigurationError(
                 "DifferentialEvolutionOptimizer.run does not support policy yet."

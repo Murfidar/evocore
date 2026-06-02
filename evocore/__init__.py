@@ -105,7 +105,6 @@ from evocore.search_space import (
 from evocore.surrogates import InverseDistanceAdvisor, SurrogateScore
 
 __all__ = [
-    "AcceptanceDecision",
     "CHECKPOINT_KIND",
     "CHECKPOINT_SCHEMA_VERSION",
     "OP_CMAES_ASK",
@@ -115,6 +114,7 @@ __all__ = [
     "OP_MULTI_RUN",
     "OP_MUTATION",
     "OP_SELECTION",
+    "AcceptanceDecision",
     "BinaryIndividual",
     "BoundsPolicy",
     "BudgetPolicy",
@@ -133,8 +133,8 @@ __all__ = [
     "ConfigurationWarning",
     "ConvergenceError",
     "CrossoverOperator",
-    "Direction",
     "DifferentialEvolutionOptimizer",
+    "Direction",
     "EarlyStopping",
     "EvaluationConfidence",
     "EvaluationContext",

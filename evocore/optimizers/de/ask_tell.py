@@ -88,7 +88,7 @@ class DifferentialEvolutionAskTellMixin:
 
     def _rng_for_trial(self, target_slot: int, op: int) -> random.Random:
         seed = int(_core.py_derive_seed(self.seed, self.generation, target_slot, op))
-        return random.Random(seed)
+        return random.Random(seed)  # noqa: S311 - deterministic optimizer sampling.
 
     def _donor_slots(self, target_slot: int) -> tuple[int, int, int]:
         choices = [slot for slot in range(len(self._target_candidate_ids)) if slot != target_slot]
@@ -132,9 +132,10 @@ class DifferentialEvolutionAskTellMixin:
                 continue
             if gene.kind == "bool":
                 trial_bool = bool(donor_a.genes[index])
-                if bool(donor_b.genes[index]) != bool(donor_c.genes[index]):
-                    if bool_rng.random() < min(1.0, self.mutation_factor):
-                        trial_bool = not trial_bool
+                if bool(donor_b.genes[index]) != bool(
+                    donor_c.genes[index]
+                ) and bool_rng.random() < min(1.0, self.mutation_factor):
+                    trial_bool = not trial_bool
                 values.append(trial_bool)
                 continue
             mutant = float(donor_a.genes[index]) + self.mutation_factor * (
@@ -191,6 +192,7 @@ class DifferentialEvolutionAskTellMixin:
         )
 
     def ask(self, n: int | None = None) -> list[Candidate]:
+        """Return initialization or trial candidates for external evaluation."""
         count = self.population_size if n is None else int(n)
         if count <= 0:
             raise ConfigurationError("ask(n) requires n > 0.")
@@ -333,26 +335,16 @@ class DifferentialEvolutionAskTellMixin:
         return decision
 
     def tell(self, records: Sequence[EvaluationRecord]) -> UpdateResult:
-        trusted = partial = surrogate = cached = rejected = 0
-        touched_batch_ids: set[str] = set()
+        """Apply evaluation records and return a DE update summary."""
+        counts = {"trusted": 0, "partial": 0, "surrogate": 0, "cached": 0, "rejected": 0}
         consumed_batch_ids: set[str] = set()
         acceptance_decisions: list[AcceptanceDecision] = []
         for record in records:
             candidate, batch = self._candidate_and_batch_for_record(record)
             batch.accept_record(record)
-            touched_batch_ids.add(batch.batch_id)
             candidate.apply_record(record)
             confidence = self._apply_telemetry_for_record(record)
-            if confidence == "trusted":
-                trusted += 1
-            elif confidence == "cached":
-                cached += 1
-            elif confidence == "partial":
-                partial += 1
-            elif confidence == "surrogate":
-                surrogate += 1
-            else:
-                rejected += 1
+            counts[confidence] += 1
             if is_state_update_confidence(record.confidence):
                 if candidate.candidate_id not in self._trial_target_slots:
                     self._target_candidate_ids.append(candidate.candidate_id)
@@ -400,11 +392,11 @@ class DifferentialEvolutionAskTellMixin:
         best_candidate_id, best_score = self._best_candidate_id_and_score()
         return UpdateResult(
             accepted_count=len(records),
-            trusted_count=trusted,
-            partial_count=partial,
-            surrogate_count=surrogate,
-            cached_count=cached,
-            rejected_count=rejected,
+            trusted_count=counts["trusted"],
+            partial_count=counts["partial"],
+            surrogate_count=counts["surrogate"],
+            cached_count=counts["cached"],
+            rejected_count=counts["rejected"],
             best_candidate_id=best_candidate_id,
             best_score=best_score,
             consumed_batch_ids=tuple(sorted(consumed_batch_ids)),
