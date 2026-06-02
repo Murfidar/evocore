@@ -162,6 +162,35 @@ class CachedFinalEvaluator:
         ]
 
 
+class HalfPromotionEvaluator:
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.stage is not None
+        if context.stage.name == "cheap":
+            return [
+                EvaluationRecord(
+                    candidate_id=candidate.candidate_id,
+                    batch_id=candidate.batch_id,
+                    score=float(index),
+                    confidence="partial",
+                    stage="cheap",
+                    cost=context.stage.budget,
+                )
+                for index, candidate in enumerate(candidates)
+            ]
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=100.0,
+                confidence="trusted_full",
+                stage="full",
+                cost=context.stage.budget,
+            )
+            for candidate in candidates
+        ]
+
+
 class CountingCallback(Callback):
     def __init__(self) -> None:
         self.starts = 0
@@ -360,6 +389,34 @@ def test_de_run_rejects_missing_evaluator_records() -> None:
 
     with pytest.raises(FitnessError, match="missing evaluation records"):
         engine.run(MissingRecordEvaluator(), policy=BudgetPolicy.single_full(max_evaluations=6))
+
+
+def test_de_policy_screened_out_trials_leave_targets_unchanged() -> None:
+    policy = _two_stage_policy(max_evaluations=9, batch_size=6)
+    engine = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=1,
+        seed=42,
+    )
+
+    result = engine.run(HalfPromotionEvaluator(), policy=policy)
+    rejected_trial_events = [
+        event
+        for event in result.events
+        if event.event_type == "tell"
+        and event.origin == "mutation"
+        and event.confidence == "rejected"
+        and event.metadata.get("reason") == "not_promoted"
+    ]
+    final_candidate_ids = {
+        solution.metadata["candidate_id"] for solution in result.final_solutions
+    }
+
+    assert rejected_trial_events
+    assert engine.state_summary().pending_batch_ids == ()
+    for event in rejected_trial_events:
+        assert event.metadata["target_candidate_id"] in final_candidate_ids
 
 
 def test_de_public_checkpoint_example_smoke(tmp_path) -> None:
