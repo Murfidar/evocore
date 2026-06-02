@@ -46,9 +46,10 @@ def test_search_space_exports_accessible_from_top_level():
 
 
 def test_optimizer_exports_accessible_from_top_level():
-    from evocore import CMAESOptimizer, GeneticAlgorithmOptimizer
+    from evocore import CMAESOptimizer, DifferentialEvolutionOptimizer, GeneticAlgorithmOptimizer
 
     assert CMAESOptimizer is not None
+    assert DifferentialEvolutionOptimizer is not None
     assert GeneticAlgorithmOptimizer is not None
 
 

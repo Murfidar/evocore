@@ -23,6 +23,10 @@ def __getattr__(name: str) -> object:
         from evocore.optimizers.cmaes import CMAESOptimizer
 
         return CMAESOptimizer
+    if name == "DifferentialEvolutionOptimizer":
+        from evocore.optimizers.de import DifferentialEvolutionOptimizer
+
+        return DifferentialEvolutionOptimizer
     if name == "GeneticAlgorithmOptimizer":
         from evocore.optimizers.ga import GeneticAlgorithmOptimizer
 
@@ -35,6 +39,7 @@ __all__ = [
     "CMAESOptimizer",
     "ConfigurableComponent",
     "CrossoverOperator",
+    "DifferentialEvolutionOptimizer",
     "GeneticAlgorithmOptimizer",
     "MutationOperator",
     "OptimizerConfig",

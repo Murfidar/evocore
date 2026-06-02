@@ -75,6 +75,7 @@ from evocore.optimizers.cmaes import (
     CMAESOptimizer,
     IntegerMarginDistribution,
 )
+from evocore.optimizers.de import DifferentialEvolutionOptimizer
 from evocore.optimizers.ga import GeneticAlgorithmOptimizer
 from evocore.results import (
     CHECKPOINT_KIND,
@@ -133,6 +134,7 @@ __all__ = [
     "ConvergenceError",
     "CrossoverOperator",
     "Direction",
+    "DifferentialEvolutionOptimizer",
     "EarlyStopping",
     "EvaluationConfidence",
     "EvaluationContext",
