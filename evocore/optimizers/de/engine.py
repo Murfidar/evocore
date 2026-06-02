@@ -494,11 +494,11 @@ class DifferentialEvolutionOptimizer(
             callback.on_run_end(result)
         return result
 
-    def run(
+    def run(  # noqa: PLR0912, PLR0915
         self,
         evaluator: Evaluator,
         policy: BudgetPolicy | None = None,
-    ) -> OptimizationResult:  # noqa: PLR0912, PLR0915
+    ) -> OptimizationResult:
         """Run one synchronous policy-driven DE optimization."""
         if not isinstance(evaluator, Evaluator):
             raise ConfigurationError(
