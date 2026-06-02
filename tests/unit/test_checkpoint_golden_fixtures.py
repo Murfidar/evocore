@@ -176,8 +176,9 @@ def _de_score_from_genes(genes: Iterable[object]) -> float:
 
 def _de_first_batch_payload(payload: dict[str, Any]) -> dict[str, Any]:
     batches = payload["state"]["payload"]["batches_by_id"]
-    assert len(batches) == 1
-    return next(iter(batches.values()))
+    pending_batches = [batch for batch in batches.values() if not batch["consumed"]]
+    assert len(pending_batches) == 1
+    return pending_batches[0]
 
 
 def _de_records_from_payload(
@@ -402,6 +403,118 @@ def test_cmaes_consumed_batch_fixture_next_ask_matches_manifest() -> None:
     assert [candidate.candidate_id for candidate in candidates] == expected["candidate_ids"]
     assert [candidate.batch_id for candidate in candidates] == expected["batch_ids"]
     assert [candidate.genes for candidate in candidates] == expected["genes"]
+
+
+def test_de_after_initial_ask_fixture_accepts_pending_records() -> None:
+    entry = _de_entry("de_after_initial_ask")
+    payload = load_checkpoint(_de_fixture_path(entry))
+
+    restored = _de_optimizer()
+    summary = restored.resume_ask_tell_checkpoint(_de_fixture_path(entry))
+    result = restored.tell(_de_records_from_payload(payload))
+
+    assert summary.pending_batch_ids == tuple(entry["continuation"]["pending_batch_ids"])
+    assert result.trusted_count == entry["continuation"]["trusted_count_after_tell"]
+    assert result.state_accepted_count == entry["continuation"]["state_accepted_count_after_tell"]
+    assert result.best_score == pytest.approx(entry["continuation"]["best_score_after_tell"])
+    assert restored.state_summary().trusted_count == 6
+    assert result.pending_batch_ids == ()
+
+
+def test_de_partial_initial_fixture_accepts_missing_records() -> None:
+    entry = _de_entry("de_after_partial_initial_tell")
+    payload = load_checkpoint(_de_fixture_path(entry))
+
+    restored = _de_optimizer()
+    summary = restored.resume_ask_tell_checkpoint(_de_fixture_path(entry))
+    result = restored.tell(
+        _de_records_from_payload(
+            payload,
+            skip_existing=True,
+            scores={
+                candidate_id: float(index + 3)
+                for index, candidate_id in enumerate(
+                    _de_first_batch_payload(payload)["candidate_ids"][2:]
+                )
+            },
+        )
+    )
+
+    assert summary.best_candidate_id == entry["continuation"]["best_candidate_id"]
+    assert summary.pending_batch_ids == tuple(entry["continuation"]["pending_batch_ids"])
+    assert result.accepted_count == entry["continuation"]["accepted_count_after_tell"]
+    assert restored.state_summary().trusted_count == entry["continuation"]["trusted_count_after_tell"]
+    assert result.best_score == pytest.approx(entry["continuation"]["best_score_after_tell"])
+    assert result.pending_batch_ids == ()
+
+
+def test_de_initialized_population_fixture_next_ask_matches_manifest() -> None:
+    entry = _de_entry("de_after_initialized_population")
+    expected = entry["continuation"]["next_ask"]
+
+    restored = _de_optimizer()
+    restored.resume_ask_tell_checkpoint(_de_fixture_path(entry))
+    candidates = restored.ask()
+
+    assert [candidate.candidate_id for candidate in candidates] == expected["candidate_ids"]
+    assert [candidate.batch_id for candidate in candidates] == expected["batch_ids"]
+    assert [candidate.genes for candidate in candidates] == expected["genes"]
+    assert [candidate.metadata["target_slot"] for candidate in candidates] == expected["target_slots"]
+    assert [
+        candidate.metadata["target_candidate_id"] for candidate in candidates
+    ] == expected["target_candidate_ids"]
+
+
+def test_de_trial_ask_fixture_accepts_first_trial_record() -> None:
+    entry = _de_entry("de_after_trial_ask")
+    payload = load_checkpoint(_de_fixture_path(entry))
+    first_candidate_id = _de_first_batch_payload(payload)["candidate_ids"][0]
+
+    restored = _de_optimizer()
+    summary = restored.resume_ask_tell_checkpoint(_de_fixture_path(entry))
+    result = restored.tell(
+        [
+            EvaluationRecord(
+                candidate_id=first_candidate_id,
+                batch_id=_de_first_batch_payload(payload)["batch_id"],
+                score=100.0,
+                confidence="trusted_full",
+                stage="full",
+                cost=1.0,
+                metadata={"source": "de-golden-fixture-test"},
+            )
+        ]
+    )
+
+    decision = result.acceptance_decisions[0]
+    assert summary.pending_batch_ids == tuple(entry["continuation"]["pending_batch_ids"])
+    assert decision.candidate_id == entry["continuation"]["first_decision"]["candidate_id"]
+    assert (
+        decision.accepted_for_state
+        is entry["continuation"]["first_decision"]["accepted_for_state"]
+    )
+    assert decision.reason == entry["continuation"]["first_decision"]["reason"]
+    assert decision.target_candidate_id == entry["continuation"]["first_decision"][
+        "target_candidate_id"
+    ]
+    assert decision.target_slot == entry["continuation"]["first_decision"]["target_slot"]
+
+
+def test_de_mixed_trial_tell_fixture_restores_manifest_state() -> None:
+    entry = _de_entry("de_after_mixed_trial_tell")
+
+    restored = _de_optimizer()
+    summary = restored.resume_ask_tell_checkpoint(_de_fixture_path(entry))
+
+    assert restored.generation == entry["continuation"]["generation"]
+    assert summary.trusted_count == entry["continuation"]["trusted_count"]
+    assert summary.best_candidate_id == entry["continuation"]["best_candidate_id"]
+    assert summary.best_score == pytest.approx(entry["continuation"]["best_score"])
+    assert list(restored._target_candidate_ids) == entry["continuation"]["target_candidate_ids"]
+    assert [
+        restored._candidates_by_id[candidate_id].genes
+        for candidate_id in restored._target_candidate_ids
+    ] == entry["continuation"]["target_genes"]
 
 
 def test_fixture_derived_envelope_incompatibilities_raise_checkpoint_error() -> None:
