@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import math
 import time
+from collections import Counter
 from collections.abc import Sequence
 from typing import Any
 
@@ -11,6 +13,8 @@ from evocore.core.errors import ConfigurationError, FitnessError
 from evocore.core.parallel import ProcessParallel, ThreadParallel, ensure_picklable
 from evocore.core.serialization import package_version
 from evocore.lifecycle import (
+    BudgetPolicy,
+    BudgetScheduler,
     Candidate,
     CandidateBatch,
     Direction,
@@ -21,6 +25,7 @@ from evocore.lifecycle import (
     OptimizationTelemetry,
     OptimizerStateSummary,
     candidate_to_solution,
+    is_state_update_confidence,
 )
 from evocore.optimizers.config import OptimizerConfig
 from evocore.optimizers.de.ask_tell import DifferentialEvolutionAskTellMixin
@@ -41,7 +46,7 @@ from evocore.results import (
     StopReason,
     append_run_stop_event,
 )
-from evocore.search_space import GeneSpace, SolutionSet
+from evocore.search_space import GeneSpace, Solution, SolutionSet
 
 
 def _evaluate_one_candidate(
@@ -180,6 +185,20 @@ class DifferentialEvolutionOptimizer(
     def _callbacks_should_stop(self) -> bool:
         return any(getattr(callback, "should_stop", False) for callback in self.callbacks)
 
+    def _resolve_policy(self, policy: BudgetPolicy | None) -> BudgetPolicy:
+        """Resolve explicit or constructor shorthand budget settings."""
+        if policy is not None and not isinstance(policy, BudgetPolicy):
+            raise ConfigurationError("policy must be a BudgetPolicy when provided.")
+        if policy is not None:
+            return policy
+        max_evaluations = self.max_evaluations
+        if max_evaluations is None:
+            max_evaluations = max(1, self.population_size * (self.max_generations + 1))
+        return BudgetPolicy.single_full(
+            max_evaluations=max_evaluations,
+            batch_size=self.population_size,
+        )
+
     def _evaluate_candidates(
         self,
         candidates: Sequence[Candidate],
@@ -217,6 +236,135 @@ class DifferentialEvolutionOptimizer(
             direction=self.direction,
             budget=stage.budget,
         )
+
+    def _validate_evaluator_records(
+        self,
+        assigned: Sequence[Candidate],
+        records: Sequence[EvaluationRecord],
+    ) -> None:
+        """Reject incomplete or mismatched synchronous evaluator results."""
+        expected_ids = [candidate.candidate_id for candidate in assigned]
+        returned_ids = [record.candidate_id for record in records]
+        expected_counts = Counter(expected_ids)
+        returned_counts = Counter(returned_ids)
+
+        missing_ids = [
+            candidate_id for candidate_id in expected_ids if returned_counts[candidate_id] == 0
+        ]
+        unexpected_ids = [
+            candidate_id for candidate_id in returned_counts if candidate_id not in expected_counts
+        ]
+        duplicate_ids = [
+            candidate_id
+            for candidate_id, count in returned_counts.items()
+            if count > expected_counts[candidate_id]
+        ]
+
+        if missing_ids:
+            raise FitnessError(
+                "Evaluator returned missing evaluation records for candidate_ids: "
+                f"{sorted(set(missing_ids))!r}."
+            )
+        if unexpected_ids:
+            raise FitnessError(
+                "Evaluator returned unknown evaluation records for candidate_ids: "
+                f"{sorted(unexpected_ids)!r}."
+            )
+        if duplicate_ids:
+            raise FitnessError(
+                "Evaluator returned duplicate evaluation records for candidate_ids: "
+                f"{sorted(duplicate_ids)!r}."
+            )
+
+        batch_ids = {candidate.batch_id for candidate in assigned}
+        if len(batch_ids) != 1:
+            raise FitnessError("DE run candidates must belong to exactly one batch.")
+        expected_batch_id = next(iter(batch_ids))
+        for record in records:
+            if record.batch_id is not None and record.batch_id != expected_batch_id:
+                raise FitnessError(
+                    f"Evaluator returned record batch_id {record.batch_id!r} for batch "
+                    f"{expected_batch_id!r}."
+                )
+
+    def _candidate_has_terminal_record(self, candidate: Candidate) -> bool:
+        batch = self._batches_by_id[candidate.batch_id]
+        return any(
+            record.candidate_id == candidate.candidate_id
+            and (
+                is_state_update_confidence(record.confidence)
+                or record.confidence == "rejected"
+            )
+            for record in batch.records_by_key.values()
+        )
+
+    def _screened_out_records(
+        self,
+        candidates: Sequence[Candidate],
+        *,
+        completed_stage: str,
+    ) -> list[EvaluationRecord]:
+        records: list[EvaluationRecord] = []
+        synthetic_stage = f"{completed_stage}__de_screened_out"
+        for candidate in candidates:
+            if self._candidate_has_terminal_record(candidate):
+                continue
+            records.append(
+                EvaluationRecord(
+                    candidate_id=candidate.candidate_id,
+                    batch_id=candidate.batch_id,
+                    score=None,
+                    confidence="rejected",
+                    stage=synthetic_stage,
+                    cost=0.0,
+                    metadata={
+                        "reason": "not_promoted",
+                        "completed_stage": completed_stage,
+                        "target_candidate_id": candidate.metadata.get("target_candidate_id"),
+                        "target_slot": candidate.metadata.get("target_slot"),
+                    },
+                )
+            )
+        return records
+
+    def _reject_screened_out(
+        self,
+        candidates: Sequence[Candidate],
+        *,
+        completed_stage: str,
+    ) -> None:
+        records = self._screened_out_records(candidates, completed_stage=completed_stage)
+        if records:
+            self.tell(records)
+
+    @staticmethod
+    def _project_final_stage_count(candidate_count: int, policy: BudgetPolicy) -> int:
+        count = int(candidate_count)
+        if count <= 0:
+            return 0
+        for stage in policy.stages:
+            if stage.confidence == "trusted_full":
+                return count
+            promote_count = max(1, int(math.ceil(count * stage.promote_fraction)))
+            exploration_count = int(math.floor(count * policy.exploration_fraction))
+            audit_count = int(math.floor(count * policy.audit_fraction))
+            count = min(count, promote_count + exploration_count + audit_count)
+        return 0
+
+    def _candidate_count_for_remaining_budget(
+        self,
+        *,
+        candidate_limit: int,
+        remaining: int,
+        policy: BudgetPolicy,
+    ) -> int:
+        if candidate_limit <= 0 or remaining <= 0:
+            return 0
+        for count in range(int(candidate_limit), 0, -1):
+            projected = self._project_final_stage_count(count, policy)
+            if 0 < projected <= remaining:
+                return count
+        return 0
 
     def _target_solutions(self) -> SolutionSet:
         return SolutionSet(
@@ -257,88 +405,72 @@ class DifferentialEvolutionOptimizer(
             )
         )
 
-    def run(self, evaluator: Evaluator, policy=None) -> OptimizationResult:  # noqa: PLR0912, PLR0915
-        """Run one synchronous evaluator-driven DE optimization."""
-        if policy is not None:
-            raise ConfigurationError(
-                "DifferentialEvolutionOptimizer.run does not support policy yet."
-            )
-        if not isinstance(evaluator, Evaluator):
-            raise ConfigurationError(
-                "DifferentialEvolutionOptimizer.run requires an evaluator with evaluate(candidates, context)."
-            )
-        self._reset_vnext_state()
-        self._bind_callbacks()
-        stage = EvaluationStage(
-            name="full",
-            budget=1.0,
-            promote_fraction=1.0,
-            confidence="trusted_full",
-        )
-        started = time.perf_counter()
-        generation_history = GenerationHistory()
-        diversity_history: list[list[float]] = []
-        elite_history = []
-        n_evaluations = 0
-        stop_reason: StopReason = "max_generations"
-
-        initial = self.ask(self.population_size)
-        initial_context = self._evaluation_context(initial, stage)
-        initial_records = self._evaluate_candidates(initial, evaluator, initial_context)
-        self.tell(initial_records)
-        n_evaluations += len(initial_records)
-
-        for gen in range(self.max_generations):
-            gen_start = time.perf_counter()
-            current_solutions = self._target_solutions()
-            for callback in self.callbacks:
-                callback.on_generation_start(gen, current_solutions)
-            if self._callbacks_should_stop():
-                stop_reason = "callback"
-                break
-            if self.max_evaluations is not None and n_evaluations >= self.max_evaluations:
-                stop_reason = "max_evaluations"
-                break
-            remaining = (
-                self.population_size
-                if self.max_evaluations is None
-                else max(self.max_evaluations - n_evaluations, 0)
-            )
-            trial_count = min(self.population_size, remaining)
-            if trial_count <= 0:
-                stop_reason = "max_evaluations"
-                break
-            trials = self.ask(trial_count)
-            context = self._evaluation_context(trials, stage)
-            records = self._evaluate_candidates(trials, evaluator, context)
+    def _evaluate_policy_stages(
+        self,
+        candidates: Sequence[Candidate],
+        evaluator: Evaluator,
+        scheduler: BudgetScheduler,
+        policy: BudgetPolicy,
+    ) -> tuple[int, list[Candidate], list[EvaluationRecord]]:
+        active_candidates = list(candidates)
+        for stage in policy.stages:
+            if not active_candidates:
+                return 0, [], []
+            assigned = scheduler.assign_stage(active_candidates, stage_name=stage.name)
+            context = self._evaluation_context(assigned, stage)
+            records = self._evaluate_candidates(assigned, evaluator, context)
+            self._validate_evaluator_records(assigned, records)
             self.tell(records)
-            n_evaluations += len(records)
-            self._append_generation_record(
-                generation_history,
-                gen=gen,
-                gen_start=gen_start,
-                n_evaluations=len(records),
-            )
-            solutions = self._target_solutions()
-            diversity = solutions.diversity() if self.track_diversity else []
-            if self.track_diversity:
-                diversity_history.append(diversity)
-            if len(solutions):
-                elite_history.append(solutions.best(1)[0].clone())
-            info = GenerationInfo(gen, 0, 0)
-            for callback in self.callbacks:
-                callback.on_generation_end(gen, solutions, info)
-            if self._callbacks_should_stop():
-                stop_reason = "callback"
-                break
 
+            if stage.confidence == "trusted_full":
+                state_eligible_count = sum(
+                    1 for record in records if is_state_update_confidence(record.confidence)
+                )
+                fresh_full_count = sum(
+                    1 for record in records if record.confidence == "trusted_full"
+                )
+                if state_eligible_count == 0:
+                    raise FitnessError(
+                        "Evaluator returned no state-eligible records for the final stage; "
+                        "trusted_full or cached records are required."
+                    )
+                return fresh_full_count, list(assigned), list(records)
+
+            promoted = scheduler.promote(assigned, completed_stage=stage.name)
+            promoted_ids = {candidate.candidate_id for candidate in promoted}
+            screened_out = [
+                candidate
+                for candidate in assigned
+                if candidate.candidate_id not in promoted_ids
+            ]
+            self._reject_screened_out(screened_out, completed_stage=stage.name)
+            active_candidates = promoted
+
+        return 0, [], []
+
+    def _build_run_result(
+        self,
+        *,
+        started: float,
+        generation_history: GenerationHistory,
+        diversity_history: list[list[float]],
+        elite_history: list[Solution],
+        n_evaluations: int,
+        stop_reason: StopReason,
+        max_evaluations: int,
+    ) -> OptimizationResult:
         final_solutions = self._target_solutions()
-        if not len(final_solutions):
-            raise FitnessError("DE run produced no evaluated target candidates.")
-        best_solution = final_solutions.best(1)[0].clone()
+        if len(final_solutions):
+            best_solution = final_solutions.best(1)[0].clone()
+            best_score = float(best_solution.score)
+        else:
+            best_solution = Solution([], score=float("-inf"), score_valid=False)
+            final_solutions = SolutionSet([best_solution])
+            best_score = float("-inf")
+
         result = OptimizationResult(
             best_solution=best_solution,
-            best_score=float(best_solution.score),
+            best_score=best_score,
             final_solutions=final_solutions,
             generations=generation_history,
             wall_time_seconds=time.perf_counter() - started,
@@ -348,7 +480,7 @@ class DifferentialEvolutionOptimizer(
             seed=self.seed,
             stop_reason=stop_reason,
             max_generations=self.max_generations,
-            max_evaluations=self.max_evaluations,
+            max_evaluations=max_evaluations,
             telemetry=self.vnext_telemetry,
             direction=self.direction,
             optimizer_type="DifferentialEvolutionOptimizer",
@@ -366,3 +498,137 @@ class DifferentialEvolutionOptimizer(
         for callback in self.callbacks:
             callback.on_run_end(result)
         return result
+
+    def run(
+        self,
+        evaluator: Evaluator,
+        policy: BudgetPolicy | None = None,
+    ) -> OptimizationResult:  # noqa: PLR0912, PLR0915
+        """Run one synchronous policy-driven DE optimization."""
+        if not isinstance(evaluator, Evaluator):
+            raise ConfigurationError(
+                "DifferentialEvolutionOptimizer.run requires an evaluator with evaluate(candidates, context)."
+            )
+        resolved_policy = self._resolve_policy(policy)
+        scheduler = BudgetScheduler(resolved_policy)
+        self._reset_vnext_state()
+        self._bind_callbacks()
+
+        started = time.perf_counter()
+        generation_history = GenerationHistory()
+        diversity_history: list[list[float]] = []
+        elite_history: list[Solution] = []
+        n_evaluations = 0
+        stop_reason: StopReason = "max_generations"
+
+        while (
+            len(self._target_candidate_ids) < self.population_size
+            and self.vnext_telemetry.candidates_full_evaluated
+            < resolved_policy.max_evaluations
+        ):
+            remaining = (
+                resolved_policy.max_evaluations
+                - self.vnext_telemetry.candidates_full_evaluated
+            )
+            candidate_limit = min(
+                resolved_policy.batch_size or self.population_size,
+                self.population_size - len(self._target_candidate_ids),
+            )
+            batch_size = self._candidate_count_for_remaining_budget(
+                candidate_limit=candidate_limit,
+                remaining=remaining,
+                policy=resolved_policy,
+            )
+            if batch_size <= 0:
+                stop_reason = "max_evaluations"
+                break
+            candidates = self.ask(batch_size)
+            fresh_count, _, _ = self._evaluate_policy_stages(
+                candidates,
+                evaluator,
+                scheduler,
+                resolved_policy,
+            )
+            n_evaluations += fresh_count
+
+        if (
+            self.vnext_telemetry.candidates_full_evaluated
+            >= resolved_policy.max_evaluations
+        ):
+            stop_reason = "max_evaluations"
+
+        for gen in range(self.max_generations):
+            if stop_reason == "max_evaluations":
+                break
+            gen_start = time.perf_counter()
+            current_solutions = self._target_solutions()
+            for callback in self.callbacks:
+                callback.on_generation_start(gen, current_solutions)
+            if self._callbacks_should_stop():
+                stop_reason = "callback"
+                break
+
+            remaining = (
+                resolved_policy.max_evaluations
+                - self.vnext_telemetry.candidates_full_evaluated
+            )
+            candidate_limit = min(
+                self.population_size,
+                resolved_policy.batch_size or self.population_size,
+            )
+            trial_count = self._candidate_count_for_remaining_budget(
+                candidate_limit=candidate_limit,
+                remaining=remaining,
+                policy=resolved_policy,
+            )
+            if trial_count <= 0:
+                stop_reason = "max_evaluations"
+                break
+
+            trials = self.ask(trial_count)
+            fresh_count, final_candidates, _ = self._evaluate_policy_stages(
+                trials,
+                evaluator,
+                scheduler,
+                resolved_policy,
+            )
+            n_evaluations += fresh_count
+            self._append_generation_record(
+                generation_history,
+                gen=gen,
+                gen_start=gen_start,
+                n_evaluations=fresh_count,
+            )
+
+            solutions = self._target_solutions()
+            diversity = solutions.diversity() if self.track_diversity else []
+            if self.track_diversity:
+                diversity_history.append(diversity)
+            if len(solutions):
+                elite_history.append(solutions.best(1)[0].clone())
+            info = GenerationInfo(gen, 0, 0)
+            for callback in self.callbacks:
+                callback.on_generation_end(gen, solutions, info)
+            if self._callbacks_should_stop():
+                stop_reason = "callback"
+                break
+            if (
+                fresh_count > 0
+                and self.vnext_telemetry.candidates_full_evaluated
+                >= resolved_policy.max_evaluations
+            ):
+                stop_reason = "max_evaluations"
+                break
+            if not final_candidates:
+                stop_reason = "max_evaluations"
+                break
+
+        return self._build_run_result(
+            started=started,
+            generation_history=generation_history,
+            diversity_history=diversity_history,
+            elite_history=elite_history,
+            n_evaluations=n_evaluations,
+            stop_reason=stop_reason,
+            max_evaluations=resolved_policy.max_evaluations,
+        )
