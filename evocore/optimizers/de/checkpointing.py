@@ -24,7 +24,7 @@ DE_ASK_TELL_STATE_KIND = "de_ask_tell"
 DE_CHECKPOINT_STATE_SCHEMA_VERSION = 1
 
 
-def _required_payload_value(payload: Mapping[str, Any], key: str) -> Any:
+def _required_payload_value(payload: Mapping[str, Any], key: str) -> object:
     if key not in payload:
         raise CheckpointError(f"checkpoint state.payload.{key} is required.")
     return payload[key]
