@@ -1,6 +1,13 @@
 import pytest
 
-from evocore import DifferentialEvolutionOptimizer, Gene, GeneSpace
+from evocore import (
+    DifferentialEvolutionOptimizer,
+    EvaluationContext,
+    EvaluationRecord,
+    Gene,
+    GeneSpace,
+)
+from evocore.callbacks import Callback
 from evocore.core.errors import ConfigurationError
 
 
@@ -59,3 +66,87 @@ def test_de_rejects_invalid_configuration(kwargs, message) -> None:
     params = {"gene_space": _space(), **kwargs}
     with pytest.raises(ConfigurationError, match=message):
         DifferentialEvolutionOptimizer(**params)
+
+
+class SphereEvaluator:
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.stage is not None
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=-sum(float(value) ** 2 for value in candidate.genes if type(value) is not bool),
+                confidence=context.stage.confidence,
+                stage=context.stage.name,
+                cost=context.stage.budget,
+            )
+            for candidate in candidates
+        ]
+
+
+class CountingCallback(Callback):
+    def __init__(self) -> None:
+        self.starts = 0
+        self.ends = 0
+        self.completed = False
+
+    def on_generation_start(self, generation, population) -> None:
+        self.starts += 1
+
+    def on_generation_end(self, generation, population, info) -> None:
+        self.ends += 1
+
+    def on_run_end(self, result) -> None:
+        self.completed = True
+
+
+def test_de_run_returns_optimization_result_with_events_and_generations() -> None:
+    engine = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=2,
+        seed=42,
+    )
+
+    result = engine.run(SphereEvaluator())
+
+    assert result.optimizer_type == "DifferentialEvolutionOptimizer"
+    assert result.best_candidate_id is not None
+    assert result.n_evaluations >= 6
+    assert len(result.generations) == 2
+    assert len(result.events) > 0
+    assert result.reproducibility is not None
+    assert result.reproducibility.optimizer_type == "DifferentialEvolutionOptimizer"
+
+
+def test_de_run_invokes_callbacks() -> None:
+    callback = CountingCallback()
+    engine = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=2,
+        seed=42,
+        callbacks=[callback],
+    )
+
+    engine.run(SphereEvaluator())
+
+    assert callback.starts == 2
+    assert callback.ends == 2
+    assert callback.completed is True
+
+
+def test_de_run_honors_max_evaluations() -> None:
+    engine = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=10,
+        max_evaluations=8,
+        seed=42,
+    )
+
+    result = engine.run(SphereEvaluator())
+
+    assert result.stop_reason == "max_evaluations"
+    assert result.n_evaluations <= 12
