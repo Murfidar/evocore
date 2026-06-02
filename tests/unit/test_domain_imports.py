@@ -32,6 +32,7 @@ def test_new_domain_imports_are_available():
         "evocore.optimizers.config",
         "evocore.optimizers.ga.config",
         "evocore.optimizers.cmaes.config",
+        "evocore.optimizers.de",
         "evocore.callbacks",
         "evocore.surrogates",
     ]
@@ -47,6 +48,7 @@ def test_new_domain_symbols_are_importable():
     from evocore.lifecycle import BudgetPolicy, BudgetScheduler, EvaluationStage
     from evocore.optimizers import ConfigurableComponent, OptimizerConfig, RuntimeHookSignature
     from evocore.optimizers.cmaes import CMAESOptimizer
+    from evocore.optimizers.de import DifferentialEvolutionOptimizer
     from evocore.optimizers.ga import GeneticAlgorithmOptimizer
     from evocore.results import CheckpointSnapshot, OptimizationBatchResult, OptimizationResult
     from evocore.search_space import Gene, GeneSpace, Solution, SolutionSet
@@ -63,6 +65,7 @@ def test_new_domain_symbols_are_importable():
     assert BudgetScheduler is not None
     assert EvaluationStage is not None
     assert CMAESOptimizer is not None
+    assert DifferentialEvolutionOptimizer is not None
     assert GeneticAlgorithmOptimizer is not None
     assert OptimizationBatchResult is not None
     assert OptimizationResult is not None
@@ -84,6 +87,7 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
         ProgressBar,
     )
     from evocore.lifecycle import (
+        AcceptanceDecision,
         OptimizationTelemetry,
         OptimizerStateSummary,
         UpdateResult,
@@ -98,6 +102,7 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
         CMAESOptimizer,
     )
     from evocore.optimizers.config import ConfigurableComponent
+    from evocore.optimizers.de import DifferentialEvolutionOptimizer
     from evocore.optimizers.ga import (
         GeneticAlgorithmAskTellMixin,
         GeneticAlgorithmCheckpointingMixin,
@@ -133,6 +138,7 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
     assert append_run_stop_event.__module__ == "evocore.lifecycle.events"
     assert candidate_to_solution.__module__ == "evocore.lifecycle.conversion"
     assert solution_to_candidate.__module__ == "evocore.lifecycle.conversion"
+    assert AcceptanceDecision.__module__ == "evocore.lifecycle.telemetry"
     assert OptimizationTelemetry.__module__ == "evocore.lifecycle.telemetry"
     assert UpdateResult.__module__ == "evocore.lifecycle.telemetry"
     assert OptimizerStateSummary.__module__ == "evocore.lifecycle.telemetry"
@@ -148,6 +154,7 @@ def test_domain_packages_export_symbols_owned_by_focused_modules():
     assert RuntimeHookSignature.__module__ == "evocore.optimizers.config"
     assert ConfigurableComponent.__module__ == "evocore.optimizers.config"
     assert config_hash.__module__ == "evocore.optimizers.config"
+    assert DifferentialEvolutionOptimizer.__module__ == "evocore.optimizers.de.engine"
 
     assert GeneticAlgorithmAskTellMixin in GeneticAlgorithmOptimizer.__mro__
     assert GeneticAlgorithmGenerationLoopMixin in GeneticAlgorithmOptimizer.__mro__

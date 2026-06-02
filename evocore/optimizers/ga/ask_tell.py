@@ -8,6 +8,7 @@ from collections.abc import Sequence
 from evocore import _core
 from evocore.core.errors import ConfigurationError, FitnessError
 from evocore.lifecycle import (
+    AcceptanceDecision,
     BudgetPolicy,
     BudgetScheduler,
     Candidate,
@@ -123,6 +124,7 @@ class GeneticAlgorithmAskTellMixin:
     def tell(self, records: Sequence[EvaluationRecord]) -> UpdateResult:
         """Update GA state from vNext evaluation records."""
         trusted = partial = surrogate = cached = rejected = 0
+        acceptance_decisions: list[AcceptanceDecision] = []
         touched_batch_ids: set[str] = set()
         for record in records:
             candidate = self._candidates_by_id.get(record.candidate_id)
@@ -141,6 +143,14 @@ class GeneticAlgorithmAskTellMixin:
             self._append_tell_event(candidate, record)
             if is_state_update_confidence(record.confidence):
                 self._record_state_candidate(candidate)
+                acceptance_decisions.append(
+                    AcceptanceDecision(
+                        candidate_id=record.candidate_id,
+                        batch_id=batch.batch_id,
+                        accepted_for_state=True,
+                        reason="state_record_accepted",
+                    )
+                )
             if record.confidence == "trusted_full":
                 trusted += 1
                 self.vnext_telemetry.record_full(1, stage=record.stage, cost=record.cost)
@@ -179,6 +189,8 @@ class GeneticAlgorithmAskTellMixin:
             consumed_batch_ids=consumed_batch_ids,
             pending_batch_ids=self._pending_batch_ids(),
             telemetry=self.vnext_telemetry,
+            acceptance_decisions=tuple(acceptance_decisions),
+            state_accepted_count=len(acceptance_decisions),
         )
 
     def _evaluation_context(

@@ -1,6 +1,6 @@
 import pytest
 
-from evocore import ConfigurationError, FitnessError, Gene, GeneSpace
+from evocore import ConfigurationError, EvaluationRecord, FitnessError, Gene, GeneSpace
 from evocore.optimizers.cmaes import CMAESOptimizer
 
 
@@ -170,6 +170,31 @@ def test_cmaes_run_reports_max_generations_and_run_stop_event():
         "max_generations": 2,
         "n_evaluations": result.n_evaluations,
         "stop_reason": "max_generations",
+    }
+
+
+def test_cmaes_tell_reports_state_acceptance_decisions_for_complete_batch() -> None:
+    engine = CMAESOptimizer(GeneSpace.uniform(-2.0, 2.0, 3), population_size=6, seed=42)
+    candidates = engine.ask()
+    records = [
+        EvaluationRecord(
+            candidate_id=candidate.candidate_id,
+            batch_id=candidate.batch_id,
+            score=-float(index),
+            confidence="trusted_full",
+            stage="full",
+        )
+        for index, candidate in enumerate(candidates)
+    ]
+
+    result = engine.tell(records)
+
+    assert result.accepted_count == 6
+    assert result.state_accepted_count == 6
+    assert len(result.acceptance_decisions) == 6
+    assert all(decision.accepted_for_state for decision in result.acceptance_decisions)
+    assert {decision.reason for decision in result.acceptance_decisions} == {
+        "state_record_accepted"
     }
 
 

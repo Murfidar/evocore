@@ -42,6 +42,7 @@ from evocore.core import (
     ThreadParallel,
 )
 from evocore.lifecycle import (
+    AcceptanceDecision,
     BudgetPolicy,
     BudgetScheduler,
     Candidate,
@@ -74,6 +75,7 @@ from evocore.optimizers.cmaes import (
     CMAESOptimizer,
     IntegerMarginDistribution,
 )
+from evocore.optimizers.de import DifferentialEvolutionOptimizer
 from evocore.optimizers.ga import GeneticAlgorithmOptimizer
 from evocore.results import (
     CHECKPOINT_KIND,
@@ -112,6 +114,7 @@ __all__ = [
     "OP_MULTI_RUN",
     "OP_MUTATION",
     "OP_SELECTION",
+    "AcceptanceDecision",
     "BinaryIndividual",
     "BoundsPolicy",
     "BudgetPolicy",
@@ -130,6 +133,7 @@ __all__ = [
     "ConfigurationWarning",
     "ConvergenceError",
     "CrossoverOperator",
+    "DifferentialEvolutionOptimizer",
     "Direction",
     "EarlyStopping",
     "EvaluationConfidence",

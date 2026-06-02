@@ -43,9 +43,9 @@ assert params == {
 }
 ```
 
-`GeneticAlgorithmOptimizer` supports flat spaces that mix `float`, `int`, and
-`bool` genes. This lets users model real boolean switches directly instead of
-encoding them as integer genes.
+`GeneticAlgorithmOptimizer` and `DifferentialEvolutionOptimizer` support flat
+spaces that mix `float`, `int`, and `bool` genes. This lets users model real
+boolean switches directly instead of encoding them as integer genes.
 
 ```python
 from evocore import Gene, GeneSpace, GeneticAlgorithmOptimizer

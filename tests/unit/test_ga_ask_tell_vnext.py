@@ -161,6 +161,36 @@ def test_ga_tell_trusted_records_builds_trusted_population() -> None:
     assert engine.best_candidate.candidate_id == candidates[-1].candidate_id
 
 
+def test_ga_tell_reports_state_acceptance_decisions_for_trusted_records() -> None:
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
+    candidates = engine.ask(4)
+    records = [
+        EvaluationRecord(
+            candidate_id=candidate.candidate_id,
+            batch_id=candidate.batch_id,
+            score=float(index),
+            confidence="trusted_full",
+            stage="full",
+        )
+        for index, candidate in enumerate(candidates)
+    ]
+
+    result = engine.tell(records)
+
+    assert result.accepted_count == 4
+    assert result.state_accepted_count == 4
+    assert [decision.accepted_for_state for decision in result.acceptance_decisions] == [
+        True,
+        True,
+        True,
+        True,
+    ]
+    assert {decision.reason for decision in result.acceptance_decisions} == {
+        "state_record_accepted"
+    }
+    assert {decision.target_candidate_id for decision in result.acceptance_decisions} == {None}
+
+
 def test_ga_tell_records_raw_and_comparison_scores_for_minimize() -> None:
     engine = GeneticAlgorithmOptimizer(
         _space(), population_size=4, max_generations=5, seed=123, direction="minimize"
@@ -316,6 +346,16 @@ def test_ga_tell_empty_records_returns_noop_tell_result() -> None:
     assert result.accepted_count == 0
     assert result.trusted_count == 0
     assert result.pending_batch_ids == ()
+
+
+def test_ga_tell_empty_has_no_acceptance_decisions() -> None:
+    engine = GeneticAlgorithmOptimizer(_space(), population_size=4, max_generations=5, seed=123)
+
+    result = engine.tell([])
+
+    assert result.accepted_count == 0
+    assert result.state_accepted_count == 0
+    assert result.acceptance_decisions == ()
 
 
 def test_ga_tell_rejects_unknown_explicit_batch_id() -> None:

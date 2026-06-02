@@ -96,6 +96,18 @@ class OptimizationTelemetry:
 
 
 @dataclass(frozen=True)
+class AcceptanceDecision:
+    """Describe whether one accepted record changed optimizer state."""
+
+    candidate_id: str
+    batch_id: str
+    accepted_for_state: bool
+    reason: str
+    target_candidate_id: str | None = None
+    target_slot: int | None = None
+
+
+@dataclass(frozen=True)
 class UpdateResult:
     """Summarize one optimizer tell() update."""
 
@@ -110,6 +122,8 @@ class UpdateResult:
     consumed_batch_ids: tuple[str, ...] = ()
     pending_batch_ids: tuple[str, ...] = ()
     telemetry: OptimizationTelemetry | None = None
+    acceptance_decisions: tuple[AcceptanceDecision, ...] = ()
+    state_accepted_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -124,4 +138,9 @@ class OptimizerStateSummary:
     telemetry: OptimizationTelemetry
 
 
-__all__ = ["OptimizationTelemetry", "OptimizerStateSummary", "UpdateResult"]
+__all__ = [
+    "AcceptanceDecision",
+    "OptimizationTelemetry",
+    "OptimizerStateSummary",
+    "UpdateResult",
+]

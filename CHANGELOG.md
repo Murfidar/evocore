@@ -6,6 +6,14 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+### Added
+
+- Added `DifferentialEvolutionOptimizer` with mixed bool/numeric gene support,
+  ask/tell replacement decisions, stable ask/tell checkpoints, and synchronous
+  evaluator-driven runs.
+- Added `AcceptanceDecision` and `UpdateResult.state_accepted_count` to
+  distinguish ask/tell record acceptance from optimizer state acceptance.
+
 ## [0.9.0] - 2026-05-21
 
 ### Added
