@@ -179,3 +179,38 @@ def test_de_run_honors_max_evaluations() -> None:
 
     assert result.stop_reason == "max_evaluations"
     assert result.n_evaluations <= 12
+
+
+def test_de_public_checkpoint_example_smoke(tmp_path) -> None:
+    space = GeneSpace(
+        [
+            Gene("x", "float", -5.0, 5.0),
+            Gene("period", "int", 2, 20),
+            Gene("enabled", "bool"),
+        ]
+    )
+    optimizer = DifferentialEvolutionOptimizer(space, population_size=6, seed=42)
+    candidates = optimizer.ask()
+    checkpoint_path = tmp_path / "de-ask-tell.evocore-checkpoint.json"
+    optimizer.save_checkpoint(
+        checkpoint_path,
+        optimizer.ask_tell_checkpoint(metadata={"phase": "submitted"}),
+    )
+
+    restored = DifferentialEvolutionOptimizer(space, population_size=6, seed=42)
+    summary = restored.resume_ask_tell_checkpoint(checkpoint_path)
+    records = [
+        EvaluationRecord(
+            candidate_id=candidate.candidate_id,
+            batch_id=candidate.batch_id,
+            score=-sum(float(value) ** 2 for value in candidate.genes),
+            confidence="trusted_full",
+            stage="full",
+        )
+        for candidate in candidates
+    ]
+    result = restored.tell(records)
+
+    assert summary.pending_batch_ids == (candidates[0].batch_id,)
+    assert result.trusted_count == 6
+    assert result.pending_batch_ids == ()
