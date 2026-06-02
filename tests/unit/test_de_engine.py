@@ -89,6 +89,23 @@ class SphereEvaluator:
         ]
 
 
+class MinimizeSphereEvaluator:
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.stage is not None
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=sum(float(value) ** 2 for value in candidate.genes),
+                confidence=context.stage.confidence,
+                stage=context.stage.name,
+                cost=context.stage.budget,
+            )
+            for candidate in candidates
+        ]
+
+
 def _two_stage_policy(max_evaluations: int = 12, batch_size: int = 6) -> BudgetPolicy:
     return BudgetPolicy(
         stages=[
@@ -141,6 +158,26 @@ class CachedFinalEvaluator:
         assert isinstance(context, EvaluationContext)
         assert context.stage is not None
         confidence = "cached" if context.stage.name == "full" else context.stage.confidence
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=-sum(
+                    float(value) ** 2 for value in candidate.genes if type(value) is not bool
+                ),
+                confidence=confidence,
+                stage=context.stage.name,
+                cost=context.stage.budget,
+            )
+            for candidate in candidates
+        ]
+
+
+class CachedCheapEvaluator:
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.stage is not None
+        confidence = "cached" if context.stage.name == "cheap" else context.stage.confidence
         return [
             EvaluationRecord(
                 candidate_id=candidate.candidate_id,
@@ -264,6 +301,23 @@ def test_de_run_invokes_callbacks() -> None:
     assert callback.completed is True
 
 
+def test_de_run_minimize_reports_lowest_scoring_solution_as_best() -> None:
+    engine = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=2,
+        seed=42,
+        direction="minimize",
+    )
+
+    result = engine.run(MinimizeSphereEvaluator())
+    final_scores = [solution.score for solution in result.final_solutions]
+
+    assert result.best_score == pytest.approx(min(final_scores))
+    assert result.best_solution.metadata["candidate_id"] == result.best_candidate_id
+    assert result.generations[-1].best_score == pytest.approx(min(final_scores))
+
+
 def test_de_run_honors_max_evaluations() -> None:
     engine = DifferentialEvolutionOptimizer(
         GeneSpace.uniform(-2.0, 2.0, 3),
@@ -358,6 +412,21 @@ def test_de_run_cached_final_records_update_state_without_spending_fresh_budget(
     assert len(result.final_solutions) == 6
 
 
+def test_de_run_rejects_state_eligible_non_final_policy_records() -> None:
+    engine = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=1,
+        seed=42,
+    )
+
+    with pytest.raises(FitnessError, match="state-eligible records before final stage"):
+        engine.run(
+            CachedCheapEvaluator(),
+            policy=_two_stage_policy(max_evaluations=6, batch_size=6),
+        )
+
+
 class MissingRecordEvaluator:
     def evaluate(self, candidates, context):
         return [
@@ -411,6 +480,25 @@ def test_de_policy_screened_out_trials_leave_targets_unchanged() -> None:
     assert engine.state_summary().pending_batch_ids == ()
     for event in rejected_trial_events:
         assert event.metadata["target_candidate_id"] in final_candidate_ids
+
+
+def test_de_policy_screened_trials_respect_max_generations() -> None:
+    policy = _two_stage_policy(max_evaluations=18, batch_size=6)
+    engine = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=3,
+        seed=42,
+    )
+
+    result = engine.run(HalfPromotionEvaluator(), policy=policy)
+
+    assert result.stop_reason == "max_generations"
+    assert result.n_evaluations == 15
+    assert result.telemetry.candidates_full_evaluated == 15
+    assert len(result.generations) == 3
+    assert [record.n_evaluations for record in result.generations] == [3, 3, 3]
+    assert engine.generation == 3
 
 
 def test_de_public_checkpoint_example_smoke(tmp_path) -> None:

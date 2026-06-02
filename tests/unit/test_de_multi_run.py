@@ -28,6 +28,23 @@ class SphereEvaluator:
         ]
 
 
+class MinimizeSphereEvaluator:
+    def evaluate(self, candidates, context):
+        assert isinstance(context, EvaluationContext)
+        assert context.stage is not None
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=sum(float(value) ** 2 for value in candidate.genes),
+                confidence=context.stage.confidence,
+                stage=context.stage.name,
+                cost=context.stage.budget,
+            )
+            for candidate in candidates
+        ]
+
+
 def _optimizer(seed: int = 42) -> DifferentialEvolutionOptimizer:
     return DifferentialEvolutionOptimizer(
         GeneSpace.uniform(-2.0, 2.0, 3),
@@ -62,6 +79,25 @@ def test_de_run_multiple_uses_deterministic_child_seeds() -> None:
     assert [run.best_score for run in first.all_runs] == pytest.approx(
         [run.best_score for run in second.all_runs]
     )
+
+
+def test_de_run_multiple_minimize_uses_direction_aware_child_best_scores() -> None:
+    result = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=2,
+        seed=7,
+        direction="minimize",
+    ).run_multiple(MinimizeSphereEvaluator(), n_runs=3)
+
+    assert result.best.best_score == pytest.approx(min(run.best_score for run in result.all_runs))
+    assert [run.best_score for run in result.all_runs] == sorted(
+        [run.best_score for run in result.all_runs]
+    )
+    for run in result.all_runs:
+        assert run.best_score == pytest.approx(
+            min(solution.score for solution in run.final_solutions)
+        )
 
 
 def test_de_run_multiple_rejects_invalid_arguments() -> None:

@@ -90,11 +90,10 @@ than gradient information. It is often easier to tune than GA for numeric
 parameters because the default `rand1bin` strategy uses scaled population
 differences instead of custom crossover and mutation operators.
 
-Use GA when the search is heavily discrete, operator design is central, or
-multi-run utilities are required today. Use CMA-ES when the space is continuous
-and covariance adaptation is the main advantage. DE currently supports flat
-`float`, `int`, and `bool` `GeneSpace` values; CMA-ES continues to be the more
-specialized continuous optimizer.
+Use GA when the search is heavily discrete or operator design is central. Use
+CMA-ES when the space is continuous and covariance adaptation is the main
+advantage. DE currently supports flat `float`, `int`, and `bool` `GeneSpace`
+values; CMA-ES continues to be the more specialized continuous optimizer.
 
 ## Reproducibility
 

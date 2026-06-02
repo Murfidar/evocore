@@ -119,7 +119,7 @@ def test_de_budgeted_run_supports_mixed_gene_space() -> None:
     optimizer = DifferentialEvolutionOptimizer(
         _mixed_space(),
         population_size=6,
-        max_generations=3,
+        max_generations=4,
         seed=7,
     )
 
