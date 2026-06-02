@@ -1,3 +1,5 @@
+import copy
+
 import pytest
 
 from evocore import DifferentialEvolutionOptimizer, EvaluationRecord, Gene, GeneSpace
@@ -76,3 +78,72 @@ def test_de_checkpoint_rejects_wrong_optimizer_identity() -> None:
 
     with pytest.raises(CheckpointError, match="optimizer_type"):
         restored.resume_ask_tell_checkpoint(snapshot)
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "event_index",
+        "generation",
+        "candidates_by_id",
+        "batches_by_id",
+        "target_candidate_ids",
+        "trial_target_slots",
+        "trial_target_candidate_ids",
+        "telemetry",
+        "events",
+    ],
+)
+def test_de_checkpoint_rejects_missing_required_payload_fields(field: str) -> None:
+    engine = DifferentialEvolutionOptimizer(_space(), population_size=6, seed=42)
+    engine.ask()
+    payload = engine.ask_tell_checkpoint().to_dict()
+    del payload["state"]["payload"][field]
+
+    restored = DifferentialEvolutionOptimizer(_space(), population_size=6, seed=42)
+
+    with pytest.raises(CheckpointError, match=field):
+        restored.resume_ask_tell_checkpoint(payload)
+
+
+def test_de_checkpoint_rejects_target_population_larger_than_config() -> None:
+    engine = DifferentialEvolutionOptimizer(_space(), population_size=6, seed=42)
+    candidates = engine.ask()
+    engine.tell(_records(candidates, [0, 1, 2, 3, 4, 5]))
+    payload = engine.ask_tell_checkpoint().to_dict()
+    payload["state"]["payload"]["target_candidate_ids"].append(candidates[0].candidate_id)
+
+    restored = DifferentialEvolutionOptimizer(_space(), population_size=6, seed=42)
+
+    with pytest.raises(CheckpointError, match="target_candidate_ids"):
+        restored.resume_ask_tell_checkpoint(payload)
+
+
+def test_de_checkpoint_rejects_trial_mapping_with_wrong_target_slot() -> None:
+    engine = DifferentialEvolutionOptimizer(_space(), population_size=6, seed=42)
+    candidates = engine.ask()
+    engine.tell(_records(candidates, [0, 1, 2, 3, 4, 5]))
+    trial = engine.ask()[0]
+    payload = engine.ask_tell_checkpoint().to_dict()
+    payload["state"]["payload"]["trial_target_slots"][trial.candidate_id] = 99
+
+    restored = DifferentialEvolutionOptimizer(_space(), population_size=6, seed=42)
+
+    with pytest.raises(CheckpointError, match="target slot"):
+        restored.resume_ask_tell_checkpoint(payload)
+
+
+def test_de_checkpoint_rejects_trial_mapping_with_mismatched_target_id() -> None:
+    engine = DifferentialEvolutionOptimizer(_space(), population_size=6, seed=42)
+    candidates = engine.ask()
+    engine.tell(_records(candidates, [0, 1, 2, 3, 4, 5]))
+    trial = engine.ask()[0]
+    payload = engine.ask_tell_checkpoint().to_dict()
+    payload["state"]["payload"]["trial_target_candidate_ids"][trial.candidate_id] = (
+        candidates[1].candidate_id
+    )
+
+    restored = DifferentialEvolutionOptimizer(_space(), population_size=6, seed=42)
+
+    with pytest.raises(CheckpointError, match="target_candidate_id"):
+        restored.resume_ask_tell_checkpoint(payload)
