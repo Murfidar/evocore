@@ -31,6 +31,7 @@ from evocore.optimizers.de.config import (
     de_runtime_hooks,
     validate_de_compatibility,
 )
+from evocore.optimizers.de.multi_run import DifferentialEvolutionMultiRunMixin
 from evocore.results import (
     EventHistory,
     GenerationHistory,
@@ -53,6 +54,7 @@ def _evaluate_one_candidate(
 class DifferentialEvolutionOptimizer(
     DifferentialEvolutionCheckpointingMixin,
     DifferentialEvolutionAskTellMixin,
+    DifferentialEvolutionMultiRunMixin,
 ):
     """Run Differential Evolution over a flat EvoCore GeneSpace."""
 
