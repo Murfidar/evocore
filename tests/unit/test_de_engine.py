@@ -122,6 +122,33 @@ def test_de_run_returns_optimization_result_with_events_and_generations() -> Non
     assert result.reproducibility.optimizer_type == "DifferentialEvolutionOptimizer"
 
 
+def test_de_run_is_reproducible_for_same_seed_and_config() -> None:
+    left = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=3,
+        seed=42,
+    )
+    right = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=3,
+        seed=42,
+    )
+
+    left_result = left.run(SphereEvaluator())
+    right_result = right.run(SphereEvaluator())
+
+    assert left_result.best_score == pytest.approx(right_result.best_score)
+    assert left_result.best_candidate_id == right_result.best_candidate_id
+    assert [record.best_score for record in left_result.generations] == [
+        record.best_score for record in right_result.generations
+    ]
+    assert [tuple(event.genes or ()) for event in left_result.events] == [
+        tuple(event.genes or ()) for event in right_result.events
+    ]
+
+
 def test_de_run_invokes_callbacks() -> None:
     callback = CountingCallback()
     engine = DifferentialEvolutionOptimizer(
