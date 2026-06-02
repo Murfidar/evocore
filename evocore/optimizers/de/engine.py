@@ -568,36 +568,58 @@ class DifferentialEvolutionOptimizer(
                 stop_reason = "callback"
                 break
 
-            remaining = (
-                resolved_policy.max_evaluations
-                - self.vnext_telemetry.candidates_full_evaluated
-            )
-            candidate_limit = min(
+            generation_fresh_count = 0
+            generation_had_final_candidates = False
+            generation_full_target = min(
                 self.population_size,
-                resolved_policy.batch_size or self.population_size,
+                resolved_policy.max_evaluations
+                - self.vnext_telemetry.candidates_full_evaluated,
             )
-            trial_count = self._candidate_count_for_remaining_budget(
-                candidate_limit=candidate_limit,
-                remaining=remaining,
-                policy=resolved_policy,
-            )
-            if trial_count <= 0:
-                stop_reason = "max_evaluations"
-                break
+            while generation_fresh_count < generation_full_target:
+                remaining = (
+                    resolved_policy.max_evaluations
+                    - self.vnext_telemetry.candidates_full_evaluated
+                )
+                target_remaining = generation_full_target - generation_fresh_count
+                candidate_limit = min(
+                    self.population_size,
+                    resolved_policy.batch_size or self.population_size,
+                )
+                trial_count = self._candidate_count_for_remaining_budget(
+                    candidate_limit=candidate_limit,
+                    remaining=min(remaining, target_remaining),
+                    policy=resolved_policy,
+                )
+                if trial_count <= 0:
+                    stop_reason = "max_evaluations"
+                    break
 
-            trials = self.ask(trial_count)
-            fresh_count, final_candidates, _ = self._evaluate_policy_stages(
-                trials,
-                evaluator,
-                scheduler,
-                resolved_policy,
-            )
-            n_evaluations += fresh_count
+                trials = self.ask(trial_count)
+                fresh_count, final_candidates, _ = self._evaluate_policy_stages(
+                    trials,
+                    evaluator,
+                    scheduler,
+                    resolved_policy,
+                )
+                n_evaluations += fresh_count
+                generation_fresh_count += fresh_count
+                generation_had_final_candidates = (
+                    generation_had_final_candidates or bool(final_candidates)
+                )
+                if (
+                    fresh_count == 0
+                    or self.vnext_telemetry.candidates_full_evaluated
+                    >= resolved_policy.max_evaluations
+                ):
+                    break
+
+            if stop_reason == "max_evaluations":
+                break
             self._append_generation_record(
                 generation_history,
                 gen=gen,
                 gen_start=gen_start,
-                n_evaluations=fresh_count,
+                n_evaluations=generation_fresh_count,
             )
 
             solutions = self._target_solutions()
@@ -613,13 +635,13 @@ class DifferentialEvolutionOptimizer(
                 stop_reason = "callback"
                 break
             if (
-                fresh_count > 0
+                generation_fresh_count > 0
                 and self.vnext_telemetry.candidates_full_evaluated
                 >= resolved_policy.max_evaluations
             ):
                 stop_reason = "max_evaluations"
                 break
-            if not final_candidates:
+            if not generation_had_final_candidates:
                 stop_reason = "max_evaluations"
                 break
 
