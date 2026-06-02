@@ -82,3 +82,51 @@ def test_de_tell_rejects_unknown_candidate() -> None:
                 )
             ]
         )
+
+
+def _trusted_engine() -> tuple[DifferentialEvolutionOptimizer, list]:
+    engine = DifferentialEvolutionOptimizer(_mixed_space(), population_size=6, seed=42)
+    candidates = engine.ask()
+    engine.tell(_records(candidates, [0.0, 1.0, 5.0, 2.0, 3.0, 4.0]))
+    return engine, candidates
+
+
+def test_de_trial_ask_returns_one_trial_per_target_with_mapping_metadata() -> None:
+    engine, targets = _trusted_engine()
+
+    trials = engine.ask()
+
+    assert len(trials) == 6
+    assert {trial.origin for trial in trials} == {"mutation"}
+    assert set(engine._trial_target_slots) == {trial.candidate_id for trial in trials}
+    assert set(engine._trial_target_candidate_ids) == {trial.candidate_id for trial in trials}
+    assert {trial.metadata["target_candidate_id"] for trial in trials} == {
+        target.candidate_id for target in targets
+    }
+    assert {trial.metadata["target_slot"] for trial in trials} == set(range(6))
+
+
+def test_de_trial_generation_is_deterministic_for_same_seed_and_state() -> None:
+    left, _ = _trusted_engine()
+    right, _ = _trusted_engine()
+
+    left_trials = left.ask()
+    right_trials = right.ask()
+
+    assert [trial.genes for trial in left_trials] == [trial.genes for trial in right_trials]
+    assert [trial.metadata["target_slot"] for trial in left_trials] == [
+        trial.metadata["target_slot"] for trial in right_trials
+    ]
+
+
+def test_de_trial_generation_preserves_gene_types_and_fixed_values() -> None:
+    engine, _ = _trusted_engine()
+
+    trials = engine.ask()
+
+    for trial in trials:
+        assert isinstance(trial.genes[0], float)
+        assert isinstance(trial.genes[1], int)
+        assert type(trial.genes[2]) is bool
+        assert trial.genes[3] == pytest.approx(1.5)
+        _mixed_space().validate_genes(trial.genes)

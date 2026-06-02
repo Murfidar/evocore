@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import random
 from collections.abc import Sequence
 
 from evocore import _core
@@ -84,6 +85,87 @@ class DifferentialEvolutionAskTellMixin:
             )
             for index, encoded in enumerate(encoded_population)
         ]
+
+    def _rng_for_trial(self, target_slot: int, op: int) -> random.Random:
+        seed = int(_core.py_derive_seed(self.seed, self.generation, target_slot, op))
+        return random.Random(seed)
+
+    def _donor_slots(self, target_slot: int) -> tuple[int, int, int]:
+        choices = [slot for slot in range(len(self._target_candidate_ids)) if slot != target_slot]
+        rng = self._rng_for_trial(target_slot, _core.OP_SELECTION)
+        selected = rng.sample(choices, 3)
+        return int(selected[0]), int(selected[1]), int(selected[2])
+
+    def _target_candidate(self, slot: int) -> Candidate:
+        return self._candidates_by_id[self._target_candidate_ids[slot]]
+
+    def _repair_gene_value(self, value: float, gene) -> float | int | bool:
+        if gene.kind == "bool":
+            return bool(value >= 0.5)
+        low = float(gene.low)
+        high = float(gene.high)
+        clamped = min(max(float(value), low), high)
+        if gene.kind == "int":
+            return int(round(clamped))
+        return float(clamped)
+
+    def _trial_values_for_slot(self, target_slot: int) -> list[float | int | bool]:
+        target = self._target_candidate(target_slot)
+        a_slot, b_slot, c_slot = self._donor_slots(target_slot)
+        donor_a = self._target_candidate(a_slot)
+        donor_b = self._target_candidate(b_slot)
+        donor_c = self._target_candidate(c_slot)
+        mask_rng = self._rng_for_trial(target_slot, _core.OP_CROSSOVER)
+        bool_rng = self._rng_for_trial(target_slot, _core.OP_MUTATION)
+        variable_indices = self.gene_space.variable_indices
+        forced_index = variable_indices[mask_rng.randrange(len(variable_indices))] if variable_indices else 0
+        values: list[float | int | bool] = []
+        for index, gene in enumerate(self.gene_space.genes):
+            if gene.is_fixed:
+                values.append(self._repair_gene_value(float(gene.low), gene))
+                continue
+            selected = index == forced_index or mask_rng.random() < self.crossover_rate
+            if not selected:
+                values.append(target.genes[index])
+                continue
+            if gene.kind == "bool":
+                trial_bool = bool(donor_a.genes[index])
+                if bool(donor_b.genes[index]) != bool(donor_c.genes[index]):
+                    if bool_rng.random() < min(1.0, self.mutation_factor):
+                        trial_bool = not trial_bool
+                values.append(trial_bool)
+                continue
+            mutant = (
+                float(donor_a.genes[index])
+                + self.mutation_factor
+                * (float(donor_b.genes[index]) - float(donor_c.genes[index]))
+            )
+            values.append(self._repair_gene_value(mutant, gene))
+        self.gene_space.validate_genes(values)
+        return values
+
+    def _trial_candidates(self, count: int, event_index: int, batch_id: str) -> list[Candidate]:
+        target_count = len(self._target_candidate_ids)
+        trial_count = min(count, target_count)
+        candidates: list[Candidate] = []
+        for target_slot in range(trial_count):
+            target = self._target_candidate(target_slot)
+            genes = self._trial_values_for_slot(target_slot)
+            candidate = self._candidate_from_genes(
+                genes,
+                batch_id=batch_id,
+                origin="mutation",
+                event_index=event_index,
+                candidate_index=target_slot,
+                metadata={
+                    "target_slot": target_slot,
+                    "target_candidate_id": target.candidate_id,
+                },
+            )
+            self._trial_target_slots[candidate.candidate_id] = target_slot
+            self._trial_target_candidate_ids[candidate.candidate_id] = target.candidate_id
+            candidates.append(candidate)
+        return candidates
 
     def _append_ask_events(self, candidates: Sequence[Candidate]) -> None:
         for candidate in candidates:
