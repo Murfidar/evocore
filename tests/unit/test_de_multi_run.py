@@ -81,6 +81,22 @@ def test_de_run_multiple_uses_deterministic_child_seeds() -> None:
     )
 
 
+def test_de_run_multiple_supports_non_default_strategy() -> None:
+    result = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=2,
+        strategy="rand2bin",
+        seed=7,
+    ).run_multiple(SphereEvaluator(), n_runs=3)
+
+    assert result.n_runs == 3
+    assert result.best is result.all_runs[0]
+    assert {
+        run.reproducibility.optimizer_config["parameters"]["strategy"] for run in result.all_runs
+    } == {"rand2bin"}
+
+
 def test_de_run_multiple_minimize_uses_direction_aware_child_best_scores() -> None:
     result = DifferentialEvolutionOptimizer(
         GeneSpace.uniform(-2.0, 2.0, 3),

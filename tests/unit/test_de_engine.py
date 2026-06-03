@@ -74,8 +74,7 @@ def test_de_rejects_unknown_strategy_with_supported_names() -> None:
     with pytest.raises(
         ConfigurationError,
         match=(
-            "strategy must be one of 'rand1bin', 'best1bin', "
-            "'rand2bin', 'current-to-best1bin'"
+            "strategy must be one of 'rand1bin', 'best1bin', 'rand2bin', 'current-to-best1bin'"
         ),
     ):
         DifferentialEvolutionOptimizer(_space(), population_size=8, strategy="jade")
@@ -314,6 +313,24 @@ def test_de_run_returns_optimization_result_with_events_and_generations() -> Non
     assert len(result.events) > 0
     assert result.reproducibility is not None
     assert result.reproducibility.optimizer_type == "DifferentialEvolutionOptimizer"
+
+
+@pytest.mark.parametrize(
+    "strategy",
+    ["best1bin", "rand2bin", "current-to-best1bin"],
+)
+def test_de_run_supports_non_default_stateless_strategy(strategy: str) -> None:
+    result = DifferentialEvolutionOptimizer(
+        _space(),
+        population_size=6,
+        max_generations=2,
+        strategy=strategy,
+        seed=42,
+    ).run(SphereEvaluator())
+
+    assert result.optimizer_type == "DifferentialEvolutionOptimizer"
+    assert result.reproducibility.optimizer_config["parameters"]["strategy"] == strategy
+    assert result.final_solutions
 
 
 def test_de_run_is_reproducible_for_same_seed_and_config() -> None:
