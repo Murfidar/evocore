@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import random
 from collections.abc import Sequence
 
 from evocore import _core
@@ -18,6 +19,7 @@ from evocore.lifecycle import (
 )
 from evocore.optimizers.de.strategies import (
     TrialContext,
+    TrialProposal,
     repair_de_gene_value,
     rng_for_de_trial,
     trial_proposal_for_strategy,
@@ -91,7 +93,7 @@ class DifferentialEvolutionAskTellMixin:
             for index, encoded in enumerate(encoded_population)
         ]
 
-    def _rng_for_trial(self, target_slot: int, op: int):
+    def _rng_for_trial(self, target_slot: int, op: int) -> random.Random:
         return rng_for_de_trial(self.seed, self.generation, target_slot, op)
 
     def _target_candidate(self, slot: int) -> Candidate:
@@ -102,11 +104,10 @@ class DifferentialEvolutionAskTellMixin:
 
     def _target_population(self) -> list[Candidate]:
         return [
-            self._candidates_by_id[candidate_id]
-            for candidate_id in self._target_candidate_ids
+            self._candidates_by_id[candidate_id] for candidate_id in self._target_candidate_ids
         ]
 
-    def _trial_proposal_for_slot(self, target_slot: int):
+    def _trial_proposal_for_slot(self, target_slot: int) -> TrialProposal:
         return trial_proposal_for_strategy(
             TrialContext(
                 strategy_name=self.strategy,

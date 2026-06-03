@@ -52,13 +52,11 @@ SUPPORTED_DE_STRATEGIES: dict[str, DEStrategySpec] = {
 
 def supported_strategy_names():
     """Return strategy names in a stable display order."""
-
     return tuple(SUPPORTED_DE_STRATEGIES)
 
 
 def strategy_spec_for(strategy: str) -> DEStrategySpec:
     """Return the internal strategy spec or raise a user-facing config error."""
-
     try:
         return SUPPORTED_DE_STRATEGIES[str(strategy)]
     except KeyError as exc:
@@ -70,7 +68,6 @@ def strategy_spec_for(strategy: str) -> DEStrategySpec:
 
 def validate_strategy_population_size(strategy: str, population_size: int) -> None:
     """Validate population size against the selected strategy."""
-
     spec = strategy_spec_for(strategy)
     if int(population_size) < spec.min_population_size:
         raise ConfigurationError(
@@ -81,14 +78,12 @@ def validate_strategy_population_size(strategy: str, population_size: int) -> No
 
 def rng_for_de_trial(seed: int, generation: int, target_slot: int, op: int) -> random.Random:
     """Return deterministic per-trial RNG matching the original DE implementation."""
-
     derived = int(_core.py_derive_seed(int(seed), int(generation), int(target_slot), int(op)))
     return random.Random(derived)  # noqa: S311 - deterministic optimizer sampling.
 
 
 def repair_de_gene_value(value: float, gene) -> float | int | bool:
     """Repair one DE gene value according to the mixed GeneSpace contract."""
-
     if gene.kind == "bool":
         return bool(float(value) >= 0.5)
     low = float(gene.low)
@@ -105,7 +100,9 @@ def _target_candidate(context: TrialContext) -> Candidate:
 
 def _rand1bin_donor_slots(context: TrialContext) -> tuple[int, int, int]:
     choices = [slot for slot in range(len(context.population)) if slot != context.target_slot]
-    rng = rng_for_de_trial(context.seed, context.generation, context.target_slot, _core.OP_SELECTION)
+    rng = rng_for_de_trial(
+        context.seed, context.generation, context.target_slot, _core.OP_SELECTION
+    )
     selected = rng.sample(choices, 3)
     return int(selected[0]), int(selected[1]), int(selected[2])
 
@@ -167,7 +164,6 @@ def _rand1bin_trial(context: TrialContext) -> TrialProposal:
 
 def trial_proposal_for_strategy(context: TrialContext) -> TrialProposal:
     """Build a trial proposal for the selected internal strategy."""
-
     spec = strategy_spec_for(context.strategy_name)
     validate_strategy_population_size(spec.name, len(context.population))
     if spec.name == "rand1bin":
@@ -176,8 +172,8 @@ def trial_proposal_for_strategy(context: TrialContext) -> TrialProposal:
 
 
 __all__ = [
-    "DEStrategySpec",
     "SUPPORTED_DE_STRATEGIES",
+    "DEStrategySpec",
     "TrialContext",
     "TrialProposal",
     "repair_de_gene_value",
