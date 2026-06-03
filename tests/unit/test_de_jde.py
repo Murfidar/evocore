@@ -3,8 +3,10 @@ import copy
 import pytest
 
 from evocore import (
+    BudgetPolicy,
     DifferentialEvolutionOptimizer,
     EvaluationRecord,
+    EvaluationStage,
     Gene,
     GeneSpace,
 )
@@ -212,3 +214,48 @@ def test_jde_checkpoint_rejects_missing_strategy_state() -> None:
 
     with pytest.raises(CheckpointError, match="strategy_state"):
         restored.resume_ask_tell_checkpoint(payload)
+
+
+class TwoStageSphere:
+    def evaluate(self, candidates, context):
+        assert context.stage is not None
+        scale = 0.5 if context.stage.name == "cheap" else 1.0
+        return [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=-scale * sum(float(value) ** 2 for value in candidate.genes),
+                confidence=context.stage.confidence,
+                stage=context.stage.name,
+                cost=context.stage.budget,
+            )
+            for candidate in candidates
+        ]
+
+
+def test_jde_policy_run_keeps_strategy_state_consistent() -> None:
+    policy = BudgetPolicy(
+        stages=[
+            EvaluationStage("cheap", budget=0.1, promote_fraction=0.5, confidence="partial"),
+            EvaluationStage("full", budget=1.0, promote_fraction=1.0, confidence="trusted_full"),
+        ],
+        max_evaluations=18,
+        batch_size=6,
+        exploration_fraction=0.0,
+        audit_fraction=0.0,
+    )
+    optimizer = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=3,
+        strategy="jde-rand1bin",
+        seed=42,
+    )
+
+    result = optimizer.run(TwoStageSphere(), policy=policy)
+
+    assert result.optimizer_type == "DifferentialEvolutionOptimizer"
+    assert result.reproducibility.optimizer_config["parameters"]["strategy"] == "jde-rand1bin"
+    assert len(optimizer._de_strategy_state.f_by_slot) == 6
+    assert len(optimizer._de_strategy_state.cr_by_slot) == 6
+    assert not optimizer._de_strategy_state.pending_trial_params
