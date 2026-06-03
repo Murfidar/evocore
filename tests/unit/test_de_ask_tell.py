@@ -119,6 +119,30 @@ def test_de_trial_generation_is_deterministic_for_same_seed_and_state() -> None:
     ]
 
 
+def test_de_rand1bin_trial_generation_matches_locked_fixture() -> None:
+    engine, _ = _trusted_engine()
+
+    trials = engine.ask()
+
+    assert [trial.candidate_id for trial in trials] == [
+        "c-2ecb9a886a1c5508197db432ebefc5b1",
+        "c-f61cb32190a1eb220d5de69d29a9ecd7",
+        "c-f53cc27736ff8d1a0f22af8298c8e374",
+        "c-19f55af7a3d037b865a01a90e8d00068",
+        "c-3df85dda8060132d4d1c1ffd070710eb",
+        "c-1520ec64a9be278b82b86b1858f7ee28",
+    ]
+    assert [trial.genes for trial in trials] == [
+        [pytest.approx(1.5811814881513984), 2, True, pytest.approx(1.5)],
+        [pytest.approx(3.425316280812999), 2, False, pytest.approx(1.5)],
+        [pytest.approx(3.675373942863314), 8, False, pytest.approx(1.5)],
+        [pytest.approx(-3.555239267967455), 15, False, pytest.approx(1.5)],
+        [pytest.approx(-3.555239267967455), 9, False, pytest.approx(1.5)],
+        [pytest.approx(-2.116060077343211), 20, True, pytest.approx(1.5)],
+    ]
+    assert [trial.metadata["target_slot"] for trial in trials] == [0, 1, 2, 3, 4, 5]
+
+
 def test_de_trial_generation_preserves_gene_types_and_fixed_values() -> None:
     engine, _ = _trusted_engine()
 
