@@ -16,6 +16,10 @@ from evocore.lifecycle import (
     telemetry_from_checkpoint,
     telemetry_to_checkpoint,
 )
+from evocore.optimizers.de.adaptive import (
+    strategy_state_from_checkpoint,
+    strategy_state_to_checkpoint,
+)
 from evocore.results import CheckpointSnapshot, validate_checkpoint_identity
 from evocore.results import load_checkpoint as load_checkpoint_payload
 from evocore.results import save_checkpoint as save_checkpoint_payload
@@ -107,6 +111,7 @@ class DifferentialEvolutionCheckpointingMixin:
             "best_candidate_id": best_candidate_id,
             "telemetry": telemetry_to_checkpoint(self.vnext_telemetry),
             "events": event_history_to_checkpoint(self.events),
+            "strategy_state": strategy_state_to_checkpoint(self._de_strategy_state),
         }
         return CheckpointSnapshot(
             optimizer_type="DifferentialEvolutionOptimizer",
@@ -258,6 +263,11 @@ class DifferentialEvolutionCheckpointingMixin:
         )
         self._event_index = _required_int_payload(state_payload, "event_index")
         self.generation = _required_int_payload(state_payload, "generation")
+        self._de_strategy_state = strategy_state_from_checkpoint(
+            strategy=self.strategy,
+            payload=state_payload.get("strategy_state"),
+            population_size=self.population_size,
+        )
 
     def resume_ask_tell_checkpoint(self, checkpoint: str | os.PathLike[str] | Mapping[str, Any]):
         """Resume DE ask/tell runtime state from a stable checkpoint."""
