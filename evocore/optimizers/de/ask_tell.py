@@ -136,6 +136,14 @@ class DifferentialEvolutionAskTellMixin:
             ),
         )
 
+    def _complete_pending_strategy_trial(self, candidate_id: str, *, accepted: bool) -> None:
+        if isinstance(self._de_strategy_state, JDEAdaptiveState):
+            self._de_strategy_state.complete_pending(candidate_id, accepted=accepted)
+
+    def _discard_pending_strategy_trial(self, candidate_id: str) -> None:
+        if isinstance(self._de_strategy_state, JDEAdaptiveState):
+            self._de_strategy_state.discard_pending(candidate_id)
+
     def _trial_candidates(self, count: int, event_index: int, batch_id: str) -> list[Candidate]:
         target_count = len(self._target_candidate_ids)
         trial_count = min(count, target_count)
@@ -314,6 +322,10 @@ class DifferentialEvolutionAskTellMixin:
             target_candidate_id=target_candidate_id,
             target_slot=target_slot,
         )
+        self._complete_pending_strategy_trial(
+            candidate.candidate_id,
+            accepted=accepted,
+        )
         self._append_tell_event(
             candidate,
             record,
@@ -362,6 +374,8 @@ class DifferentialEvolutionAskTellMixin:
                     decision = self._apply_trial_replacement(candidate, record, batch)
                     acceptance_decisions.append(decision)
             else:
+                if record.confidence == "rejected":
+                    self._discard_pending_strategy_trial(candidate.candidate_id)
                 self._append_tell_event(
                     candidate,
                     record,
