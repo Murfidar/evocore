@@ -17,6 +17,7 @@ from evocore.lifecycle import (
     score_for_direction,
     solution_to_candidate,
 )
+from evocore.optimizers.de.adaptive import JDEAdaptiveState, JDETrialParameters
 from evocore.optimizers.de.strategies import (
     TrialContext,
     TrialProposal,
@@ -119,7 +120,20 @@ class DifferentialEvolutionAskTellMixin:
                 mutation_factor=self.mutation_factor,
                 crossover_rate=self.crossover_rate,
                 direction=self.direction,
+                strategy_state=self._de_strategy_state,
             )
+        )
+
+    def _record_pending_strategy_trial(self, candidate: Candidate) -> None:
+        if not isinstance(self._de_strategy_state, JDEAdaptiveState):
+            return
+        self._de_strategy_state.register_pending(
+            candidate.candidate_id,
+            JDETrialParameters(
+                target_slot=int(candidate.metadata["adaptive_slot"]),
+                mutation_factor=float(candidate.metadata["mutation_factor"]),
+                crossover_rate=float(candidate.metadata["crossover_rate"]),
+            ),
         )
 
     def _trial_candidates(self, count: int, event_index: int, batch_id: str) -> list[Candidate]:
@@ -142,6 +156,7 @@ class DifferentialEvolutionAskTellMixin:
             )
             self._trial_target_slots[candidate.candidate_id] = target_slot
             self._trial_target_candidate_ids[candidate.candidate_id] = target.candidate_id
+            self._record_pending_strategy_trial(candidate)
             candidates.append(candidate)
         return candidates
 

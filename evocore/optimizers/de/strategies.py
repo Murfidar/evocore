@@ -8,6 +8,7 @@ from typing import Any
 from evocore import _core
 from evocore.core.errors import ConfigurationError
 from evocore.lifecycle import Candidate
+from evocore.optimizers.de.adaptive import JDEAdaptiveState
 from evocore.search_space import GeneSpace
 
 
@@ -53,6 +54,12 @@ SUPPORTED_DE_STRATEGIES: dict[str, DEStrategySpec] = {
     "current-to-best1bin": DEStrategySpec(
         name="current-to-best1bin",
         min_population_size=4,
+    ),
+    "jde-rand1bin": DEStrategySpec(
+        name="jde-rand1bin",
+        min_population_size=4,
+        is_adaptive=True,
+        checkpoint_state_schema=1,
     ),
 }
 
@@ -275,6 +282,40 @@ def _rand1bin_trial(context: TrialContext) -> TrialProposal:
     )
 
 
+def _jde_rand1bin_trial(context: TrialContext) -> TrialProposal:
+    if not isinstance(context.strategy_state, JDEAdaptiveState):
+        raise ConfigurationError("strategy_state is required for strategy='jde-rand1bin'.")
+    params = context.strategy_state.propose_parameters(
+        seed=context.seed,
+        generation=context.generation,
+        target_slot=context.target_slot,
+    )
+    proposal = _rand1bin_trial(
+        TrialContext(
+            strategy_name="rand1bin",
+            gene_space=context.gene_space,
+            population=context.population,
+            target_slot=context.target_slot,
+            generation=context.generation,
+            seed=context.seed,
+            mutation_factor=params.mutation_factor,
+            crossover_rate=params.crossover_rate,
+            direction=context.direction,
+            strategy_state=None,
+        )
+    )
+    metadata = dict(proposal.metadata)
+    metadata.update(
+        {
+            "strategy": "jde-rand1bin",
+            "adaptive_slot": context.target_slot,
+            "mutation_factor": params.mutation_factor,
+            "crossover_rate": params.crossover_rate,
+        }
+    )
+    return TrialProposal(genes=proposal.genes, metadata=metadata)
+
+
 def _best1bin_trial(context: TrialContext) -> TrialProposal:
     best_slot = _best_slot(context)
     b_slot, c_slot = _sample_slots(
@@ -334,6 +375,8 @@ def trial_proposal_for_strategy(context: TrialContext) -> TrialProposal:
         return _rand2bin_trial(context)
     if spec.name == "current-to-best1bin":
         return _current_to_best1bin_trial(context)
+    if spec.name == "jde-rand1bin":
+        return _jde_rand1bin_trial(context)
     raise ConfigurationError(f"Unsupported DE strategy implementation: {spec.name!r}.")
 
 

@@ -28,6 +28,7 @@ from evocore.lifecycle import (
     is_state_update_confidence,
 )
 from evocore.optimizers.config import OptimizerConfig
+from evocore.optimizers.de.adaptive import initial_strategy_state
 from evocore.optimizers.de.ask_tell import DifferentialEvolutionAskTellMixin
 from evocore.optimizers.de.checkpointing import DifferentialEvolutionCheckpointingMixin
 from evocore.optimizers.de.config import (
@@ -119,6 +120,12 @@ class DifferentialEvolutionOptimizer(
         self.vnext_telemetry = OptimizationTelemetry()
         self.best_candidate: Candidate | None = None
         self.events = EventHistory()
+        self._de_strategy_state = initial_strategy_state(
+            strategy=self.strategy,
+            population_size=self.population_size,
+            mutation_factor=self.mutation_factor,
+            crossover_rate=self.crossover_rate,
+        )
 
     def _trusted_count(self) -> int:
         return len(self._target_candidate_ids)

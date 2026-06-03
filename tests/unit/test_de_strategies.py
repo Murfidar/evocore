@@ -67,7 +67,8 @@ def test_strategy_spec_for_rejects_unknown_strategy() -> None:
     with pytest.raises(
         ConfigurationError,
         match=(
-            "strategy must be one of 'rand1bin', 'best1bin', 'rand2bin', 'current-to-best1bin'"
+            "strategy must be one of 'rand1bin', 'best1bin', "
+            "'rand2bin', 'current-to-best1bin', 'jde-rand1bin'"
         ),
     ):
         strategy_spec_for("jade")

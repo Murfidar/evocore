@@ -74,7 +74,8 @@ def test_de_rejects_unknown_strategy_with_supported_names() -> None:
     with pytest.raises(
         ConfigurationError,
         match=(
-            "strategy must be one of 'rand1bin', 'best1bin', 'rand2bin', 'current-to-best1bin'"
+            "strategy must be one of 'rand1bin', 'best1bin', "
+            "'rand2bin', 'current-to-best1bin', 'jde-rand1bin'"
         ),
     ):
         DifferentialEvolutionOptimizer(_space(), population_size=8, strategy="jade")
@@ -126,6 +127,31 @@ def test_de_config_hash_changes_when_strategy_changes() -> None:
     rand2 = DifferentialEvolutionOptimizer(_space(), population_size=6, strategy="rand2bin")
 
     assert rand1.config_hash() != rand2.config_hash()
+
+
+def test_de_accepts_jde_rand1bin_strategy() -> None:
+    engine = DifferentialEvolutionOptimizer(
+        _space(),
+        population_size=6,
+        strategy="jde-rand1bin",
+        mutation_factor=0.5,
+        crossover_rate=0.9,
+        seed=42,
+    )
+
+    assert engine.strategy == "jde-rand1bin"
+    assert engine.config_signature()["parameters"]["strategy"] == "jde-rand1bin"
+    assert engine.config_signature()["components"]["strategy"]["type"] == "jde-rand1bin"
+
+
+def test_de_jde_strategy_requires_rand1bin_population_size() -> None:
+    with pytest.raises(ConfigurationError, match="at least 4"):
+        DifferentialEvolutionOptimizer(
+            _space(),
+            population_size=3,
+            strategy="jde-rand1bin",
+            seed=42,
+        )
 
 
 class SphereEvaluator:
