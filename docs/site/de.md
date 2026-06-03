@@ -95,6 +95,30 @@ CMA-ES when the space is continuous and covariance adaptation is the main
 advantage. DE currently supports flat `float`, `int`, and `bool` `GeneSpace`
 values; CMA-ES continues to be the more specialized continuous optimizer.
 
+## Strategies
+
+`DifferentialEvolutionOptimizer` supports these built-in stateless strategies:
+
+| Strategy | Use when |
+| --- | --- |
+| `rand1bin` | You want the stable default with broad exploration. |
+| `best1bin` | You want stronger pull toward the best current target. |
+| `rand2bin` | You want broader differential variation and can afford `population_size >= 6`. |
+| `current-to-best1bin` | You want each target to move toward the best target while retaining one difference vector. |
+
+```python
+optimizer = DifferentialEvolutionOptimizer(
+    GeneSpace.uniform(-5.0, 5.0, 4),
+    population_size=12,
+    strategy="rand2bin",
+    seed=42,
+)
+```
+
+All strategies use binomial crossover and the same mixed `float`/`int`/`bool`
+repair behavior. The selected strategy is included in the optimizer config
+signature and reproducibility metadata.
+
 ## Reproducibility
 
 DE candidate IDs, batch IDs, initialization samples, trial target mappings, and
@@ -184,7 +208,8 @@ best-first using the optimizer direction.
 
 ## Current Limitations
 
-DE does not yet expose custom strategy plugins or a Rust-backed variation
-kernel. Those remain future feature and performance tracks. Policy-driven
-mid-loop checkpoint resume is also outside checkpoint v1; use manual ask/tell
-checkpoints when evaluation work must survive process restarts.
+DE does not yet expose custom strategy plugins, adaptive strategies, or a
+Rust-backed variation kernel. Those remain future feature and performance
+tracks. Policy-driven mid-loop checkpoint resume is also outside checkpoint v1;
+use manual ask/tell checkpoints when evaluation work must survive process
+restarts.

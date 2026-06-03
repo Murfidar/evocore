@@ -14,6 +14,9 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Added `DifferentialEvolutionOptimizer.run_multiple(...)` and policy-driven
   `DifferentialEvolutionOptimizer.run(evaluator, policy=...)` with delayed
   target-slot replacement until final state-eligible budget stages.
+- Added built-in Differential Evolution strategies `best1bin`, `rand2bin`, and
+  `current-to-best1bin` with strategy-aware validation and reproducibility
+  metadata.
 - Added committed Differential Evolution v0.9.0 golden checkpoint fixtures with
   manifest hashes and deterministic continuation coverage.
 - Documented Differential Evolution as a stable ask/tell checkpoint surface,
