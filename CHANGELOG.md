@@ -11,6 +11,9 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Added `DifferentialEvolutionOptimizer` with mixed bool/numeric gene support,
   ask/tell replacement decisions, stable ask/tell checkpoints, and synchronous
   evaluator-driven runs.
+- Added `DifferentialEvolutionOptimizer.run_multiple(...)` and policy-driven
+  `DifferentialEvolutionOptimizer.run(evaluator, policy=...)` with delayed
+  target-slot replacement until final state-eligible budget stages.
 - Added committed Differential Evolution v0.9.0 golden checkpoint fixtures with
   manifest hashes and deterministic continuation coverage.
 - Documented Differential Evolution as a stable ask/tell checkpoint surface,

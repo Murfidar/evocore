@@ -70,8 +70,8 @@ stable JSON checkpoint format is the forward contract.
 ## Unsupported Checkpoint Surfaces
 
 Policy-driven `run(evaluator, policy=...)` mid-loop resume is not part of
-checkpoint v1. `EventHistory` remains audit data and is not replayed to rebuild
-optimizer state.
+checkpoint v1 for GA or DE. `EventHistory` remains audit data and is not
+replayed to rebuild optimizer state.
 
 CMA-ES generation-loop resume and policy-driven `run(evaluator, policy=...)`
 resume remain unsupported in checkpoint v1. Manual CMA-ES ask/tell checkpoints
@@ -190,3 +190,8 @@ restored.tell(records)
 DE checkpoint identity validation covers optimizer type, seed, direction,
 gene-space hash, optimizer config hash, checkpoint state kind, schema version,
 and trial target mappings.
+
+For synchronous DE `run(...)`, callbacks can observe generation start,
+generation end, and run end. Manual ask/tell checkpoints remain the stable DE
+resume path; `CheckpointCallback` is not advertised as a DE policy-run resume
+mechanism.
