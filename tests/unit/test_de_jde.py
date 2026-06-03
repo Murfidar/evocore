@@ -216,6 +216,100 @@ def test_jde_checkpoint_rejects_missing_strategy_state() -> None:
         restored.resume_ask_tell_checkpoint(payload)
 
 
+def _pending_jde_checkpoint_payload():
+    engine = _trusted_jde_engine()
+    trials = engine.ask()
+    return engine.ask_tell_checkpoint().to_dict(), trials
+
+
+def _new_jde_optimizer() -> DifferentialEvolutionOptimizer:
+    return DifferentialEvolutionOptimizer(
+        _space(),
+        population_size=6,
+        strategy="jde-rand1bin",
+        mutation_factor=0.5,
+        crossover_rate=0.9,
+        seed=42,
+    )
+
+
+def test_jde_checkpoint_rejects_missing_pending_strategy_params() -> None:
+    payload, trials = _pending_jde_checkpoint_payload()
+    del payload["state"]["payload"]["strategy_state"]["pending_trial_params"][
+        trials[0].candidate_id
+    ]
+
+    with pytest.raises(CheckpointError, match="pending_trial_params"):
+        _new_jde_optimizer().resume_ask_tell_checkpoint(payload)
+
+
+def test_jde_checkpoint_rejects_unknown_pending_strategy_params() -> None:
+    payload, _ = _pending_jde_checkpoint_payload()
+    pending = payload["state"]["payload"]["strategy_state"]["pending_trial_params"]
+    pending["c-unknown"] = {
+        "target_slot": 0,
+        "mutation_factor": 0.5,
+        "crossover_rate": 0.9,
+    }
+
+    with pytest.raises(CheckpointError, match="pending_trial_params"):
+        _new_jde_optimizer().resume_ask_tell_checkpoint(payload)
+
+
+def test_jde_checkpoint_rejects_pending_strategy_slot_mismatch() -> None:
+    payload, trials = _pending_jde_checkpoint_payload()
+    payload["state"]["payload"]["strategy_state"]["pending_trial_params"][trials[0].candidate_id][
+        "target_slot"
+    ] = 1
+
+    with pytest.raises(CheckpointError, match="target_slot"):
+        _new_jde_optimizer().resume_ask_tell_checkpoint(payload)
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "message"),
+    [
+        ("mutation_factor", float("nan"), "mutation_factor"),
+        ("mutation_factor", -0.1, "mutation_factor"),
+        ("crossover_rate", float("inf"), "crossover_rate"),
+        ("crossover_rate", 1.1, "crossover_rate"),
+    ],
+)
+def test_jde_checkpoint_rejects_invalid_pending_strategy_parameters(
+    key: str,
+    value: float,
+    message: str,
+) -> None:
+    payload, trials = _pending_jde_checkpoint_payload()
+    payload["state"]["payload"]["strategy_state"]["pending_trial_params"][trials[0].candidate_id][
+        key
+    ] = value
+
+    with pytest.raises(CheckpointError, match=message):
+        _new_jde_optimizer().resume_ask_tell_checkpoint(payload)
+
+
+@pytest.mark.parametrize(
+    ("key", "value", "message"),
+    [
+        ("f_by_slot", float("nan"), "f_by_slot"),
+        ("f_by_slot", -0.1, "f_by_slot"),
+        ("cr_by_slot", float("inf"), "cr_by_slot"),
+        ("cr_by_slot", 1.1, "cr_by_slot"),
+    ],
+)
+def test_jde_checkpoint_rejects_invalid_committed_strategy_parameters(
+    key: str,
+    value: float,
+    message: str,
+) -> None:
+    payload, _ = _pending_jde_checkpoint_payload()
+    payload["state"]["payload"]["strategy_state"][key][0] = value
+
+    with pytest.raises(CheckpointError, match=message):
+        _new_jde_optimizer().resume_ask_tell_checkpoint(payload)
+
+
 class TwoStageSphere:
     def evaluate(self, candidates, context):
         assert context.stage is not None

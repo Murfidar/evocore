@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import random
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -35,7 +36,7 @@ class JDETrialParameters:
     def from_mapping(cls, payload: Mapping[str, Any]) -> JDETrialParameters:
         """Load pending trial parameters from checkpoint payload data."""
         try:
-            return cls(
+            params = cls(
                 target_slot=int(payload["target_slot"]),
                 mutation_factor=float(payload["mutation_factor"]),
                 crossover_rate=float(payload["crossover_rate"]),
@@ -44,6 +45,15 @@ class JDETrialParameters:
             raise CheckpointError(
                 "checkpoint state.payload.strategy_state pending trial params are invalid."
             ) from exc
+        _validate_mutation_factor(
+            params.mutation_factor,
+            "checkpoint state.payload.strategy_state.pending_trial_params.mutation_factor",
+        )
+        _validate_crossover_rate(
+            params.crossover_rate,
+            "checkpoint state.payload.strategy_state.pending_trial_params.crossover_rate",
+        )
+        return params
 
 
 @dataclass
@@ -126,6 +136,7 @@ class JDEAdaptiveState:
         payload: Mapping[str, Any],
         *,
         population_size: int,
+        expected_pending_slots: Mapping[str, int] | None = None,
     ) -> JDEAdaptiveState:
         """Restore and validate jDE state from a checkpoint payload."""
         if payload.get("strategy") != "jde-rand1bin":
@@ -142,18 +153,29 @@ class JDEAdaptiveState:
             raise CheckpointError(
                 "checkpoint state.payload.strategy_state slot arrays must match population_size."
             )
+        for value in f_by_slot:
+            _validate_mutation_factor(value, "checkpoint state.payload.strategy_state.f_by_slot")
+        for value in cr_by_slot:
+            _validate_crossover_rate(value, "checkpoint state.payload.strategy_state.cr_by_slot")
         raw_pending = payload.get("pending_trial_params")
         if not isinstance(raw_pending, Mapping):
             raise CheckpointError(
                 "checkpoint state.payload.strategy_state.pending_trial_params must be an object."
             )
+        pending_trial_params = {
+            str(candidate_id): JDETrialParameters.from_mapping(params)
+            for candidate_id, params in raw_pending.items()
+        }
+        if expected_pending_slots is not None:
+            _validate_pending_trial_params(
+                pending_trial_params,
+                expected_pending_slots=expected_pending_slots,
+                population_size=population_size,
+            )
         return cls(
             f_by_slot=f_by_slot,
             cr_by_slot=cr_by_slot,
-            pending_trial_params={
-                str(candidate_id): JDETrialParameters.from_mapping(params)
-                for candidate_id, params in raw_pending.items()
-            },
+            pending_trial_params=pending_trial_params,
         )
 
 
@@ -179,6 +201,43 @@ def _float_list(payload: Mapping[str, Any], key: str) -> list[float]:
         raise CheckpointError(
             f"checkpoint state.payload.strategy_state.{key} must contain floats."
         ) from exc
+
+
+def _validate_mutation_factor(value: float, context: str) -> None:
+    if not math.isfinite(value) or value < 0.0:
+        raise CheckpointError(f"{context} must be finite and >= 0.")
+
+
+def _validate_crossover_rate(value: float, context: str) -> None:
+    if not math.isfinite(value) or not 0.0 <= value <= 1.0:
+        raise CheckpointError(f"{context} must be finite and in [0, 1].")
+
+
+def _validate_pending_trial_params(
+    pending_trial_params: Mapping[str, JDETrialParameters],
+    *,
+    expected_pending_slots: Mapping[str, int],
+    population_size: int,
+) -> None:
+    actual_ids = set(pending_trial_params)
+    expected_ids = {str(candidate_id) for candidate_id in expected_pending_slots}
+    if actual_ids != expected_ids:
+        raise CheckpointError(
+            "checkpoint state.payload.strategy_state.pending_trial_params must match "
+            "pending trial candidates."
+        )
+    for candidate_id, expected_slot in expected_pending_slots.items():
+        params = pending_trial_params[str(candidate_id)]
+        if params.target_slot != int(expected_slot):
+            raise CheckpointError(
+                "checkpoint state.payload.strategy_state.pending_trial_params target_slot "
+                "must match trial_target_slots."
+            )
+        if params.target_slot < 0 or params.target_slot >= population_size:
+            raise CheckpointError(
+                "checkpoint state.payload.strategy_state.pending_trial_params target_slot "
+                "is outside population_size."
+            )
 
 
 def initial_strategy_state(
@@ -210,6 +269,7 @@ def strategy_state_from_checkpoint(
     strategy: str,
     payload: object,
     population_size: int,
+    expected_pending_slots: Mapping[str, int] | None = None,
 ) -> JDEAdaptiveState | None:
     """Restore adaptive strategy state for a checkpointed optimizer."""
     if strategy != "jde-rand1bin":
@@ -218,7 +278,11 @@ def strategy_state_from_checkpoint(
         raise CheckpointError(
             "strategy_state is required for strategy='jde-rand1bin' checkpoints."
         )
-    return JDEAdaptiveState.from_checkpoint(payload, population_size=population_size)
+    return JDEAdaptiveState.from_checkpoint(
+        payload,
+        population_size=population_size,
+        expected_pending_slots=expected_pending_slots,
+    )
 
 
 __all__ = [

@@ -267,6 +267,11 @@ class DifferentialEvolutionCheckpointingMixin:
             strategy=self.strategy,
             payload=state_payload.get("strategy_state"),
             population_size=self.population_size,
+            expected_pending_slots={
+                candidate_id: slot
+                for candidate_id, slot in trial_target_slots.items()
+                if candidate_id not in terminal_record_candidate_ids
+            },
         )
 
     def resume_ask_tell_checkpoint(self, checkpoint: str | os.PathLike[str] | Mapping[str, Any]):
