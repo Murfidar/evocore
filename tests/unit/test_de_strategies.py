@@ -51,8 +51,14 @@ def test_strategy_spec_for_returns_rand1bin_contract() -> None:
 
 
 def test_strategy_spec_for_rejects_unknown_strategy() -> None:
-    with pytest.raises(ConfigurationError, match="strategy must be one of 'rand1bin'"):
-        strategy_spec_for("best1bin")
+    with pytest.raises(
+        ConfigurationError,
+        match=(
+            "strategy must be one of 'rand1bin', 'best1bin', "
+            "'rand2bin', 'current-to-best1bin'"
+        ),
+    ):
+        strategy_spec_for("jade")
 
 
 def test_repair_de_gene_value_preserves_mixed_gene_contract() -> None:

@@ -71,8 +71,62 @@ def test_de_rejects_invalid_configuration(kwargs, message) -> None:
 
 
 def test_de_rejects_unknown_strategy_with_supported_names() -> None:
-    with pytest.raises(ConfigurationError, match="strategy must be one of 'rand1bin'"):
-        DifferentialEvolutionOptimizer(_space(), population_size=8, strategy="best1bin")
+    with pytest.raises(
+        ConfigurationError,
+        match=(
+            "strategy must be one of 'rand1bin', 'best1bin', "
+            "'rand2bin', 'current-to-best1bin'"
+        ),
+    ):
+        DifferentialEvolutionOptimizer(_space(), population_size=8, strategy="jade")
+
+
+@pytest.mark.parametrize(
+    "strategy",
+    ["rand1bin", "best1bin", "rand2bin", "current-to-best1bin"],
+)
+def test_de_accepts_supported_stateless_strategies(strategy: str) -> None:
+    population_size = 6 if strategy == "rand2bin" else 4
+
+    engine = DifferentialEvolutionOptimizer(
+        _space(),
+        population_size=population_size,
+        strategy=strategy,
+        seed=42,
+    )
+
+    assert engine.strategy == strategy
+    assert engine.config_signature()["parameters"]["strategy"] == strategy
+    assert engine.config_signature()["components"]["strategy"]["type"] == strategy
+
+
+@pytest.mark.parametrize(
+    ("strategy", "population_size", "message"),
+    [
+        ("best1bin", 3, "at least 4"),
+        ("rand2bin", 5, "at least 6"),
+        ("current-to-best1bin", 3, "at least 4"),
+    ],
+)
+def test_de_strategy_specific_population_size_validation(
+    strategy: str,
+    population_size: int,
+    message: str,
+) -> None:
+    with pytest.raises(ConfigurationError, match=message):
+        DifferentialEvolutionOptimizer(
+            _space(),
+            population_size=population_size,
+            strategy=strategy,
+            seed=42,
+        )
+
+
+def test_de_config_hash_changes_when_strategy_changes() -> None:
+    rand1 = DifferentialEvolutionOptimizer(_space(), population_size=6, strategy="rand1bin")
+    rand2 = DifferentialEvolutionOptimizer(_space(), population_size=6, strategy="rand2bin")
+
+    assert rand1.config_hash() != rand2.config_hash()
 
 
 class SphereEvaluator:

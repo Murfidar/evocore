@@ -47,6 +47,12 @@ class TrialProposal:
 
 SUPPORTED_DE_STRATEGIES: dict[str, DEStrategySpec] = {
     "rand1bin": DEStrategySpec(name="rand1bin", min_population_size=4),
+    "best1bin": DEStrategySpec(name="best1bin", min_population_size=4),
+    "rand2bin": DEStrategySpec(name="rand2bin", min_population_size=6),
+    "current-to-best1bin": DEStrategySpec(
+        name="current-to-best1bin",
+        min_population_size=4,
+    ),
 }
 
 
