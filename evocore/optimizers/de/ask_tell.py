@@ -118,6 +118,7 @@ class DifferentialEvolutionAskTellMixin:
                 seed=self.seed,
                 mutation_factor=self.mutation_factor,
                 crossover_rate=self.crossover_rate,
+                direction=self.direction,
             )
         )
 

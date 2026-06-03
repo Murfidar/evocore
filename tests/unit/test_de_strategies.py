@@ -41,6 +41,19 @@ def _trusted_population():
     return engine
 
 
+def _trusted_population_with_direction(direction: str):
+    engine = DifferentialEvolutionOptimizer(
+        _mixed_space(),
+        population_size=6,
+        seed=42,
+        direction=direction,
+    )
+    candidates = engine.ask()
+    scores = [0, 1, 2, 3, 4, 5] if direction == "maximize" else [5, 4, 3, 2, 1, 0]
+    engine.tell(_records(candidates, scores))
+    return engine
+
+
 def test_strategy_spec_for_returns_rand1bin_contract() -> None:
     spec = strategy_spec_for("rand1bin")
 
@@ -54,8 +67,7 @@ def test_strategy_spec_for_rejects_unknown_strategy() -> None:
     with pytest.raises(
         ConfigurationError,
         match=(
-            "strategy must be one of 'rand1bin', 'best1bin', "
-            "'rand2bin', 'current-to-best1bin'"
+            "strategy must be one of 'rand1bin', 'best1bin', 'rand2bin', 'current-to-best1bin'"
         ),
     ):
         strategy_spec_for("jade")
@@ -99,3 +111,86 @@ def test_rand1bin_strategy_proposal_matches_optimizer_fixture() -> None:
     assert proposal.metadata["strategy"] == "rand1bin"
     assert proposal.metadata["target_slot"] == 0
     assert proposal.metadata["donor_slots"] == (4, 2, 1)
+
+
+@pytest.mark.parametrize(
+    "strategy",
+    ["best1bin", "rand2bin", "current-to-best1bin"],
+)
+def test_stateless_strategy_proposals_have_required_metadata(strategy: str) -> None:
+    engine = _trusted_population()
+    population = [
+        engine._candidates_by_id[candidate_id] for candidate_id in engine._target_candidate_ids
+    ]
+
+    proposal = trial_proposal_for_strategy(
+        TrialContext(
+            strategy_name=strategy,
+            gene_space=engine.gene_space,
+            population=population,
+            target_slot=0,
+            generation=engine.generation,
+            seed=engine.seed,
+            mutation_factor=engine.mutation_factor,
+            crossover_rate=engine.crossover_rate,
+        )
+    )
+
+    assert proposal.metadata["strategy"] == strategy
+    assert proposal.metadata["target_slot"] == 0
+    assert proposal.metadata["donor_slots"]
+    assert len(proposal.genes) == engine.gene_space.length
+    engine.gene_space.validate_genes(proposal.genes)
+
+
+@pytest.mark.parametrize("direction", ["maximize", "minimize"])
+@pytest.mark.parametrize("strategy", ["best1bin", "current-to-best1bin"])
+def test_best_based_strategies_record_direction_aware_best_slot(
+    direction: str,
+    strategy: str,
+) -> None:
+    engine = _trusted_population_with_direction(direction)
+    population = [
+        engine._candidates_by_id[candidate_id] for candidate_id in engine._target_candidate_ids
+    ]
+
+    proposal = trial_proposal_for_strategy(
+        TrialContext(
+            strategy_name=strategy,
+            gene_space=engine.gene_space,
+            population=population,
+            target_slot=0,
+            generation=engine.generation,
+            seed=engine.seed,
+            mutation_factor=engine.mutation_factor,
+            crossover_rate=engine.crossover_rate,
+            direction=engine.direction,
+        )
+    )
+
+    assert proposal.metadata["best_slot"] == 5
+
+
+def test_rand2bin_records_five_distinct_donor_slots() -> None:
+    engine = _trusted_population()
+    population = [
+        engine._candidates_by_id[candidate_id] for candidate_id in engine._target_candidate_ids
+    ]
+
+    proposal = trial_proposal_for_strategy(
+        TrialContext(
+            strategy_name="rand2bin",
+            gene_space=engine.gene_space,
+            population=population,
+            target_slot=0,
+            generation=engine.generation,
+            seed=engine.seed,
+            mutation_factor=engine.mutation_factor,
+            crossover_rate=engine.crossover_rate,
+        )
+    )
+
+    donor_slots = proposal.metadata["donor_slots"]
+    assert len(donor_slots) == 5
+    assert len(set(donor_slots)) == 5
+    assert 0 not in donor_slots

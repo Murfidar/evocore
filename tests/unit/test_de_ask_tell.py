@@ -143,6 +143,29 @@ def test_de_rand1bin_trial_generation_matches_locked_fixture() -> None:
     assert [trial.metadata["target_slot"] for trial in trials] == [0, 1, 2, 3, 4, 5]
 
 
+@pytest.mark.parametrize(
+    "strategy",
+    ["best1bin", "rand2bin", "current-to-best1bin"],
+)
+def test_de_non_default_stateless_strategies_generate_valid_trials(strategy: str) -> None:
+    engine = DifferentialEvolutionOptimizer(
+        _mixed_space(),
+        population_size=6,
+        strategy=strategy,
+        seed=42,
+    )
+    targets = engine.ask()
+    engine.tell(_records(targets, [0, 1, 2, 3, 4, 5]))
+
+    trials = engine.ask()
+
+    assert len(trials) == 6
+    assert {trial.metadata["strategy"] for trial in trials} == {strategy}
+    assert {trial.metadata["target_slot"] for trial in trials} == set(range(6))
+    for trial in trials:
+        _mixed_space().validate_genes(trial.genes)
+
+
 def test_de_trial_generation_preserves_gene_types_and_fixed_values() -> None:
     engine, _ = _trusted_engine()
 

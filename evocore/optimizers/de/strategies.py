@@ -34,6 +34,7 @@ class TrialContext:
     seed: int
     mutation_factor: float
     crossover_rate: float
+    direction: str = "maximize"
     strategy_state: object | None = None
 
 
@@ -118,15 +119,110 @@ def _forced_variable_index(context: TrialContext, rng: random.Random) -> int:
     return variable_indices[rng.randrange(len(variable_indices))] if variable_indices else 0
 
 
-def _rand1bin_trial(context: TrialContext) -> TrialProposal:
-    if len(context.population) < strategy_spec_for("rand1bin").min_population_size:
-        validate_strategy_population_size("rand1bin", len(context.population))
+def _best_slot(context: TrialContext) -> int:
+    return max(
+        range(len(context.population)),
+        key=lambda slot: context.population[slot].state_comparison_score(context.direction),
+    )
 
+
+def _sample_slots(
+    *,
+    context: TrialContext,
+    count: int,
+    excluded: set[int],
+    op_offset: int = 0,
+) -> tuple[int, ...]:
+    choices = [slot for slot in range(len(context.population)) if slot not in excluded]
+    rng = rng_for_de_trial(
+        context.seed,
+        context.generation,
+        context.target_slot + op_offset,
+        _core.OP_SELECTION,
+    )
+    selected = rng.sample(choices, count)
+    return tuple(int(slot) for slot in selected)
+
+
+def _selected_gene(
+    context: TrialContext,
+    index: int,
+    forced_index: int,
+    mask_rng: random.Random,
+) -> bool:
+    return index == forced_index or mask_rng.random() < context.crossover_rate
+
+
+def _bool_from_difference_pairs(
+    *,
+    base: Candidate,
+    pairs: Sequence[tuple[Candidate, Candidate]],
+    gene_index: int,
+    mutation_factor: float,
+    bool_rng: random.Random,
+) -> bool:
+    value = bool(base.genes[gene_index])
+    for left, right in pairs:
+        if bool(left.genes[gene_index]) != bool(
+            right.genes[gene_index]
+        ) and bool_rng.random() < min(1.0, mutation_factor):
+            value = not value
+    return value
+
+
+def _mutant_value(
+    *,
+    context: TrialContext,
+    gene_index: int,
+    base: Candidate,
+    pairs: Sequence[tuple[Candidate, Candidate]],
+    target: Candidate | None = None,
+    best: Candidate | None = None,
+    bool_rng: random.Random,
+) -> float | int | bool:
+    gene = context.gene_space.genes[gene_index]
+    if gene.kind == "bool":
+        if (
+            target is not None
+            and best is not None
+            and bool(best.genes[gene_index]) != bool(target.genes[gene_index])
+        ):
+            return bool(best.genes[gene_index])
+        return _bool_from_difference_pairs(
+            base=base,
+            pairs=pairs,
+            gene_index=gene_index,
+            mutation_factor=context.mutation_factor,
+            bool_rng=bool_rng,
+        )
+
+    mutant = float(base.genes[gene_index])
+    if target is not None and best is not None:
+        mutant = float(target.genes[gene_index]) + context.mutation_factor * (
+            float(best.genes[gene_index]) - float(target.genes[gene_index])
+        )
+    for left, right in pairs:
+        mutant += context.mutation_factor * (
+            float(left.genes[gene_index]) - float(right.genes[gene_index])
+        )
+    return repair_de_gene_value(mutant, gene)
+
+
+def _proposal_from_recipe(
+    *,
+    context: TrialContext,
+    strategy: str,
+    base_slot: int,
+    difference_pairs: Sequence[tuple[int, int]],
+    best_slot: int | None = None,
+    current_to_best: bool = False,
+) -> TrialProposal:
     target = _target_candidate(context)
-    a_slot, b_slot, c_slot = _rand1bin_donor_slots(context)
-    donor_a = context.population[a_slot]
-    donor_b = context.population[b_slot]
-    donor_c = context.population[c_slot]
+    base = context.population[base_slot]
+    best = context.population[best_slot] if best_slot is not None else None
+    pairs = [
+        (context.population[left], context.population[right]) for left, right in difference_pairs
+    ]
     mask_rng = rng_for_de_trial(
         context.seed, context.generation, context.target_slot, _core.OP_CROSSOVER
     )
@@ -140,31 +236,89 @@ def _rand1bin_trial(context: TrialContext) -> TrialProposal:
         if gene.is_fixed:
             values.append(repair_de_gene_value(float(gene.low), gene))
             continue
-        selected = index == forced_index or mask_rng.random() < context.crossover_rate
-        if not selected:
+        if not _selected_gene(context, index, forced_index, mask_rng):
             values.append(target.genes[index])
             continue
-        if gene.kind == "bool":
-            trial_bool = bool(donor_a.genes[index])
-            if bool(donor_b.genes[index]) != bool(
-                donor_c.genes[index]
-            ) and bool_rng.random() < min(1.0, context.mutation_factor):
-                trial_bool = not trial_bool
-            values.append(trial_bool)
-            continue
-        mutant = float(donor_a.genes[index]) + context.mutation_factor * (
-            float(donor_b.genes[index]) - float(donor_c.genes[index])
+        values.append(
+            _mutant_value(
+                context=context,
+                gene_index=index,
+                base=base,
+                pairs=pairs,
+                target=target if current_to_best else None,
+                best=best if current_to_best else None,
+                bool_rng=bool_rng,
+            )
         )
-        values.append(repair_de_gene_value(mutant, gene))
 
     context.gene_space.validate_genes(values)
-    return TrialProposal(
-        genes=values,
-        metadata={
-            "strategy": "rand1bin",
-            "target_slot": context.target_slot,
-            "donor_slots": (a_slot, b_slot, c_slot),
-        },
+    donor_slots = (base_slot, *[slot for pair in difference_pairs for slot in pair])
+    metadata: dict[str, object] = {
+        "strategy": strategy,
+        "target_slot": context.target_slot,
+        "donor_slots": tuple(donor_slots),
+        "base_slot": base_slot,
+        "difference_pairs": tuple(tuple(pair) for pair in difference_pairs),
+    }
+    if best_slot is not None:
+        metadata["best_slot"] = best_slot
+    return TrialProposal(genes=values, metadata=metadata)
+
+
+def _rand1bin_trial(context: TrialContext) -> TrialProposal:
+    a_slot, b_slot, c_slot = _rand1bin_donor_slots(context)
+    return _proposal_from_recipe(
+        context=context,
+        strategy="rand1bin",
+        base_slot=a_slot,
+        difference_pairs=((b_slot, c_slot),),
+    )
+
+
+def _best1bin_trial(context: TrialContext) -> TrialProposal:
+    best_slot = _best_slot(context)
+    b_slot, c_slot = _sample_slots(
+        context=context,
+        count=2,
+        excluded={context.target_slot, best_slot},
+    )
+    return _proposal_from_recipe(
+        context=context,
+        strategy="best1bin",
+        base_slot=best_slot,
+        difference_pairs=((b_slot, c_slot),),
+        best_slot=best_slot,
+    )
+
+
+def _rand2bin_trial(context: TrialContext) -> TrialProposal:
+    a_slot, b_slot, c_slot, d_slot, e_slot = _sample_slots(
+        context=context,
+        count=5,
+        excluded={context.target_slot},
+    )
+    return _proposal_from_recipe(
+        context=context,
+        strategy="rand2bin",
+        base_slot=a_slot,
+        difference_pairs=((b_slot, c_slot), (d_slot, e_slot)),
+    )
+
+
+def _current_to_best1bin_trial(context: TrialContext) -> TrialProposal:
+    best_slot = _best_slot(context)
+    b_slot, c_slot = _sample_slots(
+        context=context,
+        count=2,
+        excluded={context.target_slot, best_slot},
+    )
+    return _proposal_from_recipe(
+        context=context,
+        strategy="current-to-best1bin",
+        base_slot=context.target_slot,
+        difference_pairs=((b_slot, c_slot),),
+        best_slot=best_slot,
+        current_to_best=True,
     )
 
 
@@ -174,6 +328,12 @@ def trial_proposal_for_strategy(context: TrialContext) -> TrialProposal:
     validate_strategy_population_size(spec.name, len(context.population))
     if spec.name == "rand1bin":
         return _rand1bin_trial(context)
+    if spec.name == "best1bin":
+        return _best1bin_trial(context)
+    if spec.name == "rand2bin":
+        return _rand2bin_trial(context)
+    if spec.name == "current-to-best1bin":
+        return _current_to_best1bin_trial(context)
     raise ConfigurationError(f"Unsupported DE strategy implementation: {spec.name!r}.")
 
 
