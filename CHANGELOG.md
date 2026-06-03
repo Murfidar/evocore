@@ -17,6 +17,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Added built-in Differential Evolution strategies `best1bin`, `rand2bin`, and
   `current-to-best1bin` with strategy-aware validation and reproducibility
   metadata.
+- Added `strategy="jde-rand1bin"` for simple jDE-style Differential Evolution
+  adaptation with checkpointed per-slot mutation and crossover parameters.
 - Added committed Differential Evolution v0.9.0 golden checkpoint fixtures with
   manifest hashes and deterministic continuation coverage.
 - Documented Differential Evolution as a stable ask/tell checkpoint surface,
