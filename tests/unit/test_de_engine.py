@@ -70,6 +70,11 @@ def test_de_rejects_invalid_configuration(kwargs, message) -> None:
         DifferentialEvolutionOptimizer(**params)
 
 
+def test_de_rejects_unknown_strategy_with_supported_names() -> None:
+    with pytest.raises(ConfigurationError, match="strategy must be one of 'rand1bin'"):
+        DifferentialEvolutionOptimizer(_space(), population_size=8, strategy="best1bin")
+
+
 class SphereEvaluator:
     def evaluate(self, candidates, context):
         assert isinstance(context, EvaluationContext)
