@@ -14,6 +14,10 @@ from evocore.optimizers.config import (
     callback_hook_signatures,
     reproducibility_from_hooks,
 )
+from evocore.optimizers.de.strategies import (
+    strategy_spec_for,
+    validate_strategy_population_size,
+)
 from evocore.search_space import GeneSpace
 
 
@@ -81,10 +85,8 @@ def validate_de_compatibility(optimizer: _DEOptimizerLike) -> None:
             "gene_space required for DifferentialEvolutionOptimizer. "
             "Pass GeneSpace.uniform(-5.0, 5.0, length)."
         )
-    if optimizer.strategy != "rand1bin":
-        raise ConfigurationError("DifferentialEvolutionOptimizer strategy must be 'rand1bin'.")
-    if optimizer.population_size < 4:
-        raise ConfigurationError("population_size must be at least 4 for strategy='rand1bin'.")
+    strategy_spec_for(optimizer.strategy)
+    validate_strategy_population_size(optimizer.strategy, optimizer.population_size)
     if optimizer.max_generations < 0:
         raise ConfigurationError("max_generations must be >= 0.")
     if not math.isfinite(float(optimizer.mutation_factor)) or optimizer.mutation_factor < 0.0:

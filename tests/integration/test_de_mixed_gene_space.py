@@ -105,6 +105,41 @@ def test_de_runs_mixed_bool_numeric_space_smoke() -> None:
     assert result.best_score > -20.0
 
 
+def test_de_non_default_strategy_runs_on_mixed_gene_space() -> None:
+    optimizer = DifferentialEvolutionOptimizer(
+        _mixed_space(),
+        population_size=8,
+        max_generations=3,
+        strategy="current-to-best1bin",
+        seed=123,
+    )
+
+    result = optimizer.run(MixedSwitchEvaluator())
+
+    assert result.optimizer_type == "DifferentialEvolutionOptimizer"
+    assert result.final_solutions
+    for solution in result.final_solutions:
+        _mixed_space().validate_genes(solution.values)
+
+
+def test_de_jde_runs_mixed_bool_numeric_space_smoke() -> None:
+    optimizer = DifferentialEvolutionOptimizer(
+        _mixed_space(),
+        population_size=8,
+        max_generations=3,
+        strategy="jde-rand1bin",
+        seed=123,
+    )
+
+    result = optimizer.run(MixedSwitchEvaluator())
+
+    assert result.optimizer_type == "DifferentialEvolutionOptimizer"
+    assert result.reproducibility.optimizer_config["parameters"]["strategy"] == "jde-rand1bin"
+    assert result.final_solutions
+    for solution in result.final_solutions:
+        _mixed_space().validate_genes(solution.values)
+
+
 def test_de_budgeted_run_supports_mixed_gene_space() -> None:
     policy = BudgetPolicy(
         stages=[
