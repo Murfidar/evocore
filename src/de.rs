@@ -577,3 +577,119 @@ pub fn de_generate_trials(
         .map(|proposal| proposal_to_py(py, proposal))
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn bounds() -> Vec<(f64, f64)> {
+        vec![(-5.0, 5.0), (-5.0, 5.0), (0.0, 10.0), (0.0, 1.0)]
+    }
+
+    fn kinds() -> Vec<GeneKind> {
+        vec![
+            GeneKind::Float,
+            GeneKind::Float,
+            GeneKind::Int,
+            GeneKind::Bool,
+        ]
+    }
+
+    fn population() -> Vec<Vec<f64>> {
+        vec![
+            vec![-4.0, -3.0, 1.0, 0.0],
+            vec![-2.0, -1.0, 2.0, 1.0],
+            vec![0.0, 1.0, 3.0, 0.0],
+            vec![1.5, 2.0, 4.0, 1.0],
+            vec![3.0, 4.0, 5.0, 0.0],
+            vec![4.0, 5.0, 6.0, 1.0],
+        ]
+    }
+
+    fn scores() -> Vec<f64> {
+        vec![1.0, 2.0, 3.0, 4.0, 9.0, 5.0]
+    }
+
+    fn proposals(strategy: DEStrategy) -> Vec<TrialProposal> {
+        generate_trials(
+            &population(),
+            &scores(),
+            &bounds(),
+            &kinds(),
+            &strategy,
+            0.7,
+            0.9,
+            42,
+            3,
+            &[0, 1, 2],
+            "maximize",
+            None,
+        )
+        .unwrap()
+    }
+
+    fn assert_valid_genes(genes: &[f64]) {
+        for (idx, value) in genes.iter().enumerate() {
+            let (low, high) = bounds()[idx];
+            assert!(*value >= low && *value <= high);
+        }
+        assert_eq!(genes[2], genes[2].round());
+        assert!(genes[3] == 0.0 || genes[3] == 1.0);
+    }
+
+    #[test]
+    fn de_rand1bin_donors_exclude_target() {
+        let proposals = proposals(DEStrategy::Rand1Bin);
+        for proposal in proposals {
+            assert_eq!(proposal.donor_slots.len(), 3);
+            assert!(!proposal.difference_pairs.iter().any(|(left, right)| {
+                *left == proposal.target_slot || *right == proposal.target_slot
+            }));
+            assert_valid_genes(&proposal.genes);
+        }
+    }
+
+    #[test]
+    fn de_best1bin_uses_best_as_base() {
+        let proposals = proposals(DEStrategy::Best1Bin);
+        for proposal in proposals {
+            assert_eq!(proposal.best_slot, Some(4));
+            assert_eq!(proposal.base_slot, 4);
+            assert_valid_genes(&proposal.genes);
+        }
+    }
+
+    #[test]
+    fn de_rand2bin_uses_five_donor_slots() {
+        let proposals = proposals(DEStrategy::Rand2Bin);
+        for proposal in proposals {
+            assert_eq!(proposal.donor_slots.len(), 5);
+            assert_eq!(proposal.difference_pairs.len(), 2);
+            assert_valid_genes(&proposal.genes);
+        }
+    }
+
+    #[test]
+    fn de_current_to_best_uses_target_as_base() {
+        let proposals = proposals(DEStrategy::CurrentToBest1Bin);
+        for proposal in proposals {
+            assert_eq!(proposal.base_slot, proposal.target_slot);
+            assert_eq!(proposal.best_slot, Some(4));
+            assert_valid_genes(&proposal.genes);
+        }
+    }
+
+    #[test]
+    fn de_best_slot_honors_minimize_direction() {
+        assert_eq!(best_slot(&scores(), "minimize").unwrap(), 0);
+        assert_eq!(best_slot(&scores(), "maximize").unwrap(), 4);
+    }
+
+    #[test]
+    fn de_generation_is_deterministic() {
+        let first = proposals(DEStrategy::Rand2Bin);
+        let second = proposals(DEStrategy::Rand2Bin);
+        assert_eq!(first[0].genes, second[0].genes);
+        assert_eq!(first[0].donor_slots, second[0].donor_slots);
+    }
+}
