@@ -124,6 +124,52 @@ class DifferentialEvolutionAskTellMixin:
             )
         )
 
+    def _rust_trial_proposals(self, count: int) -> list[TrialProposal]:
+        target_population = self._target_population()
+        trial_count = min(int(count), len(target_population))
+        target_slots = list(range(trial_count))
+        population_encoded = [
+            [
+                1.0 if value is True else 0.0 if value is False else float(value)
+                for value in candidate.genes
+            ]
+            for candidate in target_population
+        ]
+        scores = [
+            candidate.best_state_score(self.direction)
+            for candidate in target_population
+        ]
+        jde_state = None
+        to_rust_committed_state = getattr(
+            self._de_strategy_state,
+            "to_rust_committed_state",
+            None,
+        )
+        if callable(to_rust_committed_state):
+            jde_state = to_rust_committed_state()
+
+        raw_proposals = _core.de_generate_trials(
+            population_encoded,
+            scores,
+            self.gene_space.rust_bounds,
+            self.gene_space.kinds,
+            self.strategy,
+            self.mutation_factor,
+            self.crossover_rate,
+            self.seed,
+            self.generation,
+            target_slots,
+            self.direction,
+            jde_state,
+        )
+        proposals: list[TrialProposal] = []
+        for raw in raw_proposals:
+            genes = _decode_de_values(self.gene_space, raw["genes"])
+            metadata = dict(raw["metadata"])
+            self.gene_space.validate_genes(genes)
+            proposals.append(TrialProposal(genes=genes, metadata=metadata))
+        return proposals
+
     def _record_pending_strategy_trial(self, candidate: Candidate) -> None:
         if not isinstance(self._de_strategy_state, JDEAdaptiveState):
             return
@@ -148,9 +194,9 @@ class DifferentialEvolutionAskTellMixin:
         target_count = len(self._target_candidate_ids)
         trial_count = min(count, target_count)
         candidates: list[Candidate] = []
-        for target_slot in range(trial_count):
+        proposals = self._rust_trial_proposals(trial_count)
+        for target_slot, proposal in enumerate(proposals):
             target = self._target_candidate(target_slot)
-            proposal = self._trial_proposal_for_slot(target_slot)
             genes = proposal.genes
             metadata = dict(proposal.metadata)
             metadata["target_candidate_id"] = target.candidate_id

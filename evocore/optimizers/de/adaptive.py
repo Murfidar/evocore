@@ -130,6 +130,13 @@ class JDEAdaptiveState:
             },
         }
 
+    def to_rust_committed_state(self) -> dict[str, list[float]]:
+        """Return committed per-slot values for Rust jDE proposal generation."""
+        return {
+            "f_by_slot": list(self.f_by_slot),
+            "cr_by_slot": list(self.cr_by_slot),
+        }
+
     @classmethod
     def from_checkpoint(
         cls,
