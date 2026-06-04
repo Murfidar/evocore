@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import math
-import random
 from collections.abc import Sequence
 
 from evocore import _core
@@ -18,13 +17,7 @@ from evocore.lifecycle import (
     solution_to_candidate,
 )
 from evocore.optimizers.de.adaptive import JDEAdaptiveState, JDETrialParameters
-from evocore.optimizers.de.strategies import (
-    TrialContext,
-    TrialProposal,
-    repair_de_gene_value,
-    rng_for_de_trial,
-    trial_proposal_for_strategy,
-)
+from evocore.optimizers.de.strategies import TrialProposal
 from evocore.results import EventRecord
 from evocore.search_space import Solution
 
@@ -94,35 +87,13 @@ class DifferentialEvolutionAskTellMixin:
             for index, encoded in enumerate(encoded_population)
         ]
 
-    def _rng_for_trial(self, target_slot: int, op: int) -> random.Random:
-        return rng_for_de_trial(self.seed, self.generation, target_slot, op)
-
     def _target_candidate(self, slot: int) -> Candidate:
         return self._candidates_by_id[self._target_candidate_ids[slot]]
-
-    def _repair_gene_value(self, value: float, gene) -> float | int | bool:
-        return repair_de_gene_value(value, gene)
 
     def _target_population(self) -> list[Candidate]:
         return [
             self._candidates_by_id[candidate_id] for candidate_id in self._target_candidate_ids
         ]
-
-    def _trial_proposal_for_slot(self, target_slot: int) -> TrialProposal:
-        return trial_proposal_for_strategy(
-            TrialContext(
-                strategy_name=self.strategy,
-                gene_space=self.gene_space,
-                population=self._target_population(),
-                target_slot=target_slot,
-                generation=self.generation,
-                seed=self.seed,
-                mutation_factor=self.mutation_factor,
-                crossover_rate=self.crossover_rate,
-                direction=self.direction,
-                strategy_state=self._de_strategy_state,
-            )
-        )
 
     def _rust_trial_proposals(self, count: int) -> list[TrialProposal]:
         target_population = self._target_population()
@@ -135,10 +106,7 @@ class DifferentialEvolutionAskTellMixin:
             ]
             for candidate in target_population
         ]
-        scores = [
-            candidate.best_state_score(self.direction)
-            for candidate in target_population
-        ]
+        scores = [candidate.best_state_score(self.direction) for candidate in target_population]
         jde_state = None
         to_rust_committed_state = getattr(
             self._de_strategy_state,
