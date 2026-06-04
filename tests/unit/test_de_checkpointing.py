@@ -195,8 +195,7 @@ def test_de_checkpoint_restores_jde_pending_params_after_rust_trial_ask(tmp_path
 
     assert restored._de_strategy_state.pending_trial_params
     assert (
-        restored._de_strategy_state.to_checkpoint()
-        == optimizer._de_strategy_state.to_checkpoint()
+        restored._de_strategy_state.to_checkpoint() == optimizer._de_strategy_state.to_checkpoint()
     )
 
 

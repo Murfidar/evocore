@@ -6,7 +6,6 @@ import pytest
 
 from evocore import _core
 
-
 BOUNDS = [(-5.0, 5.0), (-5.0, 5.0), (0.0, 10.0), (0.0, 1.0)]
 KINDS = ["float", "float", "int", "bool"]
 POPULATION = [
@@ -75,9 +74,7 @@ def test_de_generate_trials_stateless_strategies_are_deterministic(
         assert metadata["target_slot"] == expected_slot
         assert len(metadata["donor_slots"]) == donor_count
         assert len(set(metadata["donor_slots"])) == donor_count
-        sampled_difference_slots = {
-            slot for pair in metadata["difference_pairs"] for slot in pair
-        }
+        sampled_difference_slots = {slot for pair in metadata["difference_pairs"] for slot in pair}
         assert expected_slot not in sampled_difference_slots
 
 

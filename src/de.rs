@@ -14,12 +14,15 @@ const JDE_F_HIGH: f64 = 1.0;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum DEStrategy {
-    Rand1Bin,
-    Best1Bin,
-    Rand2Bin,
-    CurrentToBest1Bin,
-    JdeRand1Bin,
+    Rand1,
+    Best1,
+    Rand2,
+    CurrentToBest1,
+    JdeRand1,
 }
+
+type DifferencePairs = Vec<(usize, usize)>;
+type RecipeSlots = (usize, DifferencePairs, Option<usize>);
 
 #[derive(Clone, Debug)]
 struct JdeCommittedState {
@@ -43,11 +46,11 @@ struct TrialProposal {
 
 fn parse_strategy(strategy: &str) -> PyResult<DEStrategy> {
     match strategy {
-        "rand1bin" => Ok(DEStrategy::Rand1Bin),
-        "best1bin" => Ok(DEStrategy::Best1Bin),
-        "rand2bin" => Ok(DEStrategy::Rand2Bin),
-        "current-to-best1bin" => Ok(DEStrategy::CurrentToBest1Bin),
-        "jde-rand1bin" => Ok(DEStrategy::JdeRand1Bin),
+        "rand1bin" => Ok(DEStrategy::Rand1),
+        "best1bin" => Ok(DEStrategy::Best1),
+        "rand2bin" => Ok(DEStrategy::Rand2),
+        "current-to-best1bin" => Ok(DEStrategy::CurrentToBest1),
+        "jde-rand1bin" => Ok(DEStrategy::JdeRand1),
         other => Err(pyo3::exceptions::PyValueError::new_err(format!(
             "Unknown DE strategy: {other}"
         ))),
@@ -56,17 +59,17 @@ fn parse_strategy(strategy: &str) -> PyResult<DEStrategy> {
 
 fn strategy_name(strategy: &DEStrategy) -> &'static str {
     match strategy {
-        DEStrategy::Rand1Bin => "rand1bin",
-        DEStrategy::Best1Bin => "best1bin",
-        DEStrategy::Rand2Bin => "rand2bin",
-        DEStrategy::CurrentToBest1Bin => "current-to-best1bin",
-        DEStrategy::JdeRand1Bin => "jde-rand1bin",
+        DEStrategy::Rand1 => "rand1bin",
+        DEStrategy::Best1 => "best1bin",
+        DEStrategy::Rand2 => "rand2bin",
+        DEStrategy::CurrentToBest1 => "current-to-best1bin",
+        DEStrategy::JdeRand1 => "jde-rand1bin",
     }
 }
 
 fn min_population(strategy: &DEStrategy) -> usize {
     match strategy {
-        DEStrategy::Rand2Bin => 6,
+        DEStrategy::Rand2 => 6,
         _ => 4,
     }
 }
@@ -193,7 +196,7 @@ fn extract_jde_state(
     population_size: usize,
     strategy: &DEStrategy,
 ) -> PyResult<Option<JdeCommittedState>> {
-    if !matches!(strategy, DEStrategy::JdeRand1Bin) {
+    if !matches!(strategy, DEStrategy::JdeRand1) {
         return Ok(None);
     }
     let Some(payload) = jde_state else {
@@ -291,9 +294,9 @@ fn recipe_slots(
     generation: u64,
     target_slot: usize,
     best_slot: usize,
-) -> PyResult<(usize, Vec<(usize, usize)>, Option<usize>)> {
+) -> PyResult<RecipeSlots> {
     match strategy {
-        DEStrategy::Rand1Bin | DEStrategy::JdeRand1Bin => {
+        DEStrategy::Rand1 | DEStrategy::JdeRand1 => {
             let slots = sample_slots(
                 population_size,
                 3,
@@ -304,7 +307,7 @@ fn recipe_slots(
             )?;
             Ok((slots[0], vec![(slots[1], slots[2])], None))
         }
-        DEStrategy::Best1Bin => {
+        DEStrategy::Best1 => {
             let slots = sample_slots(
                 population_size,
                 2,
@@ -315,7 +318,7 @@ fn recipe_slots(
             )?;
             Ok((best_slot, vec![(slots[0], slots[1])], Some(best_slot)))
         }
-        DEStrategy::Rand2Bin => {
+        DEStrategy::Rand2 => {
             let slots = sample_slots(
                 population_size,
                 5,
@@ -330,7 +333,7 @@ fn recipe_slots(
                 None,
             ))
         }
-        DEStrategy::CurrentToBest1Bin => {
+        DEStrategy::CurrentToBest1 => {
             let slots = sample_slots(
                 population_size,
                 2,
@@ -464,7 +467,7 @@ fn generate_one_trial(
     jde_state: Option<&JdeCommittedState>,
 ) -> PyResult<TrialProposal> {
     let best_slot = best_slot(scores, direction)?;
-    let (f, cr) = if let (DEStrategy::JdeRand1Bin, Some(state)) = (strategy, jde_state) {
+    let (f, cr) = if let (DEStrategy::JdeRand1, Some(state)) = (strategy, jde_state) {
         propose_jde_params(state, seed, generation, target_slot)
     } else {
         (mutation_factor, crossover_rate)
@@ -489,7 +492,7 @@ fn generate_one_trial(
         reported_best,
         f,
         cr,
-        matches!(strategy, DEStrategy::CurrentToBest1Bin),
+        matches!(strategy, DEStrategy::CurrentToBest1),
     );
     let donor_slots = std::iter::once(base_slot)
         .chain(pairs.iter().flat_map(|(left, right)| [*left, *right]))
@@ -502,9 +505,9 @@ fn generate_one_trial(
         best_slot: reported_best,
         donor_slots,
         difference_pairs: pairs,
-        mutation_factor: matches!(strategy, DEStrategy::JdeRand1Bin).then_some(f),
-        crossover_rate: matches!(strategy, DEStrategy::JdeRand1Bin).then_some(cr),
-        adaptive_slot: matches!(strategy, DEStrategy::JdeRand1Bin).then_some(target_slot),
+        mutation_factor: matches!(strategy, DEStrategy::JdeRand1).then_some(f),
+        crossover_rate: matches!(strategy, DEStrategy::JdeRand1).then_some(cr),
+        adaptive_slot: matches!(strategy, DEStrategy::JdeRand1).then_some(target_slot),
     })
 }
 
@@ -667,7 +670,7 @@ mod tests {
 
     #[test]
     fn de_rand1bin_donors_exclude_target() {
-        let proposals = proposals(DEStrategy::Rand1Bin);
+        let proposals = proposals(DEStrategy::Rand1);
         for proposal in proposals {
             assert_eq!(proposal.donor_slots.len(), 3);
             assert!(!proposal.difference_pairs.iter().any(|(left, right)| {
@@ -679,7 +682,7 @@ mod tests {
 
     #[test]
     fn de_best1bin_uses_best_as_base() {
-        let proposals = proposals(DEStrategy::Best1Bin);
+        let proposals = proposals(DEStrategy::Best1);
         for proposal in proposals {
             assert_eq!(proposal.best_slot, Some(4));
             assert_eq!(proposal.base_slot, 4);
@@ -689,7 +692,7 @@ mod tests {
 
     #[test]
     fn de_rand2bin_uses_five_donor_slots() {
-        let proposals = proposals(DEStrategy::Rand2Bin);
+        let proposals = proposals(DEStrategy::Rand2);
         for proposal in proposals {
             assert_eq!(proposal.donor_slots.len(), 5);
             assert_eq!(proposal.difference_pairs.len(), 2);
@@ -699,7 +702,7 @@ mod tests {
 
     #[test]
     fn de_current_to_best_uses_target_as_base() {
-        let proposals = proposals(DEStrategy::CurrentToBest1Bin);
+        let proposals = proposals(DEStrategy::CurrentToBest1);
         for proposal in proposals {
             assert_eq!(proposal.base_slot, proposal.target_slot);
             assert_eq!(proposal.best_slot, Some(4));
@@ -715,8 +718,8 @@ mod tests {
 
     #[test]
     fn de_generation_is_deterministic() {
-        let first = proposals(DEStrategy::Rand2Bin);
-        let second = proposals(DEStrategy::Rand2Bin);
+        let first = proposals(DEStrategy::Rand2);
+        let second = proposals(DEStrategy::Rand2);
         assert_eq!(first[0].genes, second[0].genes);
         assert_eq!(first[0].donor_slots, second[0].donor_slots);
     }
