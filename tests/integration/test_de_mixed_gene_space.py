@@ -140,6 +140,23 @@ def test_de_jde_runs_mixed_bool_numeric_space_smoke() -> None:
         _mixed_space().validate_genes(solution.values)
 
 
+def test_de_jde_mixed_space_run_uses_valid_gene_types() -> None:
+    optimizer = DifferentialEvolutionOptimizer(
+        _mixed_space(),
+        population_size=6,
+        max_generations=2,
+        strategy="jde-rand1bin",
+        seed=42,
+    )
+
+    result = optimizer.run(MixedSwitchEvaluator())
+
+    for solution in result.final_solutions:
+        assert isinstance(solution.values[0], float)
+        assert isinstance(solution.values[1], int)
+        assert isinstance(solution.values[2], bool)
+
+
 def test_de_budgeted_run_supports_mixed_gene_space() -> None:
     policy = BudgetPolicy(
         stages=[

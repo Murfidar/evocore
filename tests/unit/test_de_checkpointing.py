@@ -140,6 +140,66 @@ def test_de_checkpoint_restores_pending_trial_mapping() -> None:
     assert result.acceptance_decisions[0].target_slot == 0
 
 
+def test_de_checkpoint_restores_after_rust_backed_trial_ask(tmp_path) -> None:
+    optimizer = DifferentialEvolutionOptimizer(
+        _space(),
+        population_size=6,
+        strategy="rand2bin",
+        seed=42,
+    )
+    initial = optimizer.ask()
+    optimizer.tell(_records(initial, [0, 1, 2, 3, 4, 5]))
+    trials = optimizer.ask(3)
+    checkpoint = optimizer.ask_tell_checkpoint(metadata={"phase": "trial_ask"})
+    path = tmp_path / "de-rust-trial.evocore-checkpoint.json"
+    optimizer.save_checkpoint(path, checkpoint)
+
+    restored = DifferentialEvolutionOptimizer(
+        _space(),
+        population_size=6,
+        strategy="rand2bin",
+        seed=42,
+    )
+    summary = restored.resume_ask_tell_checkpoint(path)
+
+    assert summary.pending_batch_ids
+    assert [candidate.candidate_id for candidate in trials] == [
+        candidate_id
+        for batch_id in summary.pending_batch_ids
+        for candidate_id in restored._batches_by_id[batch_id].candidate_ids
+    ]
+    assert restored._trial_target_slots == optimizer._trial_target_slots
+    assert restored._trial_target_candidate_ids == optimizer._trial_target_candidate_ids
+
+
+def test_de_checkpoint_restores_jde_pending_params_after_rust_trial_ask(tmp_path) -> None:
+    optimizer = DifferentialEvolutionOptimizer(
+        _space(),
+        population_size=6,
+        strategy="jde-rand1bin",
+        seed=42,
+    )
+    initial = optimizer.ask()
+    optimizer.tell(_records(initial, [0, 1, 2, 3, 4, 5]))
+    optimizer.ask(3)
+    path = tmp_path / "de-jde-rust-trial.evocore-checkpoint.json"
+    optimizer.save_checkpoint(path, optimizer.ask_tell_checkpoint())
+
+    restored = DifferentialEvolutionOptimizer(
+        _space(),
+        population_size=6,
+        strategy="jde-rand1bin",
+        seed=42,
+    )
+    restored.resume_ask_tell_checkpoint(path)
+
+    assert restored._de_strategy_state.pending_trial_params
+    assert (
+        restored._de_strategy_state.to_checkpoint()
+        == optimizer._de_strategy_state.to_checkpoint()
+    )
+
+
 def test_de_checkpoint_rejects_wrong_optimizer_identity() -> None:
     engine = DifferentialEvolutionOptimizer(_space(), population_size=6, seed=42)
     snapshot = engine.ask_tell_checkpoint().to_dict()
