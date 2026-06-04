@@ -6,6 +6,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-06-05
+
 ### Added
 
 - Added `DifferentialEvolutionOptimizer` with mixed bool/numeric gene support,
