@@ -7,6 +7,11 @@ use std::cmp::Ordering;
 use crate::gene_spec::GeneKind;
 use crate::utils::{derive_seed, OP_CROSSOVER, OP_MUTATION, OP_SELECTION};
 
+const JDE_F_REFRESH_PROBABILITY: f64 = 0.1;
+const JDE_CR_REFRESH_PROBABILITY: f64 = 0.1;
+const JDE_F_LOW: f64 = 0.1;
+const JDE_F_HIGH: f64 = 1.0;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum DEStrategy {
     Rand1Bin,
@@ -230,6 +235,34 @@ fn rng_for(seed: u64, generation: u64, slot: usize, op: u64) -> StdRng {
     StdRng::seed_from_u64(derive_seed(seed, generation, slot as u64, op))
 }
 
+fn jde_rng(seed: u64, generation: u64, target_slot: usize, offset: u64) -> StdRng {
+    StdRng::seed_from_u64(derive_seed(
+        seed,
+        generation,
+        target_slot as u64 * 10 + offset,
+        OP_MUTATION,
+    ))
+}
+
+fn propose_jde_params(
+    state: &JdeCommittedState,
+    seed: u64,
+    generation: u64,
+    target_slot: usize,
+) -> (f64, f64) {
+    let mut f_value = state.f_by_slot[target_slot];
+    let mut cr_value = state.cr_by_slot[target_slot];
+    let mut f_rng = jde_rng(seed, generation, target_slot, 1);
+    let mut cr_rng = jde_rng(seed, generation, target_slot, 2);
+    if f_rng.gen::<f64>() < JDE_F_REFRESH_PROBABILITY {
+        f_value = JDE_F_LOW + f_rng.gen::<f64>() * (JDE_F_HIGH - JDE_F_LOW);
+    }
+    if cr_rng.gen::<f64>() < JDE_CR_REFRESH_PROBABILITY {
+        cr_value = cr_rng.gen::<f64>();
+    }
+    (f_value, cr_value)
+}
+
 fn sample_slots(
     population_size: usize,
     count: usize,
@@ -431,15 +464,10 @@ fn generate_one_trial(
     jde_state: Option<&JdeCommittedState>,
 ) -> PyResult<TrialProposal> {
     let best_slot = best_slot(scores, direction)?;
-    let f = if let (DEStrategy::JdeRand1Bin, Some(state)) = (strategy, jde_state) {
-        state.f_by_slot[target_slot]
+    let (f, cr) = if let (DEStrategy::JdeRand1Bin, Some(state)) = (strategy, jde_state) {
+        propose_jde_params(state, seed, generation, target_slot)
     } else {
-        mutation_factor
-    };
-    let cr = if let (DEStrategy::JdeRand1Bin, Some(state)) = (strategy, jde_state) {
-        state.cr_by_slot[target_slot]
-    } else {
-        crossover_rate
+        (mutation_factor, crossover_rate)
     };
     let (base_slot, pairs, reported_best) = recipe_slots(
         population.len(),
@@ -691,5 +719,18 @@ mod tests {
         let second = proposals(DEStrategy::Rand2Bin);
         assert_eq!(first[0].genes, second[0].genes);
         assert_eq!(first[0].donor_slots, second[0].donor_slots);
+    }
+
+    #[test]
+    fn de_jde_proposal_is_deterministic() {
+        let state = JdeCommittedState {
+            f_by_slot: vec![0.5; 6],
+            cr_by_slot: vec![0.9; 6],
+        };
+        let first = propose_jde_params(&state, 42, 99, 3);
+        let second = propose_jde_params(&state, 42, 99, 3);
+        assert_eq!(first, second);
+        assert!(first.0 >= JDE_F_LOW && first.0 <= JDE_F_HIGH);
+        assert!(first.1 >= 0.0 && first.1 <= 1.0);
     }
 }

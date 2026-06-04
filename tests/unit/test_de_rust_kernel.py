@@ -152,3 +152,28 @@ def test_de_generate_trials_jde_returns_trial_parameters() -> None:
 def test_de_generate_trials_rejects_unknown_strategy() -> None:
     with pytest.raises(ValueError, match="Unknown DE strategy"):
         _generate("unknown")
+
+
+def test_de_generate_trials_jde_can_refresh_parameters_from_seed() -> None:
+    proposals = _core.de_generate_trials(
+        POPULATION,
+        SCORES,
+        BOUNDS,
+        KINDS,
+        "jde-rand1bin",
+        0.5,
+        0.9,
+        42,
+        99,
+        [0, 1, 2, 3, 4, 5],
+        "maximize",
+        {"f_by_slot": [0.5] * 6, "cr_by_slot": [0.9] * 6},
+    )
+
+    params = [
+        (proposal["metadata"]["mutation_factor"], proposal["metadata"]["crossover_rate"])
+        for proposal in proposals
+    ]
+    assert any(f != 0.5 or cr != 0.9 for f, cr in params)
+    assert all(0.1 <= f <= 1.0 for f, _ in params)
+    assert all(0.0 <= cr <= 1.0 for _, cr in params)
