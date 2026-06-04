@@ -180,6 +180,20 @@ def reproduce_population(
     generation: int,
     mutation_individual_prob: float = 1.0,
 ) -> list[list[float]]: ...
+def de_generate_trials(
+    population: Sequence[Sequence[float]],
+    scores: Sequence[float],
+    gene_bounds: Sequence[tuple[float, float]],
+    gene_kinds: Sequence[str],
+    strategy: str,
+    mutation_factor: float,
+    crossover_rate: float,
+    seed: int,
+    generation: int,
+    target_slots: Sequence[int],
+    direction: str,
+    jde_state: dict[str, object] | None = None,
+) -> list[dict[str, object]]: ...
 def evaluate_sequential(
     genes_list: Sequence[Sequence[float]],
     fitness_fn: Callable[[list[float]], float],

@@ -75,7 +75,10 @@ def test_de_generate_trials_stateless_strategies_are_deterministic(
         assert metadata["target_slot"] == expected_slot
         assert len(metadata["donor_slots"]) == donor_count
         assert len(set(metadata["donor_slots"])) == donor_count
-        assert expected_slot not in metadata["donor_slots"]
+        sampled_difference_slots = {
+            slot for pair in metadata["difference_pairs"] for slot in pair
+        }
+        assert expected_slot not in sampled_difference_slots
 
 
 def test_de_generate_trials_best_strategy_reports_best_slot() -> None:

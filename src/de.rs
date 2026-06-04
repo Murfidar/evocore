@@ -1,0 +1,579 @@
+use pyo3::prelude::*;
+use pyo3::types::{PyDict, PyList};
+use rand::prelude::*;
+use rand::rngs::StdRng;
+use std::cmp::Ordering;
+
+use crate::gene_spec::GeneKind;
+use crate::utils::{derive_seed, OP_CROSSOVER, OP_MUTATION, OP_SELECTION};
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+enum DEStrategy {
+    Rand1Bin,
+    Best1Bin,
+    Rand2Bin,
+    CurrentToBest1Bin,
+    JdeRand1Bin,
+}
+
+#[derive(Clone, Debug)]
+struct JdeCommittedState {
+    f_by_slot: Vec<f64>,
+    cr_by_slot: Vec<f64>,
+}
+
+#[derive(Clone, Debug)]
+struct TrialProposal {
+    target_slot: usize,
+    genes: Vec<f64>,
+    strategy: &'static str,
+    base_slot: usize,
+    best_slot: Option<usize>,
+    donor_slots: Vec<usize>,
+    difference_pairs: Vec<(usize, usize)>,
+    mutation_factor: Option<f64>,
+    crossover_rate: Option<f64>,
+    adaptive_slot: Option<usize>,
+}
+
+fn parse_strategy(strategy: &str) -> PyResult<DEStrategy> {
+    match strategy {
+        "rand1bin" => Ok(DEStrategy::Rand1Bin),
+        "best1bin" => Ok(DEStrategy::Best1Bin),
+        "rand2bin" => Ok(DEStrategy::Rand2Bin),
+        "current-to-best1bin" => Ok(DEStrategy::CurrentToBest1Bin),
+        "jde-rand1bin" => Ok(DEStrategy::JdeRand1Bin),
+        other => Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "Unknown DE strategy: {other}"
+        ))),
+    }
+}
+
+fn strategy_name(strategy: &DEStrategy) -> &'static str {
+    match strategy {
+        DEStrategy::Rand1Bin => "rand1bin",
+        DEStrategy::Best1Bin => "best1bin",
+        DEStrategy::Rand2Bin => "rand2bin",
+        DEStrategy::CurrentToBest1Bin => "current-to-best1bin",
+        DEStrategy::JdeRand1Bin => "jde-rand1bin",
+    }
+}
+
+fn min_population(strategy: &DEStrategy) -> usize {
+    match strategy {
+        DEStrategy::Rand2Bin => 6,
+        _ => 4,
+    }
+}
+
+fn parse_gene_kinds(kinds_str: &[String]) -> PyResult<Vec<GeneKind>> {
+    kinds_str
+        .iter()
+        .map(|kind| match kind.as_str() {
+            "float" => Ok(GeneKind::Float),
+            "int" => Ok(GeneKind::Int),
+            "bool" => Ok(GeneKind::Bool),
+            other => Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "Unknown gene kind: '{other}'. Valid: float, int, bool"
+            ))),
+        })
+        .collect()
+}
+
+fn comparison_score(score: f64, direction: &str) -> PyResult<f64> {
+    if !score.is_finite() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "DE scores must be finite for trial generation.",
+        ));
+    }
+    match direction {
+        "maximize" => Ok(score),
+        "minimize" => Ok(-score),
+        other => Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "direction must be 'maximize' or 'minimize', got {other:?}."
+        ))),
+    }
+}
+
+fn validate_inputs(
+    population: &[Vec<f64>],
+    scores: &[f64],
+    gene_bounds: &[(f64, f64)],
+    gene_kinds: &[GeneKind],
+    strategy: &DEStrategy,
+    target_slots: &[usize],
+) -> PyResult<()> {
+    if population.len() < min_population(strategy) {
+        return Err(pyo3::exceptions::PyValueError::new_err(format!(
+            "population_size must be at least {} for strategy='{}'.",
+            min_population(strategy),
+            strategy_name(strategy)
+        )));
+    }
+    if population.len() != scores.len() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "population and scores must have the same length.",
+        ));
+    }
+    if gene_bounds.len() != gene_kinds.len() {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "gene_bounds and gene_kinds must have the same length.",
+        ));
+    }
+    for row in population {
+        if row.len() != gene_bounds.len() {
+            return Err(pyo3::exceptions::PyValueError::new_err(
+                "each population row must match gene count.",
+            ));
+        }
+    }
+    for &slot in target_slots {
+        if slot >= population.len() {
+            return Err(pyo3::exceptions::PyValueError::new_err(format!(
+                "target slot {slot} is outside the population."
+            )));
+        }
+    }
+    Ok(())
+}
+
+fn repair_value(value: f64, bounds: (f64, f64), kind: &GeneKind) -> f64 {
+    let (low, high) = bounds;
+    match kind {
+        GeneKind::Float => value.clamp(low, high),
+        GeneKind::Int => value.round().clamp(low, high),
+        GeneKind::Bool => {
+            if value >= 0.5 {
+                1.0
+            } else {
+                0.0
+            }
+        }
+    }
+}
+
+fn proposal_to_py(py: Python<'_>, proposal: &TrialProposal) -> PyResult<Py<PyAny>> {
+    let item = PyDict::new(py);
+    item.set_item("target_slot", proposal.target_slot)?;
+    item.set_item("genes", proposal.genes.clone())?;
+
+    let metadata = PyDict::new(py);
+    metadata.set_item("strategy", proposal.strategy)?;
+    metadata.set_item("target_slot", proposal.target_slot)?;
+    metadata.set_item("base_slot", proposal.base_slot)?;
+    metadata.set_item("donor_slots", proposal.donor_slots.clone())?;
+    let pairs = PyList::empty(py);
+    for (left, right) in &proposal.difference_pairs {
+        pairs.append(vec![*left, *right])?;
+    }
+    metadata.set_item("difference_pairs", pairs)?;
+    if let Some(best_slot) = proposal.best_slot {
+        metadata.set_item("best_slot", best_slot)?;
+    }
+    if let Some(value) = proposal.mutation_factor {
+        metadata.set_item("mutation_factor", value)?;
+    }
+    if let Some(value) = proposal.crossover_rate {
+        metadata.set_item("crossover_rate", value)?;
+    }
+    if let Some(value) = proposal.adaptive_slot {
+        metadata.set_item("adaptive_slot", value)?;
+    }
+    item.set_item("metadata", metadata)?;
+    Ok(item.into_any().unbind())
+}
+
+fn extract_jde_state(
+    jde_state: Option<Bound<'_, PyAny>>,
+    population_size: usize,
+    strategy: &DEStrategy,
+) -> PyResult<Option<JdeCommittedState>> {
+    if !matches!(strategy, DEStrategy::JdeRand1Bin) {
+        return Ok(None);
+    }
+    let Some(payload) = jde_state else {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "jde_state is required for strategy='jde-rand1bin'.",
+        ));
+    };
+    let f_by_slot = payload.get_item("f_by_slot")?.extract::<Vec<f64>>()?;
+    let cr_by_slot = payload.get_item("cr_by_slot")?.extract::<Vec<f64>>()?;
+    if f_by_slot.len() != population_size || cr_by_slot.len() != population_size {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "jde_state f_by_slot and cr_by_slot must match population size.",
+        ));
+    }
+    Ok(Some(JdeCommittedState {
+        f_by_slot,
+        cr_by_slot,
+    }))
+}
+
+fn best_slot(scores: &[f64], direction: &str) -> PyResult<usize> {
+    let mut best_idx = 0;
+    let mut best_score = comparison_score(scores[0], direction)?;
+    for (idx, score) in scores.iter().enumerate().skip(1) {
+        let comparison = comparison_score(*score, direction)?;
+        if comparison
+            .partial_cmp(&best_score)
+            .unwrap_or(Ordering::Less)
+            == Ordering::Greater
+        {
+            best_idx = idx;
+            best_score = comparison;
+        }
+    }
+    Ok(best_idx)
+}
+
+fn rng_for(seed: u64, generation: u64, slot: usize, op: u64) -> StdRng {
+    StdRng::seed_from_u64(derive_seed(seed, generation, slot as u64, op))
+}
+
+fn sample_slots(
+    population_size: usize,
+    count: usize,
+    excluded: &[usize],
+    seed: u64,
+    generation: u64,
+    target_slot: usize,
+) -> PyResult<Vec<usize>> {
+    let mut choices: Vec<usize> = (0..population_size)
+        .filter(|slot| !excluded.contains(slot))
+        .collect();
+    if choices.len() < count {
+        return Err(pyo3::exceptions::PyValueError::new_err(
+            "not enough donor slots for DE strategy.",
+        ));
+    }
+    let mut rng = rng_for(seed, generation, target_slot, OP_SELECTION);
+    choices.shuffle(&mut rng);
+    Ok(choices.into_iter().take(count).collect())
+}
+
+fn recipe_slots(
+    population_size: usize,
+    strategy: &DEStrategy,
+    seed: u64,
+    generation: u64,
+    target_slot: usize,
+    best_slot: usize,
+) -> PyResult<(usize, Vec<(usize, usize)>, Option<usize>)> {
+    match strategy {
+        DEStrategy::Rand1Bin | DEStrategy::JdeRand1Bin => {
+            let slots = sample_slots(
+                population_size,
+                3,
+                &[target_slot],
+                seed,
+                generation,
+                target_slot,
+            )?;
+            Ok((slots[0], vec![(slots[1], slots[2])], None))
+        }
+        DEStrategy::Best1Bin => {
+            let slots = sample_slots(
+                population_size,
+                2,
+                &[target_slot, best_slot],
+                seed,
+                generation,
+                target_slot,
+            )?;
+            Ok((best_slot, vec![(slots[0], slots[1])], Some(best_slot)))
+        }
+        DEStrategy::Rand2Bin => {
+            let slots = sample_slots(
+                population_size,
+                5,
+                &[target_slot],
+                seed,
+                generation,
+                target_slot,
+            )?;
+            Ok((
+                slots[0],
+                vec![(slots[1], slots[2]), (slots[3], slots[4])],
+                None,
+            ))
+        }
+        DEStrategy::CurrentToBest1Bin => {
+            let slots = sample_slots(
+                population_size,
+                2,
+                &[target_slot, best_slot],
+                seed,
+                generation,
+                target_slot,
+            )?;
+            Ok((target_slot, vec![(slots[0], slots[1])], Some(best_slot)))
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn mutant_value(
+    population: &[Vec<f64>],
+    gene_idx: usize,
+    base: &[f64],
+    target: &[f64],
+    difference_pairs: &[(usize, usize)],
+    best_slot: Option<usize>,
+    mutation_factor: f64,
+    current_to_best: bool,
+    bool_rng: &mut StdRng,
+    kind: &GeneKind,
+) -> f64 {
+    if matches!(kind, GeneKind::Bool) {
+        let mut value = base[gene_idx] >= 0.5;
+        if current_to_best {
+            if let Some(slot) = best_slot {
+                let best = population[slot][gene_idx] >= 0.5;
+                let target_value = target[gene_idx] >= 0.5;
+                if best != target_value {
+                    return if best { 1.0 } else { 0.0 };
+                }
+            }
+        }
+        for (left, right) in difference_pairs {
+            let left_value = population[*left][gene_idx] >= 0.5;
+            let right_value = population[*right][gene_idx] >= 0.5;
+            if left_value != right_value && bool_rng.gen::<f64>() < mutation_factor.min(1.0) {
+                value = !value;
+            }
+        }
+        return if value { 1.0 } else { 0.0 };
+    }
+
+    let mut value = base[gene_idx];
+    if current_to_best {
+        if let Some(slot) = best_slot {
+            value = target[gene_idx]
+                + mutation_factor * (population[slot][gene_idx] - target[gene_idx]);
+        }
+    }
+    for (left, right) in difference_pairs {
+        value += mutation_factor * (population[*left][gene_idx] - population[*right][gene_idx]);
+    }
+    value
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_trial_genes(
+    population: &[Vec<f64>],
+    gene_bounds: &[(f64, f64)],
+    gene_kinds: &[GeneKind],
+    seed: u64,
+    generation: u64,
+    target_slot: usize,
+    base_slot: usize,
+    difference_pairs: &[(usize, usize)],
+    best_slot: Option<usize>,
+    mutation_factor: f64,
+    crossover_rate: f64,
+    current_to_best: bool,
+) -> Vec<f64> {
+    let target = &population[target_slot];
+    let base = &population[base_slot];
+    let mut mask_rng = rng_for(seed, generation, target_slot, OP_CROSSOVER);
+    let mut bool_rng = rng_for(seed, generation, target_slot, OP_MUTATION);
+    let gene_count = gene_bounds.len();
+    let forced_index = if gene_count == 0 {
+        0
+    } else {
+        mask_rng.gen_range(0..gene_count)
+    };
+
+    (0..gene_count)
+        .map(|gene_idx| {
+            let (low, high) = gene_bounds[gene_idx];
+            if low == high {
+                return repair_value(low, gene_bounds[gene_idx], &gene_kinds[gene_idx]);
+            }
+            let selected = gene_idx == forced_index || mask_rng.gen::<f64>() < crossover_rate;
+            if !selected {
+                return repair_value(
+                    target[gene_idx],
+                    gene_bounds[gene_idx],
+                    &gene_kinds[gene_idx],
+                );
+            }
+            let value = mutant_value(
+                population,
+                gene_idx,
+                base,
+                target,
+                difference_pairs,
+                best_slot,
+                mutation_factor,
+                current_to_best,
+                &mut bool_rng,
+                &gene_kinds[gene_idx],
+            );
+            repair_value(value, gene_bounds[gene_idx], &gene_kinds[gene_idx])
+        })
+        .collect()
+}
+
+#[allow(clippy::too_many_arguments)]
+fn generate_one_trial(
+    population: &[Vec<f64>],
+    scores: &[f64],
+    gene_bounds: &[(f64, f64)],
+    gene_kinds: &[GeneKind],
+    strategy: &DEStrategy,
+    mutation_factor: f64,
+    crossover_rate: f64,
+    seed: u64,
+    generation: u64,
+    target_slot: usize,
+    direction: &str,
+    jde_state: Option<&JdeCommittedState>,
+) -> PyResult<TrialProposal> {
+    let best_slot = best_slot(scores, direction)?;
+    let f = if let (DEStrategy::JdeRand1Bin, Some(state)) = (strategy, jde_state) {
+        state.f_by_slot[target_slot]
+    } else {
+        mutation_factor
+    };
+    let cr = if let (DEStrategy::JdeRand1Bin, Some(state)) = (strategy, jde_state) {
+        state.cr_by_slot[target_slot]
+    } else {
+        crossover_rate
+    };
+    let (base_slot, pairs, reported_best) = recipe_slots(
+        population.len(),
+        strategy,
+        seed,
+        generation,
+        target_slot,
+        best_slot,
+    )?;
+    let genes = build_trial_genes(
+        population,
+        gene_bounds,
+        gene_kinds,
+        seed,
+        generation,
+        target_slot,
+        base_slot,
+        &pairs,
+        reported_best,
+        f,
+        cr,
+        matches!(strategy, DEStrategy::CurrentToBest1Bin),
+    );
+    let donor_slots = std::iter::once(base_slot)
+        .chain(pairs.iter().flat_map(|(left, right)| [*left, *right]))
+        .collect();
+    Ok(TrialProposal {
+        target_slot,
+        genes,
+        strategy: strategy_name(strategy),
+        base_slot,
+        best_slot: reported_best,
+        donor_slots,
+        difference_pairs: pairs,
+        mutation_factor: matches!(strategy, DEStrategy::JdeRand1Bin).then_some(f),
+        crossover_rate: matches!(strategy, DEStrategy::JdeRand1Bin).then_some(cr),
+        adaptive_slot: matches!(strategy, DEStrategy::JdeRand1Bin).then_some(target_slot),
+    })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn generate_trials(
+    population: &[Vec<f64>],
+    scores: &[f64],
+    gene_bounds: &[(f64, f64)],
+    gene_kinds: &[GeneKind],
+    strategy: &DEStrategy,
+    mutation_factor: f64,
+    crossover_rate: f64,
+    seed: u64,
+    generation: u64,
+    target_slots: &[usize],
+    direction: &str,
+    jde_state: Option<&JdeCommittedState>,
+) -> PyResult<Vec<TrialProposal>> {
+    target_slots
+        .iter()
+        .map(|&target_slot| {
+            generate_one_trial(
+                population,
+                scores,
+                gene_bounds,
+                gene_kinds,
+                strategy,
+                mutation_factor,
+                crossover_rate,
+                seed,
+                generation,
+                target_slot,
+                direction,
+                jde_state,
+            )
+        })
+        .collect()
+}
+
+#[pyfunction]
+#[pyo3(signature = (
+    population,
+    scores,
+    gene_bounds,
+    gene_kinds,
+    strategy,
+    mutation_factor,
+    crossover_rate,
+    seed,
+    generation,
+    target_slots,
+    direction,
+    jde_state=None,
+))]
+#[allow(clippy::too_many_arguments)]
+pub fn de_generate_trials(
+    py: Python<'_>,
+    population: Vec<Vec<f64>>,
+    scores: Vec<f64>,
+    gene_bounds: Vec<(f64, f64)>,
+    gene_kinds: Vec<String>,
+    strategy: String,
+    mutation_factor: f64,
+    crossover_rate: f64,
+    seed: u64,
+    generation: u64,
+    target_slots: Vec<usize>,
+    direction: String,
+    jde_state: Option<Bound<'_, PyAny>>,
+) -> PyResult<Vec<Py<PyAny>>> {
+    let parsed_strategy = parse_strategy(&strategy)?;
+    let kinds = parse_gene_kinds(&gene_kinds)?;
+    validate_inputs(
+        &population,
+        &scores,
+        &gene_bounds,
+        &kinds,
+        &parsed_strategy,
+        &target_slots,
+    )?;
+    let committed_jde = extract_jde_state(jde_state, population.len(), &parsed_strategy)?;
+    let proposals = generate_trials(
+        &population,
+        &scores,
+        &gene_bounds,
+        &kinds,
+        &parsed_strategy,
+        mutation_factor,
+        crossover_rate,
+        seed,
+        generation,
+        &target_slots,
+        &direction,
+        committed_jde.as_ref(),
+    )?;
+    proposals
+        .iter()
+        .map(|proposal| proposal_to_py(py, proposal))
+        .collect()
+}
