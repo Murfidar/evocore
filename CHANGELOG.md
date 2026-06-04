@@ -27,6 +27,14 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Added `AcceptanceDecision` and `UpdateResult.state_accepted_count` to
   distinguish ask/tell record acceptance from optimizer state acceptance.
 
+### Changed
+
+- Migrated Differential Evolution trial proposal generation for built-in
+  strategies to the Rust extension while keeping Python ask/tell, replacement,
+  checkpoint, event, telemetry, and policy semantics unchanged. Seeded DE runs
+  remain deterministic within the same EvoCore version, but exact trial
+  sequences may differ from the previous Python-generated strategy path.
+
 ## [0.9.0] - 2026-05-21
 
 ### Added
