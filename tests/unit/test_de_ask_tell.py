@@ -135,7 +135,7 @@ def test_de_rand1bin_trial_generation_matches_locked_fixture() -> None:
     assert [trial.genes for trial in trials] == [
         [pytest.approx(-0.326847178254833), 20, True, pytest.approx(1.5)],
         [pytest.approx(-0.6886784589685266), 10, True, pytest.approx(1.5)],
-        [pytest.approx(-5.0), 17, True, pytest.approx(1.5)],
+        [pytest.approx(-5.0), 4, True, pytest.approx(1.5)],
         [pytest.approx(5.0), 2, True, pytest.approx(1.5)],
         [pytest.approx(-1.1574580209541847), 2, False, pytest.approx(1.5)],
         [pytest.approx(1.0187012634348311), 2, True, pytest.approx(1.5)],

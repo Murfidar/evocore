@@ -174,3 +174,29 @@ def test_de_generate_trials_jde_can_refresh_parameters_from_seed() -> None:
     assert any(f != 0.5 or cr != 0.9 for f, cr in params)
     assert all(0.1 <= f <= 1.0 for f, _ in params)
     assert all(0.0 <= cr <= 1.0 for _, cr in params)
+
+
+def test_de_generate_trials_forces_variable_gene_when_fixed_gene_exists() -> None:
+    population = [
+        [1.5, 0.0],
+        [1.5, 1.0],
+        [1.5, 3.0],
+        [1.5, -2.0],
+    ]
+
+    proposal = _core.de_generate_trials(
+        population,
+        [0.0, 1.0, 2.0, 3.0],
+        [(1.5, 1.5), (-10.0, 10.0)],
+        ["float", "float"],
+        "rand1bin",
+        0.8,
+        0.0,
+        0,
+        0,
+        [0],
+        "maximize",
+    )[0]
+
+    assert proposal["genes"][0] == pytest.approx(1.5)
+    assert proposal["genes"][1] != pytest.approx(population[0][1])

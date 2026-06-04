@@ -1,19 +1,13 @@
 from __future__ import annotations
 
 import math
-import random
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from evocore import _core
 from evocore.core.errors import CheckpointError
 
 JDE_STATE_SCHEMA_VERSION = 1
-JDE_F_REFRESH_PROBABILITY = 0.1
-JDE_CR_REFRESH_PROBABILITY = 0.1
-JDE_F_LOW = 0.1
-JDE_F_HIGH = 1.0
 
 
 @dataclass(frozen=True)
@@ -76,28 +70,6 @@ class JDEAdaptiveState:
         return cls(
             f_by_slot=[float(mutation_factor)] * int(population_size),
             cr_by_slot=[float(crossover_rate)] * int(population_size),
-        )
-
-    def propose_parameters(
-        self,
-        *,
-        seed: int,
-        generation: int,
-        target_slot: int,
-    ) -> JDETrialParameters:
-        """Deterministically propose jDE parameters for one target slot."""
-        f_value = self.f_by_slot[target_slot]
-        cr_value = self.cr_by_slot[target_slot]
-        f_rng = _jde_rng(seed, generation, target_slot, offset=1)
-        cr_rng = _jde_rng(seed, generation, target_slot, offset=2)
-        if f_rng.random() < JDE_F_REFRESH_PROBABILITY:
-            f_value = JDE_F_LOW + f_rng.random() * (JDE_F_HIGH - JDE_F_LOW)
-        if cr_rng.random() < JDE_CR_REFRESH_PROBABILITY:
-            cr_value = cr_rng.random()
-        return JDETrialParameters(
-            target_slot=target_slot,
-            mutation_factor=f_value,
-            crossover_rate=cr_value,
         )
 
     def register_pending(self, candidate_id: str, params: JDETrialParameters) -> None:
@@ -184,18 +156,6 @@ class JDEAdaptiveState:
             cr_by_slot=cr_by_slot,
             pending_trial_params=pending_trial_params,
         )
-
-
-def _jde_rng(seed: int, generation: int, target_slot: int, *, offset: int) -> random.Random:
-    derived = int(
-        _core.py_derive_seed(
-            int(seed),
-            int(generation),
-            int(target_slot) * 10 + int(offset),
-            _core.OP_MUTATION,
-        )
-    )
-    return random.Random(derived)  # noqa: S311 - deterministic optimizer sampling.
 
 
 def _float_list(payload: Mapping[str, Any], key: str) -> list[float]:

@@ -414,10 +414,15 @@ fn build_trial_genes(
     let mut mask_rng = rng_for(seed, generation, target_slot, OP_CROSSOVER);
     let mut bool_rng = rng_for(seed, generation, target_slot, OP_MUTATION);
     let gene_count = gene_bounds.len();
-    let forced_index = if gene_count == 0 {
+    let variable_indices: Vec<usize> = gene_bounds
+        .iter()
+        .enumerate()
+        .filter_map(|(idx, (low, high))| (low != high).then_some(idx))
+        .collect();
+    let forced_index = if variable_indices.is_empty() {
         0
     } else {
-        mask_rng.gen_range(0..gene_count)
+        variable_indices[mask_rng.gen_range(0..variable_indices.len())]
     };
 
     (0..gene_count)
@@ -722,6 +727,34 @@ mod tests {
         let second = proposals(DEStrategy::Rand2);
         assert_eq!(first[0].genes, second[0].genes);
         assert_eq!(first[0].donor_slots, second[0].donor_slots);
+    }
+
+    #[test]
+    fn de_forced_crossover_uses_variable_gene_when_fixed_gene_exists() {
+        let population = vec![
+            vec![1.5, 0.0],
+            vec![1.5, 1.0],
+            vec![1.5, 3.0],
+            vec![1.5, -2.0],
+        ];
+        let proposal = generate_one_trial(
+            &population,
+            &[0.0, 1.0, 2.0, 3.0],
+            &[(1.5, 1.5), (-10.0, 10.0)],
+            &[GeneKind::Float, GeneKind::Float],
+            &DEStrategy::Rand1,
+            0.8,
+            0.0,
+            0,
+            0,
+            0,
+            "maximize",
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(proposal.genes[0], 1.5);
+        assert_ne!(proposal.genes[1], population[0][1]);
     }
 
     #[test]
