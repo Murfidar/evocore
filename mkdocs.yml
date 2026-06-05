@@ -1,5 +1,5 @@
 site_name: evocore
-site_description: Rust-native Genetic Algorithms and CMA-ES for Python
+site_description: Rust-native Genetic Algorithms, Differential Evolution, and CMA-ES for Python
 repo_url: https://github.com/Murfidar/evocore
 docs_dir: docs/site
 site_dir: site
@@ -9,6 +9,7 @@ nav:
   - Home: index.md
   - Install: install.md
   - Quickstart: quickstart.md
+  - Examples: examples.md
   - Gene Spaces: gene-space.md
   - Operator Contract: operator-contract.md
   - Genetic Algorithms: ga.md
