@@ -6,6 +6,19 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+### Added
+
+- Added neutral search-space codec helpers for gene repair and Rust/operator
+  boundary encoding: `repair_gene_value(...)`, `repair_gene_values(...)`,
+  `encode_gene_values(...)`, and `decode_gene_values(...)`.
+
+### Changed
+
+- Centralized GA, CMA-ES, and Differential Evolution ask/tell helper logic for
+  gene repair, event records, telemetry counting, and synchronous evaluator
+  record validation without changing optimizer seed, checkpoint, or public
+  lifecycle semantics.
+
 ## [0.10.0] - 2026-06-05
 
 ### Added

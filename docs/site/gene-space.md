@@ -74,6 +74,24 @@ Invalid values raise `ConfigurationError`. Float genes reject booleans, non-fini
 and out-of-bounds values. Int genes reject booleans, floats, and out-of-bounds values.
 Bool genes accept only Python `bool`.
 
+## Repair And Codec Helpers
+
+Search-space codec helpers provide the same repair semantics used by the built-in
+optimizers when crossing between Python values and Rust/operator float vectors:
+
+```python
+from evocore.search_space import decode_gene_values, encode_gene_values, repair_gene_values
+
+encoded = encode_gene_values(space, [10, 0.25, True, 2])
+decoded = decode_gene_values(space, [10.2, 0.25, 0.9, 2.0])
+repaired = repair_gene_values(space, [10.2, 0.25, 0.9, 2.0])
+```
+
+Float genes are clamped to inclusive bounds, int genes are rounded then clamped,
+and bool genes accept booleans or numeric thresholds where values greater than or
+equal to `0.5` decode to `True`. The helpers validate vector length and the final
+decoded values against the `GeneSpace`.
+
 ## Stable Signature
 
 `GeneSpace` owns its reproducibility signature:
