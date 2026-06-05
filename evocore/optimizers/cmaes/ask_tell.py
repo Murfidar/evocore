@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 from collections.abc import Sequence
 
 from evocore import _core
@@ -15,7 +14,12 @@ from evocore.lifecycle import (
     is_state_update_confidence,
     score_for_direction,
 )
-from evocore.results import EventRecord
+from evocore.lifecycle.ask_tell_helpers import (
+    append_candidate_ask_events,
+    append_candidate_tell_event,
+    candidate_and_batch_for_record,
+    record_evaluation_telemetry,
+)
 
 
 class CMAESAskTellMixin:
@@ -24,15 +28,11 @@ class CMAESAskTellMixin:
     def _candidate_and_batch_for_record(
         self, record: EvaluationRecord
     ) -> tuple[Candidate, CandidateBatch]:
-        candidate = self._candidates_by_id.get(record.candidate_id)
-        if candidate is None:
-            raise FitnessError(f"tell() received unknown candidate_id: {record.candidate_id!r}")
-        if record.batch_id is not None and record.batch_id not in self._batches_by_id:
-            raise FitnessError(f"tell() received unknown batch_id: {record.batch_id!r}")
-        batch = self._batches_by_id.get(candidate.batch_id)
-        if batch is None:
-            raise FitnessError(f"tell() received unknown batch_id: {candidate.batch_id!r}")
-        return candidate, batch
+        return candidate_and_batch_for_record(
+            record,
+            self._candidates_by_id,
+            self._batches_by_id,
+        )
 
     def _apply_record_confidence(
         self,
@@ -48,19 +48,7 @@ class CMAESAskTellMixin:
             self.best_candidate = candidate
         if record.confidence == "trusted_full":
             trusted_records.append(record)
-            self.vnext_telemetry.record_full(1, stage=record.stage, cost=record.cost)
-            return "trusted"
-        if record.confidence == "cached":
-            self.vnext_telemetry.record_cached(1, stage=record.stage, cost=record.cost)
-            return "cached"
-        if record.confidence == "partial":
-            self.vnext_telemetry.record_partial(1, stage=record.stage, cost=record.cost)
-            return "partial"
-        if record.confidence == "surrogate":
-            self.vnext_telemetry.record_screened(1)
-            return "surrogate"
-        self.vnext_telemetry.record_eliminated(1, stage=record.stage)
-        return "rejected"
+        return record_evaluation_telemetry(self.vnext_telemetry, record)
 
     def _consume_complete_batch(self, batch: CandidateBatch) -> bool:
         ordered_records = batch.ordered_state_update_records()
@@ -86,52 +74,16 @@ class CMAESAskTellMixin:
 
     def _append_ask_events(self, candidates: Sequence[Candidate]) -> None:
         """Record ask events for proposed CMA candidates."""
-        for candidate in candidates:
-            self.events.append(
-                EventRecord(
-                    event_index=len(self.events),
-                    event_type="ask",
-                    batch_id=candidate.batch_id,
-                    candidate_id=candidate.candidate_id,
-                    candidate_hash=candidate.candidate_hash(self.gene_space),
-                    generation=candidate.generation,
-                    origin=candidate.origin,
-                    parents=tuple(candidate.parents),
-                    genes=tuple(candidate.genes),
-                    params=dict(candidate.params) if candidate.params is not None else None,
-                    metadata=dict(candidate.metadata),
-                )
-            )
+        append_candidate_ask_events(self.events, candidates, self.gene_space)
 
     def _append_tell_event(self, candidate: Candidate, record: EvaluationRecord) -> None:
         """Record a tell event after candidate state has been updated."""
-        raw_score = float(record.score) if record.score is not None else None
-        comparison_score = (
-            score_for_direction(raw_score, self.direction)
-            if raw_score is not None and math.isfinite(raw_score)
-            else None
-        )
-        self.events.append(
-            EventRecord(
-                event_index=len(self.events),
-                event_type="tell",
-                batch_id=candidate.batch_id,
-                candidate_id=candidate.candidate_id,
-                candidate_hash=candidate.candidate_hash(self.gene_space),
-                generation=candidate.generation,
-                stage=record.stage,
-                confidence=record.confidence,
-                raw_score=raw_score,
-                comparison_score=comparison_score,
-                cost=record.cost,
-                status=candidate.status,
-                origin=candidate.origin,
-                parents=tuple(candidate.parents),
-                genes=tuple(candidate.genes),
-                params=dict(candidate.params) if candidate.params is not None else None,
-                metrics=dict(record.metrics),
-                metadata=dict(record.metadata),
-            )
+        append_candidate_tell_event(
+            self.events,
+            candidate,
+            record,
+            self.gene_space,
+            self.direction,
         )
 
     def ask(self, n: int | None = None) -> list[Candidate]:

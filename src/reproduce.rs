@@ -2,6 +2,7 @@ use rand::prelude::*;
 use rand::rngs::StdRng;
 use rand_distr::{Distribution, Normal};
 
+use crate::gene_codec::repair_encoded_values;
 use crate::gene_spec::GeneKind;
 use crate::operators::{binary_ops, float_ops};
 use crate::selection;
@@ -48,35 +49,7 @@ pub struct ReproduceConfig {
 }
 
 pub fn clamp_and_round(genes: &[f64], bounds: &[(f64, f64)], kinds: &[GeneKind]) -> Vec<f64> {
-    assert_eq!(
-        genes.len(),
-        bounds.len(),
-        "clamp_and_round: genes/bounds mismatch"
-    );
-    assert_eq!(
-        genes.len(),
-        kinds.len(),
-        "clamp_and_round: genes/kinds mismatch"
-    );
-
-    genes
-        .iter()
-        .enumerate()
-        .map(|(idx, &gene)| {
-            let (low, high) = bounds[idx];
-            match kinds[idx] {
-                GeneKind::Float => gene.clamp(low, high),
-                GeneKind::Int => gene.round().clamp(low, high),
-                GeneKind::Bool => {
-                    if gene >= 0.5 {
-                        1.0
-                    } else {
-                        0.0
-                    }
-                }
-            }
-        })
-        .collect()
+    repair_encoded_values(genes, bounds, kinds)
 }
 
 fn apply_crossover(

@@ -1,10 +1,9 @@
 from __future__ import annotations
 
-import math
 from collections.abc import Sequence
 
 from evocore import _core
-from evocore.core.errors import ConfigurationError, FitnessError
+from evocore.core.errors import ConfigurationError
 from evocore.lifecycle import (
     AcceptanceDecision,
     Candidate,
@@ -13,34 +12,18 @@ from evocore.lifecycle import (
     UpdateResult,
     batch_id_from_seed,
     is_state_update_confidence,
-    score_for_direction,
     solution_to_candidate,
 )
+from evocore.lifecycle.ask_tell_helpers import (
+    append_candidate_ask_events,
+    append_candidate_tell_event,
+    candidate_and_batch_for_record,
+    record_evaluation_telemetry,
+)
 from evocore.optimizers.de.adaptive import JDEAdaptiveState, JDETrialParameters
+from evocore.optimizers.de.kernel import DERustKernelAdapter
 from evocore.optimizers.de.strategies import TrialProposal
-from evocore.results import EventRecord
-from evocore.search_space import Solution
-
-
-def _decode_de_values(gene_space, encoded: Sequence[float]) -> list[float | int | bool]:
-    if len(encoded) != gene_space.length:
-        raise ConfigurationError(
-            f"Expected {gene_space.length} encoded genes, got {len(encoded)}."
-        )
-    decoded: list[float | int | bool] = []
-    for value, gene in zip(encoded, gene_space.genes, strict=False):
-        if gene.kind == "bool":
-            decoded.append(bool(float(value) >= 0.5))
-        elif gene.kind == "int":
-            low = float(gene.low)
-            high = float(gene.high)
-            decoded.append(int(round(min(max(float(value), low), high))))
-        else:
-            low = float(gene.low)
-            high = float(gene.high)
-            decoded.append(float(min(max(float(value), low), high)))
-    gene_space.validate_genes(decoded)
-    return decoded
+from evocore.search_space import Solution, decode_gene_values
 
 
 class DifferentialEvolutionAskTellMixin:
@@ -78,7 +61,7 @@ class DifferentialEvolutionAskTellMixin:
         )
         return [
             self._candidate_from_genes(
-                _decode_de_values(self.gene_space, encoded),
+                decode_gene_values(self.gene_space, encoded),
                 batch_id=batch_id,
                 origin="random",
                 event_index=event_index,
@@ -99,13 +82,6 @@ class DifferentialEvolutionAskTellMixin:
         target_population = self._target_population()
         trial_count = min(int(count), len(target_population))
         target_slots = list(range(trial_count))
-        population_encoded = [
-            [
-                1.0 if value is True else 0.0 if value is False else float(value)
-                for value in candidate.genes
-            ]
-            for candidate in target_population
-        ]
         scores = [candidate.best_state_score(self.direction) for candidate in target_population]
         jde_state = None
         to_rust_committed_state = getattr(
@@ -116,27 +92,19 @@ class DifferentialEvolutionAskTellMixin:
         if callable(to_rust_committed_state):
             jde_state = to_rust_committed_state()
 
-        raw_proposals = _core.de_generate_trials(
-            population_encoded,
-            scores,
-            self.gene_space.rust_bounds,
-            self.gene_space.kinds,
-            self.strategy,
-            self.mutation_factor,
-            self.crossover_rate,
-            self.seed,
-            self.generation,
-            target_slots,
-            self.direction,
-            jde_state,
+        return DERustKernelAdapter().generate_trials(
+            target_population=target_population,
+            scores=scores,
+            gene_space=self.gene_space,
+            strategy=self.strategy,
+            mutation_factor=self.mutation_factor,
+            crossover_rate=self.crossover_rate,
+            seed=self.seed,
+            generation=self.generation,
+            target_slots=target_slots,
+            direction=self.direction,
+            jde_state=jde_state,
         )
-        proposals: list[TrialProposal] = []
-        for raw in raw_proposals:
-            genes = _decode_de_values(self.gene_space, raw["genes"])
-            metadata = dict(raw["metadata"])
-            self.gene_space.validate_genes(genes)
-            proposals.append(TrialProposal(genes=genes, metadata=metadata))
-        return proposals
 
     def _record_pending_strategy_trial(self, candidate: Candidate) -> None:
         if not isinstance(self._de_strategy_state, JDEAdaptiveState):
@@ -183,22 +151,7 @@ class DifferentialEvolutionAskTellMixin:
         return candidates
 
     def _append_ask_events(self, candidates: Sequence[Candidate]) -> None:
-        for candidate in candidates:
-            self.events.append(
-                EventRecord(
-                    event_index=len(self.events),
-                    event_type="ask",
-                    batch_id=candidate.batch_id,
-                    candidate_id=candidate.candidate_id,
-                    candidate_hash=candidate.candidate_hash(self.gene_space),
-                    generation=candidate.generation,
-                    origin=candidate.origin,
-                    parents=tuple(candidate.parents),
-                    genes=tuple(candidate.genes),
-                    params=dict(candidate.params) if candidate.params is not None else None,
-                    metadata=dict(candidate.metadata),
-                )
-            )
+        append_candidate_ask_events(self.events, candidates, self.gene_space)
 
     def _pending_batch_ids(self) -> tuple[str, ...]:
         return tuple(
@@ -231,15 +184,11 @@ class DifferentialEvolutionAskTellMixin:
     def _candidate_and_batch_for_record(
         self, record: EvaluationRecord
     ) -> tuple[Candidate, CandidateBatch]:
-        candidate = self._candidates_by_id.get(record.candidate_id)
-        if candidate is None:
-            raise FitnessError(f"tell() received unknown candidate_id: {record.candidate_id!r}")
-        if record.batch_id is not None and record.batch_id not in self._batches_by_id:
-            raise FitnessError(f"tell() received unknown batch_id: {record.batch_id!r}")
-        batch = self._batches_by_id.get(candidate.batch_id)
-        if batch is None:
-            raise FitnessError(f"tell() received unknown batch_id: {candidate.batch_id!r}")
-        return candidate, batch
+        return candidate_and_batch_for_record(
+            record,
+            self._candidates_by_id,
+            self._batches_by_id,
+        )
 
     def _record_best_candidate(self, candidate: Candidate) -> None:
         if self.best_candidate is None or candidate.state_comparison_score(
@@ -248,20 +197,7 @@ class DifferentialEvolutionAskTellMixin:
             self.best_candidate = candidate
 
     def _apply_telemetry_for_record(self, record: EvaluationRecord) -> str:
-        if record.confidence == "trusted_full":
-            self.vnext_telemetry.record_full(1, stage=record.stage, cost=record.cost)
-            return "trusted"
-        if record.confidence == "cached":
-            self.vnext_telemetry.record_cached(1, stage=record.stage, cost=record.cost)
-            return "cached"
-        if record.confidence == "partial":
-            self.vnext_telemetry.record_partial(1, stage=record.stage, cost=record.cost)
-            return "partial"
-        if record.confidence == "surrogate":
-            self.vnext_telemetry.record_screened(1)
-            return "surrogate"
-        self.vnext_telemetry.record_eliminated(1, stage=record.stage)
-        return "rejected"
+        return record_evaluation_telemetry(self.vnext_telemetry, record)
 
     def _append_tell_event(
         self,
@@ -270,35 +206,13 @@ class DifferentialEvolutionAskTellMixin:
         *,
         metadata: dict | None = None,
     ) -> None:
-        raw_score = float(record.score) if record.score is not None else None
-        comparison_score = (
-            score_for_direction(raw_score, self.direction)
-            if raw_score is not None and math.isfinite(raw_score)
-            else None
-        )
-        event_metadata = dict(record.metadata)
-        event_metadata.update(dict(metadata or {}))
-        self.events.append(
-            EventRecord(
-                event_index=len(self.events),
-                event_type="tell",
-                batch_id=candidate.batch_id,
-                candidate_id=candidate.candidate_id,
-                candidate_hash=candidate.candidate_hash(self.gene_space),
-                generation=candidate.generation,
-                stage=record.stage,
-                confidence=record.confidence,
-                raw_score=raw_score,
-                comparison_score=comparison_score,
-                cost=record.cost,
-                status=candidate.status,
-                origin=candidate.origin,
-                parents=tuple(candidate.parents),
-                genes=tuple(candidate.genes),
-                params=dict(candidate.params) if candidate.params is not None else None,
-                metrics=dict(record.metrics),
-                metadata=event_metadata,
-            )
+        append_candidate_tell_event(
+            self.events,
+            candidate,
+            record,
+            self.gene_space,
+            self.direction,
+            metadata=metadata,
         )
 
     def _batch_complete_for_de(self, batch: CandidateBatch) -> bool:

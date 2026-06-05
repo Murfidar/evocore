@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 
 from evocore.core.errors import ConfigurationError
@@ -15,8 +16,74 @@ from evocore.optimizers.operators import (
     resolve_operator_domain,
     validate_operator_set,
 )
-from evocore.search_space.genes import GeneSpace
-from evocore.search_space.solutions import Solution
+from evocore.search_space.genes import Gene, GeneSpace
+from evocore.search_space.solutions import GeneValue, Solution
+
+
+def _validate_gene_count(gene_space: GeneSpace, values: Sequence[object], *, label: str) -> None:
+    if len(values) != gene_space.length:
+        raise ConfigurationError(f"{label} expected {gene_space.length} genes, got {len(values)}.")
+
+
+def repair_gene_value(value: object, gene: Gene) -> GeneValue:
+    """Repair one decoded or encoded value according to a gene definition."""
+    if gene.kind == "bool":
+        if type(value) is bool:
+            return value
+        if isinstance(value, int | float) and type(value) is not bool:
+            numeric_value = float(value)
+            if not math.isfinite(numeric_value):
+                raise ConfigurationError(f"Gene {gene.name!r} must be finite, got {value!r}.")
+            return numeric_value >= 0.5
+        raise ConfigurationError(
+            f"Gene {gene.name!r} expects bool-compatible value, got {type(value).__name__}."
+        )
+
+    if not isinstance(value, int | float) or type(value) is bool:
+        raise ConfigurationError(
+            f"Gene {gene.name!r} expects numeric-compatible value, got {type(value).__name__}."
+        )
+
+    numeric_value = float(value)
+    if not math.isfinite(numeric_value):
+        raise ConfigurationError(f"Gene {gene.name!r} must be finite, got {value!r}.")
+
+    low = float(gene.low)
+    high = float(gene.high)
+    if gene.kind == "int":
+        rounded = float(round(numeric_value))
+        return int(min(max(rounded, low), high))
+    return float(min(max(numeric_value, low), high))
+
+
+def repair_gene_values(gene_space: GeneSpace, values: Sequence[object]) -> list[GeneValue]:
+    """Repair a full gene vector and validate it against the gene space."""
+    _validate_gene_count(gene_space, values, label="Gene repair")
+    repaired = [
+        repair_gene_value(value, gene)
+        for value, gene in zip(values, gene_space.genes, strict=False)
+    ]
+    gene_space.validate_genes(repaired)
+    return repaired
+
+
+def encode_gene_values(gene_space: GeneSpace, values: Sequence[GeneValue]) -> list[float]:
+    """Encode validated Python gene values into Rust/operator floats."""
+    gene_space.validate_genes(values)
+    encoded: list[float] = []
+    for value, gene in zip(values, gene_space.genes, strict=False):
+        if gene.kind == "bool":
+            encoded.append(1.0 if bool(value) else 0.0)
+        elif gene.kind == "int":
+            encoded.append(float(int(value)))
+        else:
+            encoded.append(float(value))
+    return encoded
+
+
+def decode_gene_values(gene_space: GeneSpace, encoded: Sequence[float]) -> list[GeneValue]:
+    """Decode and repair Rust/operator floats into Python gene values."""
+    return repair_gene_values(gene_space, encoded)
 
 
 class OperatorCodec:
@@ -71,36 +138,13 @@ class OperatorCodec:
         """Return the Rust-facing floating-point bounds."""
         return self.gene_space.rust_bounds
 
-    def encode_values(self, values: Sequence[float | int | bool]) -> list[float]:
+    def encode_values(self, values: Sequence[GeneValue]) -> list[float]:
         """Encode Python values into the float vector used by Rust."""
-        self.gene_space.validate_genes(values)
+        return encode_gene_values(self.gene_space, values)
 
-        encoded: list[float] = []
-        for value, gene in zip(values, self.gene_space.genes):
-            if gene.kind == "bool":
-                encoded.append(1.0 if bool(value) else 0.0)
-            elif gene.kind == "int":
-                encoded.append(float(int(value)))
-            else:
-                encoded.append(float(value))
-        return encoded
-
-    def decode_values(self, genes_f64: Sequence[float]) -> list[float | int | bool]:
+    def decode_values(self, genes_f64: Sequence[float]) -> list[GeneValue]:
         """Decode Rust float vectors back into Python gene values."""
-        if len(genes_f64) != self.gene_space.length:
-            raise ConfigurationError(
-                f"Expected {self.gene_space.length} encoded genes, got {len(genes_f64)}."
-            )
-
-        decoded: list[float | int | bool] = []
-        for value, gene in zip(genes_f64, self.gene_space.genes):
-            if gene.kind == "bool":
-                decoded.append(bool(value >= 0.5))
-            elif gene.kind == "int":
-                decoded.append(int(round(value)))
-            else:
-                decoded.append(float(value))
-        return decoded
+        return decode_gene_values(self.gene_space, genes_f64)
 
     def encode_population(self, solutions: Sequence[Solution]) -> list[list[float]]:
         """Encode a SolutionSet of solutions for Rust calls."""

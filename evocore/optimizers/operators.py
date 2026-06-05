@@ -521,38 +521,10 @@ def apply_bounds_policy(
     """Apply a bounds policy to decoded gene values."""
     if bounds_policy.name != "clamp":
         raise ConfigurationError(f"Unsupported bounds policy: {bounds_policy.name!r}.")
-    if len(values) != gene_space.length:
-        raise ConfigurationError(
-            f"Bounds policy expected {gene_space.length} genes, got {len(values)}."
-        )
 
-    bounded: list[GeneValue] = []
-    for value, gene in zip(values, gene_space.genes, strict=False):
-        if gene.kind == "bool":
-            if type(value) is bool:
-                bounded.append(value)
-            elif isinstance(value, int | float):
-                bounded.append(float(value) >= 0.5)
-            else:
-                raise ConfigurationError(
-                    f"Gene {gene.name!r} expects bool-compatible value, got {type(value).__name__}."
-                )
-            continue
+    from evocore.search_space.codec import repair_gene_values
 
-        low = float(gene.low)
-        high = float(gene.high)
-        if not isinstance(value, int | float) or type(value) is bool:
-            raise ConfigurationError(
-                f"Gene {gene.name!r} expects numeric value, got {type(value).__name__}."
-            )
-        clamped = min(max(float(value), low), high)
-        if gene.kind == "int":
-            bounded.append(int(round(clamped)))
-        else:
-            bounded.append(float(clamped))
-
-    gene_space.validate_genes(bounded)
-    return bounded
+    return repair_gene_values(gene_space, values)
 
 
 @dataclass(frozen=True)

@@ -6,6 +6,14 @@
 
 ::: evocore.search_space.OperatorCodec
 
+::: evocore.search_space.repair_gene_value
+
+::: evocore.search_space.repair_gene_values
+
+::: evocore.search_space.encode_gene_values
+
+::: evocore.search_space.decode_gene_values
+
 ::: evocore.optimizers.operators.BoundsPolicy
 
 ::: evocore.optimizers.operators.CrossoverOperator

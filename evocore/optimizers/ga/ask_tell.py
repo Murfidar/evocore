@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import math
 import time
-from collections import Counter
 from collections.abc import Sequence
 
 from evocore import _core
@@ -20,11 +18,17 @@ from evocore.lifecycle import (
     batch_id_from_seed,
     candidate_to_solution,
     is_state_update_confidence,
-    score_for_direction,
     solution_to_candidate,
 )
+from evocore.lifecycle.ask_tell_helpers import (
+    append_candidate_ask_events,
+    append_candidate_tell_event,
+    candidate_and_batch_for_record,
+    evaluation_context_for_candidates,
+    record_evaluation_telemetry,
+    validate_evaluator_records,
+)
 from evocore.results import (
-    EventRecord,
     GenerationHistory,
     OptimizationResult,
     append_run_stop_event,
@@ -127,16 +131,11 @@ class GeneticAlgorithmAskTellMixin:
         acceptance_decisions: list[AcceptanceDecision] = []
         touched_batch_ids: set[str] = set()
         for record in records:
-            candidate = self._candidates_by_id.get(record.candidate_id)
-            if candidate is None:
-                raise FitnessError(
-                    f"tell() received unknown candidate_id: {record.candidate_id!r}"
-                )
-            if record.batch_id is not None and record.batch_id not in self._batches_by_id:
-                raise FitnessError(f"tell() received unknown batch_id: {record.batch_id!r}")
-            batch = self._batches_by_id.get(candidate.batch_id)
-            if batch is None:
-                raise FitnessError(f"tell() received unknown batch_id: {candidate.batch_id!r}")
+            candidate, batch = candidate_and_batch_for_record(
+                record,
+                self._candidates_by_id,
+                self._batches_by_id,
+            )
             batch.accept_record(record)
             touched_batch_ids.add(batch.batch_id)
             candidate.apply_record(record)
@@ -151,21 +150,17 @@ class GeneticAlgorithmAskTellMixin:
                         reason="state_record_accepted",
                     )
                 )
-            if record.confidence == "trusted_full":
+            confidence = record_evaluation_telemetry(self.vnext_telemetry, record)
+            if confidence == "trusted":
                 trusted += 1
-                self.vnext_telemetry.record_full(1, stage=record.stage, cost=record.cost)
-            elif record.confidence == "cached":
+            elif confidence == "cached":
                 cached += 1
-                self.vnext_telemetry.record_cached(1, stage=record.stage, cost=record.cost)
-            elif record.confidence == "partial":
+            elif confidence == "partial":
                 partial += 1
-                self.vnext_telemetry.record_partial(1, stage=record.stage, cost=record.cost)
-            elif record.confidence == "surrogate":
+            elif confidence == "surrogate":
                 surrogate += 1
-                self.vnext_telemetry.record_screened(1)
             else:
                 rejected += 1
-                self.vnext_telemetry.record_eliminated(1, stage=record.stage)
 
         self._trusted_population_vnext.sort(
             key=lambda candidate: candidate.state_comparison_score(self.direction), reverse=True
@@ -198,19 +193,14 @@ class GeneticAlgorithmAskTellMixin:
         assigned: Sequence[Candidate],
         stage,
     ) -> EvaluationContext:
-        batch_ids = {candidate.batch_id for candidate in assigned}
-        if len(batch_ids) != 1:
-            raise FitnessError(
-                "Assigned candidates must belong to exactly one batch for synchronous evaluation."
-            )
-        batch_id = next(iter(batch_ids))
-        event_index = assigned[0].event_index if assigned else self._event_index
-        return EvaluationContext(
-            stage=stage,
-            batch_id=batch_id,
-            event_index=event_index,
+        return evaluation_context_for_candidates(
+            assigned,
+            stage,
             direction=self.direction,
-            budget=stage.budget,
+            fallback_event_index=self._event_index,
+            batch_error_message=(
+                "Assigned candidates must belong to exactly one batch for synchronous evaluation."
+            ),
         )
 
     def _validate_evaluator_records(
@@ -219,100 +209,26 @@ class GeneticAlgorithmAskTellMixin:
         records: Sequence[EvaluationRecord],
     ) -> None:
         """Reject incomplete or mismatched synchronous evaluator results."""
-        expected_ids = [candidate.candidate_id for candidate in assigned]
-        returned_ids = [record.candidate_id for record in records]
-        expected_counts = Counter(expected_ids)
-        returned_counts = Counter(returned_ids)
-
-        missing_ids = [
-            candidate_id for candidate_id in expected_ids if returned_counts[candidate_id] == 0
-        ]
-        unexpected_ids = [
-            candidate_id for candidate_id in returned_counts if candidate_id not in expected_counts
-        ]
-        duplicate_ids = [
-            candidate_id
-            for candidate_id, count in returned_counts.items()
-            if count > expected_counts[candidate_id]
-        ]
-
-        if missing_ids:
-            raise FitnessError(
-                "Evaluator returned missing evaluation records for candidate_ids: "
-                f"{sorted(set(missing_ids))!r}."
-            )
-        if unexpected_ids:
-            raise FitnessError(
-                "Evaluator returned unknown evaluation records for candidate_ids: "
-                f"{sorted(unexpected_ids)!r}."
-            )
-        if duplicate_ids:
-            raise FitnessError(
-                "Evaluator returned duplicate evaluation records for candidate_ids: "
-                f"{sorted(duplicate_ids)!r}."
-            )
-
-        batch_ids = {candidate.batch_id for candidate in assigned}
-        if len(batch_ids) != 1:
-            raise FitnessError(
+        validate_evaluator_records(
+            assigned,
+            records,
+            batch_error_message=(
                 "Assigned candidates must belong to exactly one batch for synchronous evaluation."
-            )
-        expected_batch_id = next(iter(batch_ids))
-        for record in records:
-            if record.batch_id is not None and record.batch_id != expected_batch_id:
-                raise FitnessError(
-                    f"Evaluator returned record batch_id {record.batch_id!r} for batch "
-                    f"{expected_batch_id!r}."
-                )
+            ),
+        )
 
     def _append_ask_events(self, candidates: Sequence[Candidate]) -> None:
         """Record ask events for proposed candidates."""
-        for candidate in candidates:
-            self.events.append(
-                EventRecord(
-                    event_index=len(self.events),
-                    event_type="ask",
-                    batch_id=candidate.batch_id,
-                    candidate_id=candidate.candidate_id,
-                    candidate_hash=candidate.candidate_hash(self.gene_space),
-                    generation=candidate.generation,
-                    origin=candidate.origin,
-                    parents=tuple(candidate.parents),
-                    genes=tuple(candidate.genes),
-                    params=dict(candidate.params) if candidate.params is not None else None,
-                    metadata=dict(candidate.metadata),
-                )
-            )
+        append_candidate_ask_events(self.events, candidates, self.gene_space)
 
     def _append_tell_event(self, candidate: Candidate, record: EvaluationRecord) -> None:
         """Record a tell event after candidate state has been updated."""
-        raw_score = float(record.score) if record.score is not None else None
-        comparison_score = (
-            score_for_direction(raw_score, self.direction)
-            if raw_score is not None and math.isfinite(raw_score)
-            else None
-        )
-        self.events.append(
-            EventRecord(
-                event_index=len(self.events),
-                event_type="tell",
-                batch_id=candidate.batch_id,
-                candidate_id=candidate.candidate_id,
-                candidate_hash=candidate.candidate_hash(self.gene_space),
-                generation=candidate.generation,
-                stage=record.stage,
-                confidence=record.confidence,
-                raw_score=raw_score,
-                comparison_score=comparison_score,
-                cost=record.cost,
-                status=candidate.status,
-                origin=candidate.origin,
-                parents=tuple(candidate.parents),
-                genes=tuple(candidate.genes),
-                params=dict(candidate.params) if candidate.params is not None else None,
-                metrics=dict(record.metrics),
-                metadata=dict(record.metadata),
-            )
+        append_candidate_tell_event(
+            self.events,
+            candidate,
+            record,
+            self.gene_space,
+            self.direction,
         )
 
     def run(self, evaluator: Evaluator, policy: BudgetPolicy | None = None) -> OptimizationResult:

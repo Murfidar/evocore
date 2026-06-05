@@ -4,6 +4,7 @@ use rand::prelude::*;
 use rand::rngs::StdRng;
 use std::cmp::Ordering;
 
+use crate::gene_codec::{parse_gene_kinds, repair_encoded_value};
 use crate::gene_spec::GeneKind;
 use crate::utils::{derive_seed, OP_CROSSOVER, OP_MUTATION, OP_SELECTION};
 
@@ -74,20 +75,6 @@ fn min_population(strategy: &DEStrategy) -> usize {
     }
 }
 
-fn parse_gene_kinds(kinds_str: &[String]) -> PyResult<Vec<GeneKind>> {
-    kinds_str
-        .iter()
-        .map(|kind| match kind.as_str() {
-            "float" => Ok(GeneKind::Float),
-            "int" => Ok(GeneKind::Int),
-            "bool" => Ok(GeneKind::Bool),
-            other => Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "Unknown gene kind: '{other}'. Valid: float, int, bool"
-            ))),
-        })
-        .collect()
-}
-
 fn comparison_score(score: f64, direction: &str) -> PyResult<f64> {
     if !score.is_finite() {
         return Err(pyo3::exceptions::PyValueError::new_err(
@@ -143,21 +130,6 @@ fn validate_inputs(
         }
     }
     Ok(())
-}
-
-fn repair_value(value: f64, bounds: (f64, f64), kind: &GeneKind) -> f64 {
-    let (low, high) = bounds;
-    match kind {
-        GeneKind::Float => value.clamp(low, high),
-        GeneKind::Int => value.round().clamp(low, high),
-        GeneKind::Bool => {
-            if value >= 0.5 {
-                1.0
-            } else {
-                0.0
-            }
-        }
-    }
 }
 
 fn proposal_to_py(py: Python<'_>, proposal: &TrialProposal) -> PyResult<Py<PyAny>> {
@@ -429,11 +401,11 @@ fn build_trial_genes(
         .map(|gene_idx| {
             let (low, high) = gene_bounds[gene_idx];
             if low == high {
-                return repair_value(low, gene_bounds[gene_idx], &gene_kinds[gene_idx]);
+                return repair_encoded_value(low, gene_bounds[gene_idx], &gene_kinds[gene_idx]);
             }
             let selected = gene_idx == forced_index || mask_rng.gen::<f64>() < crossover_rate;
             if !selected {
-                return repair_value(
+                return repair_encoded_value(
                     target[gene_idx],
                     gene_bounds[gene_idx],
                     &gene_kinds[gene_idx],
@@ -451,7 +423,7 @@ fn build_trial_genes(
                 &mut bool_rng,
                 &gene_kinds[gene_idx],
             );
-            repair_value(value, gene_bounds[gene_idx], &gene_kinds[gene_idx])
+            repair_encoded_value(value, gene_bounds[gene_idx], &gene_kinds[gene_idx])
         })
         .collect()
 }

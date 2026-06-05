@@ -24,6 +24,22 @@ def test_cma_ask_returns_candidate_batch() -> None:
     assert all(candidate.params is not None for candidate in candidates)
 
 
+def test_cma_ask_keeps_continuous_samples_separate_from_repaired_candidate_genes() -> None:
+    space = GeneSpace([Gene("period", "int", 5, 20), Gene("x", "float", -1.0, 1.0)])
+    engine = CMAESOptimizer(space, population_size=6, seed=42)
+
+    candidates = engine.ask()
+    batch = engine._batches_by_id[candidates[0].batch_id]
+
+    assert set(batch.continuous_samples_by_id) == {
+        candidate.candidate_id for candidate in candidates
+    }
+    for candidate in candidates:
+        continuous = batch.continuous_samples_by_id[candidate.candidate_id]
+        assert isinstance(candidate.genes[0], int)
+        assert isinstance(continuous[0], float)
+
+
 def test_cma_ask_records_append_only_ask_events() -> None:
     space = _space()
     engine = CMAESOptimizer(space, population_size=4, seed=7)

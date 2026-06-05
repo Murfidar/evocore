@@ -16,6 +16,7 @@ from evocore._core import (
     int_uniform_mutation,
     one_point_crossover,
     py_derive_seed,
+    reproduce_population,
     simulated_binary_crossover,
     two_point_crossover,
     uniform_crossover,
@@ -201,3 +202,30 @@ class TestOperatorDeterminism:
         seed_xo = py_derive_seed(42, 0, 0, OP_CROSSOVER)
         seed_mut = py_derive_seed(42, 0, 0, OP_MUTATION)
         assert seed_xo != seed_mut
+
+
+def test_reproduce_population_repairs_int_and_bool_outputs():
+    result = reproduce_population(
+        [[0.0, 2.0, 0.0], [1.0, 20.0, 1.0], [-1.0, 10.0, 0.0], [0.5, 5.0, 1.0]],
+        [0.0, 1.0, 2.0, 3.0],
+        "uniform",
+        1.0,
+        2.0,
+        0.5,
+        "gaussian",
+        1.0,
+        [0.5, 5.0, 0.0],
+        [(-1.0, 1.0), (2.0, 20.0), (0.0, 1.0)],
+        ["float", "int", "bool"],
+        "tournament",
+        2,
+        4,
+        123,
+        0,
+    )
+
+    for row in result:
+        assert -1.0 <= row[0] <= 1.0
+        assert 2.0 <= row[1] <= 20.0
+        assert row[1] == round(row[1])
+        assert row[2] in (0.0, 1.0)

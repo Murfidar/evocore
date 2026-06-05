@@ -75,6 +75,20 @@ def test_encode_decode_roundtrip_named_mixed_numeric():
     assert decoded == [10, 0.25]
 
 
+def test_operator_codec_decode_values_repairs_encoded_values():
+    space = GeneSpace(
+        [
+            Gene("x", "float", -1.0, 1.0),
+            Gene("period", "int", 2, 20),
+            Gene("flag", "bool"),
+            Gene("fixed", "float", 0.5, 0.5),
+        ]
+    )
+    ops = OperatorCodec(space, "uniform", "gaussian")
+
+    assert ops.decode_values([99.0, 20.8, 0.2, -9.0]) == [1.0, 20, False, 0.5]
+
+
 def test_decode_solution_adds_params_metadata():
     space = GeneSpace([Gene("period", "int", 5, 20)])
     ops = OperatorCodec(space, "sbx", "gaussian")
