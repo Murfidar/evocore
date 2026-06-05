@@ -19,28 +19,7 @@ from evocore.lifecycle import (
 from evocore.optimizers.de.adaptive import JDEAdaptiveState, JDETrialParameters
 from evocore.optimizers.de.strategies import TrialProposal
 from evocore.results import EventRecord
-from evocore.search_space import Solution
-
-
-def _decode_de_values(gene_space, encoded: Sequence[float]) -> list[float | int | bool]:
-    if len(encoded) != gene_space.length:
-        raise ConfigurationError(
-            f"Expected {gene_space.length} encoded genes, got {len(encoded)}."
-        )
-    decoded: list[float | int | bool] = []
-    for value, gene in zip(encoded, gene_space.genes, strict=False):
-        if gene.kind == "bool":
-            decoded.append(bool(float(value) >= 0.5))
-        elif gene.kind == "int":
-            low = float(gene.low)
-            high = float(gene.high)
-            decoded.append(int(round(min(max(float(value), low), high))))
-        else:
-            low = float(gene.low)
-            high = float(gene.high)
-            decoded.append(float(min(max(float(value), low), high)))
-    gene_space.validate_genes(decoded)
-    return decoded
+from evocore.search_space import Solution, decode_gene_values, encode_gene_values
 
 
 class DifferentialEvolutionAskTellMixin:
@@ -78,7 +57,7 @@ class DifferentialEvolutionAskTellMixin:
         )
         return [
             self._candidate_from_genes(
-                _decode_de_values(self.gene_space, encoded),
+                decode_gene_values(self.gene_space, encoded),
                 batch_id=batch_id,
                 origin="random",
                 event_index=event_index,
@@ -100,11 +79,7 @@ class DifferentialEvolutionAskTellMixin:
         trial_count = min(int(count), len(target_population))
         target_slots = list(range(trial_count))
         population_encoded = [
-            [
-                1.0 if value is True else 0.0 if value is False else float(value)
-                for value in candidate.genes
-            ]
-            for candidate in target_population
+            encode_gene_values(self.gene_space, candidate.genes) for candidate in target_population
         ]
         scores = [candidate.best_state_score(self.direction) for candidate in target_population]
         jde_state = None
@@ -132,7 +107,7 @@ class DifferentialEvolutionAskTellMixin:
         )
         proposals: list[TrialProposal] = []
         for raw in raw_proposals:
-            genes = _decode_de_values(self.gene_space, raw["genes"])
+            genes = decode_gene_values(self.gene_space, raw["genes"])
             metadata = dict(raw["metadata"])
             self.gene_space.validate_genes(genes)
             proposals.append(TrialProposal(genes=genes, metadata=metadata))

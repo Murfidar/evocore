@@ -41,7 +41,14 @@ from evocore.results import (
     StopReason,
     append_run_stop_event,
 )
-from evocore.search_space import GeneSpace, OperatorCodec, Solution, SolutionSet
+from evocore.search_space import (
+    GeneSpace,
+    OperatorCodec,
+    Solution,
+    SolutionSet,
+    decode_gene_values,
+    encode_gene_values,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -210,14 +217,8 @@ class CMAESOptimizer(CMAESCheckpointingMixin, CMAESAskTellMixin):
         return self.initial_sigma * (sum(spans) / len(spans))
 
     def _apply_bounds_and_round(self, genes_f64: Sequence[float]) -> list[float]:
-        rounded: list[float] = []
-        for value, gene, (low, high) in zip(genes_f64, self.gene_space.genes, self._bounds_list):
-            clamped = max(low, min(high, float(value)))
-            if gene.kind == "int":
-                clamped = float(round(clamped))
-                clamped = max(low, min(high, clamped))
-            rounded.append(clamped)
-        return rounded
+        repaired = decode_gene_values(self.gene_space, genes_f64)
+        return encode_gene_values(self.gene_space, repaired)
 
     def _decode_solution(
         self,

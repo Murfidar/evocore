@@ -210,7 +210,7 @@ def test_de_trial_ask_uses_rust_kernel_output(monkeypatch) -> None:
         return [
             {
                 "target_slot": slot,
-                "genes": [0.25, 7.0, 1.0, 1.5],
+                "genes": [99.0, 20.8, 0.2, -9.0],
                 "metadata": {
                     "strategy": strategy,
                     "target_slot": slot,
@@ -231,9 +231,9 @@ def test_de_trial_ask_uses_rust_kernel_output(monkeypatch) -> None:
     assert calls[0]["strategy"] == "rand2bin"
     assert calls[0]["target_slots"] == [0, 1, 2]
     assert [trial.genes for trial in trials] == [
-        [0.25, 7, True, pytest.approx(1.5)],
-        [0.25, 7, True, pytest.approx(1.5)],
-        [0.25, 7, True, pytest.approx(1.5)],
+        [5.0, 20, False, pytest.approx(1.5)],
+        [5.0, 20, False, pytest.approx(1.5)],
+        [5.0, 20, False, pytest.approx(1.5)],
     ]
     assert all(trial.metadata["rust_marker"] is True for trial in trials)
 
