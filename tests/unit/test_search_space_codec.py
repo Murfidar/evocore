@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import math
+
 import pytest
 
 from evocore import ConfigurationError, Gene, GeneSpace
@@ -27,6 +29,8 @@ def test_repair_gene_value_clamps_rounds_thresholds_and_preserves_types() -> Non
 
     assert repair_gene_value(99.0, space.genes[0]) == pytest.approx(1.0)
     assert repair_gene_value(20.8, space.genes[1]) == 20
+    assert repair_gene_value(2.5, space.genes[1]) == 2
+    assert repair_gene_value(3.5, space.genes[1]) == 4
     assert repair_gene_value(0.49, space.genes[2]) is False
     assert repair_gene_value(0.5, space.genes[2]) is True
     disabled = False
@@ -76,3 +80,12 @@ def test_repair_gene_value_rejects_incompatible_inputs() -> None:
 
     with pytest.raises(ConfigurationError, match="expects bool-compatible value"):
         repair_gene_value("bad", space.genes[2])
+
+
+@pytest.mark.parametrize("value", [math.nan, math.inf, -math.inf])
+def test_repair_gene_value_rejects_non_finite_numeric_inputs(value: float) -> None:
+    space = _mixed_space()
+
+    for gene in space.genes[:3]:
+        with pytest.raises(ConfigurationError, match="must be finite"):
+            repair_gene_value(value, gene)

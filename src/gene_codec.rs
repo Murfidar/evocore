@@ -24,7 +24,7 @@ pub(crate) fn repair_encoded_value(value: f64, bounds: (f64, f64), kind: &GeneKi
     let (low, high) = bounds;
     match kind {
         GeneKind::Float => value.clamp(low, high),
-        GeneKind::Int => value.round().clamp(low, high),
+        GeneKind::Int => value.round_ties_even().clamp(low, high),
         GeneKind::Bool => {
             if value >= 0.5 {
                 1.0
@@ -72,6 +72,8 @@ mod tests {
             repair_encoded_value(20.8, (2.0, 20.0), &GeneKind::Int),
             20.0
         );
+        assert_eq!(repair_encoded_value(2.5, (0.0, 10.0), &GeneKind::Int), 2.0);
+        assert_eq!(repair_encoded_value(3.5, (0.0, 10.0), &GeneKind::Int), 4.0);
         assert_eq!(repair_encoded_value(0.49, (0.0, 1.0), &GeneKind::Bool), 0.0);
         assert_eq!(repair_encoded_value(0.5, (0.0, 1.0), &GeneKind::Bool), 1.0);
     }

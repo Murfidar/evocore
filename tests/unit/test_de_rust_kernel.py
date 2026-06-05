@@ -230,3 +230,24 @@ def test_de_generate_trials_repairs_encoded_outputs_for_each_kind() -> None:
         assert 2.0 <= period <= 20.0
         assert period == round(period)
         assert enabled in (0.0, 1.0)
+
+
+def test_de_generate_trials_uses_python_integer_round_ties_for_repair() -> None:
+    def generated_integer(value: float) -> float:
+        proposal = _core.de_generate_trials(
+            [[0.0], [value], [value], [value]],
+            [0.0, 1.0, 2.0, 3.0],
+            [(0.0, 10.0)],
+            ["int"],
+            "rand1bin",
+            0.0,
+            1.0,
+            123,
+            0,
+            [0],
+            "maximize",
+        )[0]
+        return proposal["genes"][0]
+
+    assert generated_integer(2.5) == pytest.approx(2.0)
+    assert generated_integer(3.5) == pytest.approx(4.0)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 
 from evocore.core.errors import ConfigurationError
@@ -30,7 +31,10 @@ def repair_gene_value(value: object, gene: Gene) -> GeneValue:
         if type(value) is bool:
             return value
         if isinstance(value, int | float) and type(value) is not bool:
-            return float(value) >= 0.5
+            numeric_value = float(value)
+            if not math.isfinite(numeric_value):
+                raise ConfigurationError(f"Gene {gene.name!r} must be finite, got {value!r}.")
+            return numeric_value >= 0.5
         raise ConfigurationError(
             f"Gene {gene.name!r} expects bool-compatible value, got {type(value).__name__}."
         )
@@ -40,12 +44,16 @@ def repair_gene_value(value: object, gene: Gene) -> GeneValue:
             f"Gene {gene.name!r} expects numeric-compatible value, got {type(value).__name__}."
         )
 
+    numeric_value = float(value)
+    if not math.isfinite(numeric_value):
+        raise ConfigurationError(f"Gene {gene.name!r} must be finite, got {value!r}.")
+
     low = float(gene.low)
     high = float(gene.high)
     if gene.kind == "int":
-        rounded = float(round(float(value)))
+        rounded = float(round(numeric_value))
         return int(min(max(rounded, low), high))
-    return float(min(max(float(value), low), high))
+    return float(min(max(numeric_value, low), high))
 
 
 def repair_gene_values(gene_space: GeneSpace, values: Sequence[object]) -> list[GeneValue]:

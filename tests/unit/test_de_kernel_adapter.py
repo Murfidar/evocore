@@ -170,3 +170,81 @@ def test_adapter_rejects_malformed_rust_payload(monkeypatch) -> None:
             direction="maximize",
             jde_state=None,
         )
+
+
+def test_adapter_rejects_wrong_number_of_kernel_proposals(monkeypatch) -> None:
+    def fake_de_generate_trials(*_args, **_kwargs):
+        return [
+            {
+                "target_slot": 0,
+                "genes": [0.0, 7.0, 1.0, 1.5],
+                "metadata": {
+                    "strategy": "rand1bin",
+                    "target_slot": 0,
+                    "base_slot": 1,
+                    "donor_slots": [1, 2, 3],
+                    "difference_pairs": [[2, 3]],
+                },
+            }
+        ]
+
+    monkeypatch.setattr(_core, "de_generate_trials", fake_de_generate_trials)
+
+    with pytest.raises(ConfigurationError, match="proposal count"):
+        DERustKernelAdapter().generate_trials(
+            target_population=[
+                _candidate("candidate-0", [0.25, 7, True, 1.5]),
+                _candidate("candidate-1", [0.5, 8, False, 1.5]),
+                _candidate("candidate-2", [0.75, 9, True, 1.5]),
+                _candidate("candidate-3", [1.0, 10, False, 1.5]),
+            ],
+            scores=[0.0, 1.0, 2.0, 3.0],
+            gene_space=_space(),
+            strategy="rand1bin",
+            mutation_factor=0.7,
+            crossover_rate=0.9,
+            seed=42,
+            generation=3,
+            target_slots=[0, 1],
+            direction="maximize",
+            jde_state=None,
+        )
+
+
+def test_adapter_rejects_kernel_target_slot_mismatch(monkeypatch) -> None:
+    def fake_de_generate_trials(*_args, **_kwargs):
+        return [
+            {
+                "target_slot": 1,
+                "genes": [0.0, 7.0, 1.0, 1.5],
+                "metadata": {
+                    "strategy": "rand1bin",
+                    "target_slot": 1,
+                    "base_slot": 2,
+                    "donor_slots": [2, 3, 4],
+                    "difference_pairs": [[3, 4]],
+                },
+            }
+        ]
+
+    monkeypatch.setattr(_core, "de_generate_trials", fake_de_generate_trials)
+
+    with pytest.raises(ConfigurationError, match="target_slot"):
+        DERustKernelAdapter().generate_trials(
+            target_population=[
+                _candidate("candidate-0", [0.25, 7, True, 1.5]),
+                _candidate("candidate-1", [0.5, 8, False, 1.5]),
+                _candidate("candidate-2", [0.75, 9, True, 1.5]),
+                _candidate("candidate-3", [1.0, 10, False, 1.5]),
+            ],
+            scores=[0.0, 1.0, 2.0, 3.0],
+            gene_space=_space(),
+            strategy="rand1bin",
+            mutation_factor=0.7,
+            crossover_rate=0.9,
+            seed=42,
+            generation=3,
+            target_slots=[0],
+            direction="maximize",
+            jde_state=None,
+        )

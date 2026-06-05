@@ -36,6 +36,39 @@ def _genes_from_raw(gene_space: GeneSpace, raw: Mapping[str, Any]) -> list[GeneV
     return decode_gene_values(gene_space, genes)
 
 
+def _coerce_target_slot(value: object, *, label: str) -> int:
+    if type(value) is not int:
+        raise ConfigurationError(f"DE Rust kernel proposal {label} must be an int.")
+    return int(value)
+
+
+def _validate_target_slot(
+    raw: Mapping[str, Any],
+    metadata: Mapping[str, object],
+    expected_slot: int,
+) -> None:
+    if "target_slot" not in raw:
+        raise ConfigurationError("DE Rust kernel proposal is missing target_slot.")
+    raw_slot = _coerce_target_slot(raw["target_slot"], label="target_slot")
+    if raw_slot != expected_slot:
+        raise ConfigurationError(
+            "DE Rust kernel proposal target_slot mismatch: "
+            f"expected {expected_slot}, got {raw_slot}."
+        )
+
+    if "target_slot" not in metadata:
+        raise ConfigurationError("DE Rust kernel proposal metadata is missing target_slot.")
+    metadata_slot = _coerce_target_slot(
+        metadata["target_slot"],
+        label="metadata target_slot",
+    )
+    if metadata_slot != expected_slot:
+        raise ConfigurationError(
+            "DE Rust kernel proposal metadata target_slot mismatch: "
+            f"expected {expected_slot}, got {metadata_slot}."
+        )
+
+
 class DERustKernelAdapter:
     """Convert Python DE state to and from the Rust proposal kernel."""
 
@@ -77,11 +110,17 @@ class DERustKernelAdapter:
             direction,
             jde_state,
         )
+        if len(raw_proposals) != len(target_slots):
+            raise ConfigurationError(
+                "DE Rust kernel proposal count mismatch: "
+                f"expected {len(target_slots)}, got {len(raw_proposals)}."
+            )
 
         proposals: list[TrialProposal] = []
-        for raw_item in raw_proposals:
+        for expected_slot, raw_item in zip(target_slots, raw_proposals, strict=True):
             raw = _require_mapping(raw_item)
             metadata = _metadata_from_raw(raw)
+            _validate_target_slot(raw, metadata, int(expected_slot))
             genes = _genes_from_raw(gene_space, raw)
             proposals.append(
                 TrialProposal(

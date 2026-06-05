@@ -87,10 +87,11 @@ decoded = decode_gene_values(space, [10.2, 0.25, 0.9, 2.0])
 repaired = repair_gene_values(space, [10.2, 0.25, 0.9, 2.0])
 ```
 
-Float genes are clamped to inclusive bounds, int genes are rounded then clamped,
-and bool genes accept booleans or numeric thresholds where values greater than or
-equal to `0.5` decode to `True`. The helpers validate vector length and the final
-decoded values against the `GeneSpace`.
+Float genes are clamped to inclusive bounds, int genes are rounded then clamped
+using Python's nearest-even tie behavior, and bool genes accept booleans or
+numeric thresholds where values greater than or equal to `0.5` decode to `True`.
+Non-finite numeric repair inputs raise `ConfigurationError`. The helpers
+validate vector length and the final decoded values against the `GeneSpace`.
 
 ## Stable Signature
 
