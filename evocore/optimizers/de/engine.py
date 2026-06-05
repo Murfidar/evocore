@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import math
 import time
-from collections import Counter
 from collections.abc import Sequence
 from typing import Any
 
@@ -26,6 +25,10 @@ from evocore.lifecycle import (
     OptimizerStateSummary,
     candidate_to_solution,
     is_state_update_confidence,
+)
+from evocore.lifecycle.ask_tell_helpers import (
+    evaluation_context_for_candidates,
+    validate_evaluator_records,
 )
 from evocore.optimizers.config import OptimizerConfig
 from evocore.optimizers.de.adaptive import initial_strategy_state
@@ -233,15 +236,12 @@ class DifferentialEvolutionOptimizer(
         return list(evaluator.evaluate(candidates, context))
 
     def _evaluation_context(self, candidates, stage: EvaluationStage) -> EvaluationContext:
-        batch_ids = {candidate.batch_id for candidate in candidates}
-        if len(batch_ids) != 1:
-            raise FitnessError("DE run candidates must belong to exactly one batch.")
-        return EvaluationContext(
-            stage=stage,
-            batch_id=next(iter(batch_ids)),
-            event_index=candidates[0].event_index if candidates else self._event_index,
+        return evaluation_context_for_candidates(
+            candidates,
+            stage,
             direction=self.direction,
-            budget=stage.budget,
+            fallback_event_index=self._event_index,
+            batch_error_message="DE run candidates must belong to exactly one batch.",
         )
 
     def _validate_evaluator_records(
@@ -250,49 +250,11 @@ class DifferentialEvolutionOptimizer(
         records: Sequence[EvaluationRecord],
     ) -> None:
         """Reject incomplete or mismatched synchronous evaluator results."""
-        expected_ids = [candidate.candidate_id for candidate in assigned]
-        returned_ids = [record.candidate_id for record in records]
-        expected_counts = Counter(expected_ids)
-        returned_counts = Counter(returned_ids)
-
-        missing_ids = [
-            candidate_id for candidate_id in expected_ids if returned_counts[candidate_id] == 0
-        ]
-        unexpected_ids = [
-            candidate_id for candidate_id in returned_counts if candidate_id not in expected_counts
-        ]
-        duplicate_ids = [
-            candidate_id
-            for candidate_id, count in returned_counts.items()
-            if count > expected_counts[candidate_id]
-        ]
-
-        if missing_ids:
-            raise FitnessError(
-                "Evaluator returned missing evaluation records for candidate_ids: "
-                f"{sorted(set(missing_ids))!r}."
-            )
-        if unexpected_ids:
-            raise FitnessError(
-                "Evaluator returned unknown evaluation records for candidate_ids: "
-                f"{sorted(unexpected_ids)!r}."
-            )
-        if duplicate_ids:
-            raise FitnessError(
-                "Evaluator returned duplicate evaluation records for candidate_ids: "
-                f"{sorted(duplicate_ids)!r}."
-            )
-
-        batch_ids = {candidate.batch_id for candidate in assigned}
-        if len(batch_ids) != 1:
-            raise FitnessError("DE run candidates must belong to exactly one batch.")
-        expected_batch_id = next(iter(batch_ids))
-        for record in records:
-            if record.batch_id is not None and record.batch_id != expected_batch_id:
-                raise FitnessError(
-                    f"Evaluator returned record batch_id {record.batch_id!r} for batch "
-                    f"{expected_batch_id!r}."
-                )
+        validate_evaluator_records(
+            assigned,
+            records,
+            batch_error_message="DE run candidates must belong to exactly one batch.",
+        )
 
     def _candidate_has_terminal_record(self, candidate: Candidate) -> bool:
         batch = self._batches_by_id[candidate.batch_id]
