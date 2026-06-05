@@ -17,9 +17,10 @@ from evocore.lifecycle import (
     solution_to_candidate,
 )
 from evocore.optimizers.de.adaptive import JDEAdaptiveState, JDETrialParameters
+from evocore.optimizers.de.kernel import DERustKernelAdapter
 from evocore.optimizers.de.strategies import TrialProposal
 from evocore.results import EventRecord
-from evocore.search_space import Solution, decode_gene_values, encode_gene_values
+from evocore.search_space import Solution, decode_gene_values
 
 
 class DifferentialEvolutionAskTellMixin:
@@ -78,9 +79,6 @@ class DifferentialEvolutionAskTellMixin:
         target_population = self._target_population()
         trial_count = min(int(count), len(target_population))
         target_slots = list(range(trial_count))
-        population_encoded = [
-            encode_gene_values(self.gene_space, candidate.genes) for candidate in target_population
-        ]
         scores = [candidate.best_state_score(self.direction) for candidate in target_population]
         jde_state = None
         to_rust_committed_state = getattr(
@@ -91,27 +89,19 @@ class DifferentialEvolutionAskTellMixin:
         if callable(to_rust_committed_state):
             jde_state = to_rust_committed_state()
 
-        raw_proposals = _core.de_generate_trials(
-            population_encoded,
-            scores,
-            self.gene_space.rust_bounds,
-            self.gene_space.kinds,
-            self.strategy,
-            self.mutation_factor,
-            self.crossover_rate,
-            self.seed,
-            self.generation,
-            target_slots,
-            self.direction,
-            jde_state,
+        return DERustKernelAdapter().generate_trials(
+            target_population=target_population,
+            scores=scores,
+            gene_space=self.gene_space,
+            strategy=self.strategy,
+            mutation_factor=self.mutation_factor,
+            crossover_rate=self.crossover_rate,
+            seed=self.seed,
+            generation=self.generation,
+            target_slots=target_slots,
+            direction=self.direction,
+            jde_state=jde_state,
         )
-        proposals: list[TrialProposal] = []
-        for raw in raw_proposals:
-            genes = decode_gene_values(self.gene_space, raw["genes"])
-            metadata = dict(raw["metadata"])
-            self.gene_space.validate_genes(genes)
-            proposals.append(TrialProposal(genes=genes, metadata=metadata))
-        return proposals
 
     def _record_pending_strategy_trial(self, candidate: Candidate) -> None:
         if not isinstance(self._de_strategy_state, JDEAdaptiveState):
