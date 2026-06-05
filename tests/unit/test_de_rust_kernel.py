@@ -200,3 +200,33 @@ def test_de_generate_trials_forces_variable_gene_when_fixed_gene_exists() -> Non
 
     assert proposal["genes"][0] == pytest.approx(1.5)
     assert proposal["genes"][1] != pytest.approx(population[0][1])
+
+
+def test_de_generate_trials_repairs_encoded_outputs_for_each_kind() -> None:
+    population = [
+        [-100.0, 1.0, 0.0],
+        [100.0, 20.0, 1.0],
+        [-50.0, 2.0, 0.0],
+        [50.0, 19.0, 1.0],
+    ]
+
+    proposals = _core.de_generate_trials(
+        population,
+        [0.0, 1.0, 2.0, 3.0],
+        [(-1.0, 1.0), (2.0, 20.0), (0.0, 1.0)],
+        ["float", "int", "bool"],
+        "rand1bin",
+        2.0,
+        1.0,
+        123,
+        0,
+        [0, 1, 2, 3],
+        "maximize",
+    )
+
+    for proposal in proposals:
+        x, period, enabled = proposal["genes"]
+        assert -1.0 <= x <= 1.0
+        assert 2.0 <= period <= 20.0
+        assert period == round(period)
+        assert enabled in (0.0, 1.0)

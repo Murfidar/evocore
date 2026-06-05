@@ -3,6 +3,7 @@ use pyo3::prelude::*;
 pub mod candidate;
 mod cmaes;
 mod de;
+mod gene_codec;
 mod gene_spec;
 mod individual;
 pub mod operators;
@@ -14,7 +15,7 @@ pub mod utils;
 use candidate::{candidate_id as candidate_id_impl, rank_top_k as rank_top_k_impl};
 use cmaes::PyCMAESState;
 use de::de_generate_trials;
-use gene_spec::GeneKind;
+use gene_codec::parse_gene_kinds;
 use individual::{BinaryIndividual, FloatIndividual, IntegerIndividual};
 use operators::{binary_ops, float_ops, int_ops};
 use parallel::{evaluate_parallel_rayon, evaluate_sequential};
@@ -330,21 +331,6 @@ fn reproduce_population(
         master_seed,
         generation,
     ))
-}
-
-fn parse_gene_kinds(kinds_str: &[String]) -> PyResult<Vec<GeneKind>> {
-    kinds_str
-        .iter()
-        .map(|kind| match kind.as_str() {
-            "float" => Ok(GeneKind::Float),
-            "int" => Ok(GeneKind::Int),
-            "bool" => Ok(GeneKind::Bool),
-            other => Err(pyo3::exceptions::PyValueError::new_err(format!(
-                "Unknown gene kind: '{}'. Valid: float, int, bool",
-                other
-            ))),
-        })
-        .collect()
 }
 
 #[pyfunction]
