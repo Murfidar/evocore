@@ -2,6 +2,7 @@ use pyo3::prelude::*;
 
 pub mod candidate;
 mod cmaes;
+mod de;
 mod gene_spec;
 mod individual;
 pub mod operators;
@@ -12,6 +13,7 @@ pub mod utils;
 
 use candidate::{candidate_id as candidate_id_impl, rank_top_k as rank_top_k_impl};
 use cmaes::PyCMAESState;
+use de::de_generate_trials;
 use gene_spec::GeneKind;
 use individual::{BinaryIndividual, FloatIndividual, IntegerIndividual};
 use operators::{binary_ops, float_ops, int_ops};
@@ -396,6 +398,7 @@ fn _core(m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     m.add_function(wrap_pyfunction!(init_population, m)?)?;
     m.add_function(wrap_pyfunction!(reproduce_population, m)?)?;
+    m.add_function(wrap_pyfunction!(de_generate_trials, m)?)?;
 
     m.add_function(wrap_pyfunction!(evaluate_sequential, m)?)?;
     m.add_function(wrap_pyfunction!(evaluate_parallel_rayon, m)?)?;

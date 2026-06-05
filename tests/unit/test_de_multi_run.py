@@ -97,6 +97,23 @@ def test_de_run_multiple_supports_non_default_strategy() -> None:
     } == {"rand2bin"}
 
 
+def test_de_run_multiple_supports_rust_backed_strategy() -> None:
+    optimizer = DifferentialEvolutionOptimizer(
+        GeneSpace.uniform(-2.0, 2.0, 3),
+        population_size=6,
+        max_generations=2,
+        strategy="current-to-best1bin",
+        seed=42,
+    )
+
+    batch = optimizer.run_multiple(SphereEvaluator(), n_runs=2)
+
+    assert batch.n_runs == 2
+    assert len(batch.all_runs) == 2
+    assert batch.best in batch.all_runs
+    assert all(run.optimizer_type == "DifferentialEvolutionOptimizer" for run in batch.all_runs)
+
+
 def test_de_run_multiple_minimize_uses_direction_aware_child_best_scores() -> None:
     result = DifferentialEvolutionOptimizer(
         GeneSpace.uniform(-2.0, 2.0, 3),

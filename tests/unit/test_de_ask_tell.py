@@ -1,6 +1,6 @@
 import pytest
 
-from evocore import DifferentialEvolutionOptimizer, EvaluationRecord, Gene, GeneSpace
+from evocore import DifferentialEvolutionOptimizer, EvaluationRecord, Gene, GeneSpace, _core
 from evocore.core.errors import ConfigurationError, FitnessError
 
 
@@ -133,12 +133,12 @@ def test_de_rand1bin_trial_generation_matches_locked_fixture() -> None:
         "c-1520ec64a9be278b82b86b1858f7ee28",
     ]
     assert [trial.genes for trial in trials] == [
-        [pytest.approx(1.5811814881513984), 2, True, pytest.approx(1.5)],
-        [pytest.approx(3.425316280812999), 2, False, pytest.approx(1.5)],
-        [pytest.approx(3.675373942863314), 8, False, pytest.approx(1.5)],
-        [pytest.approx(-3.555239267967455), 15, False, pytest.approx(1.5)],
-        [pytest.approx(-3.555239267967455), 9, False, pytest.approx(1.5)],
-        [pytest.approx(-2.116060077343211), 20, True, pytest.approx(1.5)],
+        [pytest.approx(-0.326847178254833), 20, True, pytest.approx(1.5)],
+        [pytest.approx(-0.6886784589685266), 10, True, pytest.approx(1.5)],
+        [pytest.approx(-5.0), 4, True, pytest.approx(1.5)],
+        [pytest.approx(5.0), 2, True, pytest.approx(1.5)],
+        [pytest.approx(-1.1574580209541847), 2, False, pytest.approx(1.5)],
+        [pytest.approx(1.0187012634348311), 2, True, pytest.approx(1.5)],
     ]
     assert [trial.metadata["target_slot"] for trial in trials] == [0, 1, 2, 3, 4, 5]
 
@@ -164,6 +164,78 @@ def test_de_non_default_stateless_strategies_generate_valid_trials(strategy: str
     assert {trial.metadata["target_slot"] for trial in trials} == set(range(6))
     for trial in trials:
         _mixed_space().validate_genes(trial.genes)
+
+
+def test_de_trial_ask_uses_rust_kernel_output(monkeypatch) -> None:
+    engine = DifferentialEvolutionOptimizer(
+        _mixed_space(),
+        population_size=6,
+        strategy="rand2bin",
+        seed=42,
+    )
+    targets = engine.ask()
+    engine.tell(_records(targets, [0, 1, 2, 3, 4, 5]))
+    calls = []
+
+    def fake_de_generate_trials(
+        population,
+        scores,
+        gene_bounds,
+        gene_kinds,
+        strategy,
+        mutation_factor,
+        crossover_rate,
+        seed,
+        generation,
+        target_slots,
+        direction,
+        jde_state=None,
+    ):
+        calls.append(
+            {
+                "population": population,
+                "scores": scores,
+                "gene_bounds": gene_bounds,
+                "gene_kinds": gene_kinds,
+                "strategy": strategy,
+                "mutation_factor": mutation_factor,
+                "crossover_rate": crossover_rate,
+                "seed": seed,
+                "generation": generation,
+                "target_slots": target_slots,
+                "direction": direction,
+                "jde_state": jde_state,
+            }
+        )
+        return [
+            {
+                "target_slot": slot,
+                "genes": [0.25, 7.0, 1.0, 1.5],
+                "metadata": {
+                    "strategy": strategy,
+                    "target_slot": slot,
+                    "base_slot": 1,
+                    "donor_slots": [1, 2, 3, 4, 5],
+                    "difference_pairs": [[2, 3], [4, 5]],
+                    "rust_marker": True,
+                },
+            }
+            for slot in target_slots
+        ]
+
+    monkeypatch.setattr(_core, "de_generate_trials", fake_de_generate_trials)
+
+    trials = engine.ask(3)
+
+    assert len(calls) == 1
+    assert calls[0]["strategy"] == "rand2bin"
+    assert calls[0]["target_slots"] == [0, 1, 2]
+    assert [trial.genes for trial in trials] == [
+        [0.25, 7, True, pytest.approx(1.5)],
+        [0.25, 7, True, pytest.approx(1.5)],
+        [0.25, 7, True, pytest.approx(1.5)],
+    ]
+    assert all(trial.metadata["rust_marker"] is True for trial in trials)
 
 
 def test_de_trial_generation_preserves_gene_types_and_fixed_values() -> None:

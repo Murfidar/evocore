@@ -97,6 +97,38 @@ def test_jde_trial_metadata_is_deterministic_for_same_seed() -> None:
     assert {trial.metadata["strategy"] for trial in left_trials} == {"jde-rand1bin"}
 
 
+def test_jde_trial_ask_registers_rust_proposed_pending_params() -> None:
+    optimizer = DifferentialEvolutionOptimizer(
+        _space(),
+        population_size=6,
+        strategy="jde-rand1bin",
+        seed=42,
+    )
+    initial = optimizer.ask()
+    optimizer.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=float(index),
+                confidence="trusted_full",
+                stage="full",
+            )
+            for index, candidate in enumerate(initial)
+        ]
+    )
+
+    trials = optimizer.ask(3)
+
+    assert len(trials) == 3
+    for trial in trials:
+        assert trial.candidate_id in optimizer._de_strategy_state.pending_trial_params
+        pending = optimizer._de_strategy_state.pending_trial_params[trial.candidate_id]
+        assert pending.target_slot == trial.metadata["adaptive_slot"]
+        assert pending.mutation_factor == trial.metadata["mutation_factor"]
+        assert pending.crossover_rate == trial.metadata["crossover_rate"]
+
+
 def test_jde_acceptance_commits_trial_parameters() -> None:
     engine = _trusted_jde_engine()
     trial = engine.ask()[0]
