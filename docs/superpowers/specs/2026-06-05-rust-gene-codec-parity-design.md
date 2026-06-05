@@ -46,23 +46,17 @@ Create a focused internal module:
 src/gene_codec.rs
 ```
 
-The module should own:
+The module should reuse the existing `crate::gene_spec::GeneKind` enum and own:
 
 ```rust
-pub(crate) enum EncodedGeneKind {
-    Float,
-    Int,
-    Bool,
-}
+pub(crate) fn parse_gene_kind(kind: &str) -> PyResult<GeneKind>;
 
-pub(crate) fn parse_gene_kind(kind: &str) -> PyResult<EncodedGeneKind>;
-
-pub(crate) fn parse_gene_kinds(kinds: &[String]) -> PyResult<Vec<EncodedGeneKind>>;
+pub(crate) fn parse_gene_kinds(kinds: &[String]) -> PyResult<Vec<GeneKind>>;
 
 pub(crate) fn repair_encoded_value(
     value: f64,
     bounds: (f64, f64),
-    kind: EncodedGeneKind,
+    kind: &GeneKind,
 ) -> f64;
 ```
 

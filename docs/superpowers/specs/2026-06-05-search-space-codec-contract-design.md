@@ -88,8 +88,8 @@ The shared semantics should match current optimizer behavior:
   - values below `0.5` decode or repair to `False`;
   - boolean inputs remain boolean.
 - Fixed genes still validate through normal `GeneSpace` validation.
-- Vector helpers raise `ValueError` on length mismatch, matching existing
-  optimizer helper style.
+- Vector helpers raise `ConfigurationError` on length mismatch, matching
+  existing EvoCore optimizer helper style.
 - `repair_gene_values(...)` validates the repaired vector through
   `gene_space.validate_genes(...)` before returning.
 - `decode_gene_values(...)` decodes encoded numeric values and validates the
