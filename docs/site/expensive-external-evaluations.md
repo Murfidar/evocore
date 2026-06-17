@@ -186,6 +186,34 @@ When resuming a CMA-ES checkpoint after a state warm start, construct the
 optimizer with the same warm-started `initial_mean` context used for the saved
 run before loading the checkpoint.
 
+## Stop Long-Running Ask/Tell Loops
+
+Stop policies are reusable helpers for external loops. They do not spend budget
+and do not mutate optimizer state.
+
+```python
+from evocore import CompositeStopPolicy, EvaluationLimitPolicy, NoImprovementPolicy
+
+
+stop_policy = CompositeStopPolicy(
+    [
+        EvaluationLimitPolicy(max_evaluations=500),
+        NoImprovementPolicy(window=8, min_delta=0.001, score_direction="maximize"),
+    ]
+)
+
+while True:
+    candidates = optimizer.ask(16)
+    records = expensive_evaluator(candidates)
+    update = optimizer.tell(records)
+    decision = stop_policy.observe(
+        update,
+        snapshot=optimizer.candidate_snapshot(scope="trusted"),
+    )
+    if decision.stop:
+        break
+```
+
 ## Checkpoint Around External Work
 
 For long-running queues, save a checkpoint after `ask(...)` and before jobs leave

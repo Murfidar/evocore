@@ -120,3 +120,21 @@ def test_phase2a_public_exports():
     assert SelectionResult is not None
     assert SpecialistCap is not None
     assert select_candidates is not None
+
+
+def test_phase2b_stopping_public_exports():
+    from evocore import (
+        CompositeStopPolicy,
+        ConvergencePolicy,
+        EvaluationLimitPolicy,
+        NoImprovementPolicy,
+        StopDecision,
+        StopPolicy,
+    )
+
+    assert CompositeStopPolicy is not None
+    assert ConvergencePolicy is not None
+    assert EvaluationLimitPolicy is not None
+    assert NoImprovementPolicy is not None
+    assert StopDecision is not None
+    assert StopPolicy is not None
