@@ -12,6 +12,9 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   starts, candidate injection, read-only population snapshots, top-k candidate
   access, cached evaluation record helpers, and expensive external evaluation
   recipes.
+- Added archive and survivor-selection utilities for expensive external
+  optimization workflows, including `CandidateArchive`, duplicate suppression,
+  family quotas, specialist caps, and deterministic snapshot selection.
 
 ## [1.0.0] - 2026-06-05
 
