@@ -106,6 +106,34 @@ archive_rows = [
 Snapshots are detached read-only data objects. Mutating them does not mutate the
 optimizer.
 
+## Archive Search Memory And Select Survivors
+
+Use `CandidateArchive` to keep scored candidates outside optimizer checkpoints,
+then export the best records back into `warm_start(...)`.
+
+```python
+from evocore import CandidateArchive, FamilyQuota, select_candidates
+
+
+archive = CandidateArchive(duplicate_policy="keep_best", score_direction="maximize")
+trusted = optimizer.candidate_snapshot(scope="trusted")
+archive.add_population(trusted, source="stage1")
+
+selection = select_candidates(
+    trusted.candidates,
+    k=8,
+    score_direction="maximize",
+    quotas=[FamilyQuota(metadata_key="family", max_count=3)],
+)
+
+survivor_records = selection.to_warm_start_records(stage="stage2_seed")
+archive_records = archive.to_warm_start_records(k=8, stage="archive_seed")
+```
+
+Select directly from optimizer snapshots when making immediate promotion
+decisions. Use archive exports when you want durable search memory that can seed
+future runs.
+
 ## Inject External Candidates
 
 GA and DE can accept proposed candidates during an ask/tell run. This is useful

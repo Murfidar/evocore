@@ -1,5 +1,13 @@
 """Ask/tell lifecycle contracts shared by EvoCore optimizers."""
 
+from evocore.lifecycle.archives import (
+    ARCHIVE_SCHEMA_VERSION,
+    ArchiveEntry,
+    ArchiveExport,
+    ArchivePolicy,
+    CandidateArchive,
+    DuplicatePolicy,
+)
 from evocore.lifecycle.batches import CandidateBatch, batch_id_from_seed
 from evocore.lifecycle.checkpointing import (
     batch_from_checkpoint,
@@ -37,6 +45,15 @@ from evocore.lifecycle.records import (
     score_for_direction,
 )
 from evocore.lifecycle.scheduler import BudgetScheduler
+from evocore.lifecycle.selection import (
+    DuplicateSelectionPolicy,
+    FamilyQuota,
+    MissingMetadataPolicy,
+    SelectionDecision,
+    SelectionResult,
+    SpecialistCap,
+    select_candidates,
+)
 from evocore.lifecycle.telemetry import (
     AcceptanceDecision,
     OptimizationTelemetry,
@@ -45,15 +62,22 @@ from evocore.lifecycle.telemetry import (
 )
 
 __all__ = [
+    "ARCHIVE_SCHEMA_VERSION",
     "AcceptanceDecision",
+    "ArchiveEntry",
+    "ArchiveExport",
+    "ArchivePolicy",
     "BudgetPolicy",
     "BudgetScheduler",
     "Candidate",
+    "CandidateArchive",
     "CandidateBatch",
     "CandidateOrigin",
     "CandidateSnapshot",
     "CandidateStatus",
     "Direction",
+    "DuplicatePolicy",
+    "DuplicateSelectionPolicy",
     "EvaluationConfidence",
     "EvaluationContext",
     "EvaluationRecord",
@@ -63,12 +87,17 @@ __all__ = [
     "EventRecord",
     "ExternalStateCapabilities",
     "ExternalStateOptimizer",
+    "FamilyQuota",
     "InjectionResult",
+    "MissingMetadataPolicy",
     "OptimizationTelemetry",
     "Optimizer",
     "OptimizerStateSummary",
     "PopulationSnapshot",
     "ScoreObservation",
+    "SelectionDecision",
+    "SelectionResult",
+    "SpecialistCap",
     "StopReason",
     "UpdateResult",
     "WarmStartRecord",
@@ -84,6 +113,7 @@ __all__ = [
     "event_history_to_checkpoint",
     "is_state_update_confidence",
     "score_for_direction",
+    "select_candidates",
     "solution_to_candidate",
     "telemetry_from_checkpoint",
     "telemetry_to_checkpoint",

@@ -104,3 +104,19 @@ def test_external_state_public_exports():
     assert ExternalStateOptimizer is not None
     assert InjectionResult is not None
     assert cached_records is not None
+
+
+def test_phase2a_public_exports():
+    from evocore import (
+        CandidateArchive,
+        FamilyQuota,
+        SelectionResult,
+        SpecialistCap,
+        select_candidates,
+    )
+
+    assert CandidateArchive is not None
+    assert FamilyQuota is not None
+    assert SelectionResult is not None
+    assert SpecialistCap is not None
+    assert select_candidates is not None

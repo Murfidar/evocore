@@ -63,6 +63,22 @@ shape, without subclassing.
 
 ::: evocore.lifecycle.cached_records
 
+::: evocore.lifecycle.CandidateArchive
+
+::: evocore.lifecycle.ArchiveEntry
+
+::: evocore.lifecycle.ArchiveExport
+
+::: evocore.lifecycle.select_candidates
+
+::: evocore.lifecycle.SelectionResult
+
+::: evocore.lifecycle.SelectionDecision
+
+::: evocore.lifecycle.FamilyQuota
+
+::: evocore.lifecycle.SpecialistCap
+
 ::: evocore.lifecycle.EvaluationStage
 
 ::: evocore.lifecycle.OptimizationTelemetry
