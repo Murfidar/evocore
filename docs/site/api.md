@@ -79,6 +79,18 @@ shape, without subclassing.
 
 ::: evocore.lifecycle.SpecialistCap
 
+::: evocore.lifecycle.StopDecision
+
+::: evocore.lifecycle.StopPolicy
+
+::: evocore.lifecycle.EvaluationLimitPolicy
+
+::: evocore.lifecycle.NoImprovementPolicy
+
+::: evocore.lifecycle.ConvergencePolicy
+
+::: evocore.lifecycle.CompositeStopPolicy
+
 ::: evocore.lifecycle.EvaluationStage
 
 ::: evocore.lifecycle.OptimizationTelemetry

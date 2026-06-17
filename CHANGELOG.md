@@ -15,6 +15,9 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Added archive and survivor-selection utilities for expensive external
   optimization workflows, including `CandidateArchive`, duplicate suppression,
   family quotas, specialist caps, and deterministic snapshot selection.
+- Added lifecycle stop policies for external ask/tell workflows, including
+  evaluation caps, no-improvement windows, convergence thresholds, and composite
+  stop decisions.
 
 ## [1.0.0] - 2026-06-05
 
