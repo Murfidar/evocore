@@ -27,3 +27,9 @@ evaluation in this release line.
 
 `max_evaluations` counts fresh `trusted_full` observations only. Cached records can
 update optimizer state, but they do not spend fresh full-evaluation budget.
+
+`cached_records(...)` converts trusted external cache hits for current candidates
+into `EvaluationRecord(confidence="cached")` objects. The helper does not call
+`tell(...)` and does not spend fresh evaluation budget by itself. Budget accounting
+and optimizer state updates happen when those records are passed to `tell(...)` or
+imported through `warm_start(...)`.

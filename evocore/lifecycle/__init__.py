@@ -13,8 +13,16 @@ from evocore.lifecycle.checkpointing import (
 )
 from evocore.lifecycle.conversion import candidate_to_solution, solution_to_candidate
 from evocore.lifecycle.events import EventHistory, EventRecord, StopReason, append_run_stop_event
+from evocore.lifecycle.external import (
+    CandidateSnapshot,
+    ExternalStateCapabilities,
+    InjectionResult,
+    PopulationSnapshot,
+    WarmStartRecord,
+    cached_records,
+)
 from evocore.lifecycle.policies import BudgetPolicy
-from evocore.lifecycle.protocols import Evaluator, Optimizer
+from evocore.lifecycle.protocols import Evaluator, ExternalStateOptimizer, Optimizer
 from evocore.lifecycle.records import (
     Candidate,
     CandidateOrigin,
@@ -43,6 +51,7 @@ __all__ = [
     "Candidate",
     "CandidateBatch",
     "CandidateOrigin",
+    "CandidateSnapshot",
     "CandidateStatus",
     "Direction",
     "EvaluationConfidence",
@@ -52,16 +61,22 @@ __all__ = [
     "Evaluator",
     "EventHistory",
     "EventRecord",
+    "ExternalStateCapabilities",
+    "ExternalStateOptimizer",
+    "InjectionResult",
     "OptimizationTelemetry",
     "Optimizer",
     "OptimizerStateSummary",
+    "PopulationSnapshot",
     "ScoreObservation",
     "StopReason",
     "UpdateResult",
+    "WarmStartRecord",
     "append_run_stop_event",
     "batch_from_checkpoint",
     "batch_id_from_seed",
     "batch_to_checkpoint",
+    "cached_records",
     "candidate_from_checkpoint",
     "candidate_to_checkpoint",
     "candidate_to_solution",

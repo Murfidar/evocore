@@ -6,6 +6,13 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+### Added
+
+- Added external-state integration APIs for GA, DE, and CMA-ES, including warm
+  starts, candidate injection, read-only population snapshots, top-k candidate
+  access, cached evaluation record helpers, and expensive external evaluation
+  recipes.
+
 ## [1.0.0] - 2026-06-05
 
 ### Added

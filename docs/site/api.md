@@ -51,6 +51,18 @@ shape, without subclassing.
 
 ::: evocore.lifecycle.OptimizerStateSummary
 
+::: evocore.lifecycle.WarmStartRecord
+
+::: evocore.lifecycle.CandidateSnapshot
+
+::: evocore.lifecycle.PopulationSnapshot
+
+::: evocore.lifecycle.ExternalStateCapabilities
+
+::: evocore.lifecycle.InjectionResult
+
+::: evocore.lifecycle.cached_records
+
 ::: evocore.lifecycle.EvaluationStage
 
 ::: evocore.lifecycle.OptimizationTelemetry

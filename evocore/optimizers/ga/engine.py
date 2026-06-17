@@ -30,6 +30,7 @@ from evocore.optimizers.ga.config import (
     ga_runtime_hooks,
     validate_ga_compatibility,
 )
+from evocore.optimizers.ga.external import GeneticAlgorithmExternalStateMixin
 from evocore.optimizers.ga.generation_loop import GeneticAlgorithmGenerationLoopMixin
 from evocore.optimizers.ga.multi_run import GeneticAlgorithmMultiRunMixin
 from evocore.optimizers.ga.reproduction import GeneticAlgorithmReproductionMixin
@@ -71,6 +72,7 @@ def _default_mutation_for_profile(profile: str) -> str:
 
 
 class GeneticAlgorithmOptimizer(
+    GeneticAlgorithmExternalStateMixin,
     GeneticAlgorithmAskTellMixin,
     GeneticAlgorithmGenerationLoopMixin,
     GeneticAlgorithmCheckpointingMixin,
