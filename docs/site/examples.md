@@ -317,6 +317,10 @@ optimizer.save_checkpoint(
 )
 ```
 
+For warm starts, cached backtest records, candidate injection, and survivor
+selection without private state, see
+[Expensive External Evaluations](expensive-external-evaluations.md).
+
 ## Fit Continuous Parameters With CMA-ES
 
 Situation: the space is continuous or integer-valued, the objective has useful
@@ -427,5 +431,7 @@ files are separate optimizer-state snapshots for continuation.
 - [Budget-Aware Optimization](budget-aware-optimization.md) for staged
   evaluation.
 - [Ask/Tell Engines](ask-tell-engines.md) for external evaluation systems.
+- [Expensive External Evaluations](expensive-external-evaluations.md) for
+  warm starts, cached scores, candidate injection, and survivor selection.
 - [Callbacks And Checkpointing](callbacks-checkpointing.md) for stable resume
   workflows.

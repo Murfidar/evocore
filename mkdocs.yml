@@ -10,6 +10,7 @@ nav:
   - Install: install.md
   - Quickstart: quickstart.md
   - Examples: examples.md
+  - Expensive External Evaluations: expensive-external-evaluations.md
   - Gene Spaces: gene-space.md
   - Operator Contract: operator-contract.md
   - Genetic Algorithms: ga.md

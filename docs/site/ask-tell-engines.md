@@ -69,6 +69,39 @@ Invalid records raise `FitnessError`: unknown candidates, unknown explicit batch
 batch mismatches, duplicate candidate/stage records, non-finite non-rejected scores, and
 scored `rejected` records are rejected.
 
+## External State
+
+GA, DE, and CMA-ES expose shared external-state methods for expensive systems
+that reuse historical optimization knowledge. Use `warm_start(...)` to import
+trusted archives or search-memory records, `candidate_snapshot(...)` and
+`top_candidates(...)` for survivor selection and reporting, and
+`inject_candidates(...)` when the optimizer supports externally proposed
+candidates during an ask/tell run.
+
+```python
+from evocore import GeneSpace, GeneticAlgorithmOptimizer, WarmStartRecord
+
+
+optimizer = GeneticAlgorithmOptimizer(GeneSpace.uniform(-5.0, 5.0, 3), seed=42)
+optimizer.warm_start(
+    [
+        WarmStartRecord(
+            values=(0.1, -0.2, 0.3),
+            score=0.88,
+            metadata={"source": "search_memory"},
+        )
+    ]
+)
+
+survivors = optimizer.top_candidates(4)
+```
+
+Use `candidate_snapshot(scope="trusted")` for state-eligible candidates,
+`scope="scored"` for any scored candidate, `scope="pending"` for in-flight
+ask/tell work, and `scope="known"` for everything the optimizer currently knows.
+See [Expensive External Evaluations](expensive-external-evaluations.md) for
+warm starts, cached records, injected candidates, and hybrid GA/CMA-ES recipes.
+
 ## Event History
 
 Ask/tell engines record append-only lifecycle events. Every proposed candidate receives
