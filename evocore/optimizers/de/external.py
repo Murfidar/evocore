@@ -372,6 +372,12 @@ class DifferentialEvolutionExternalStateMixin:
             metadata=metadata,
             deduplicate=deduplicate,
         )
+        if mode == "proposed":
+            remaining_slots = self.population_size - len(self._target_candidate_ids)
+            if len(accepted) > remaining_slots:
+                raise ConfigurationError(
+                    "DE proposed injection cannot exceed remaining target slot count."
+                )
         if not accepted:
             return InjectionResult(
                 accepted=(),

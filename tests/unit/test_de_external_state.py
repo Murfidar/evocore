@@ -130,6 +130,26 @@ def test_de_proposed_injection_rejects_after_target_population_is_full() -> None
         )
 
 
+def test_de_proposed_injection_rejects_when_batch_would_overfill_targets() -> None:
+    optimizer = _optimizer()
+    initial = optimizer.ask(2)
+    optimizer.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=float(index),
+                confidence="trusted_full",
+                stage="full",
+            )
+            for index, candidate in enumerate(initial)
+        ]
+    )
+
+    with pytest.raises(ConfigurationError, match="remaining target slot"):
+        optimizer.inject_candidates(_records()[:3], mode="proposed")
+
+
 def test_de_external_state_checkpoint_round_trip(tmp_path) -> None:
     source = _optimizer()
     source.warm_start(_records())
