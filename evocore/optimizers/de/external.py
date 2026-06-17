@@ -130,8 +130,8 @@ class DifferentialEvolutionExternalStateMixin:
         metadata: Mapping[str, object] | None = None,
     ) -> Candidate:
         values = resolve_warm_start_values(record, self.gene_space)
-        candidate_metadata = dict(metadata or {})
-        candidate_metadata.update(dict(record.metadata))
+        candidate_metadata = dict(record.metadata)
+        candidate_metadata.update(dict(metadata or {}))
         return self._candidate_from_genes(
             values,
             batch_id=batch_id,
@@ -195,7 +195,7 @@ class DifferentialEvolutionExternalStateMixin:
                 event_index=event_index,
                 candidate_index=len(accepted),
                 origin=origin,
-                metadata={"external_state_mode": mode, **dict(metadata or {})},
+                metadata={**dict(metadata or {}), "external_state_mode": mode},
             )
             accepted.append((candidate, record))
             accepted_hashes[candidate_hash] = candidate

@@ -156,8 +156,8 @@ class CMAESExternalStateMixin:
                 skipped.append(duplicate)
                 continue
             candidate_id = _core.candidate_id(self.seed, event_index, len(accepted))
-            candidate_metadata = {"external_state_mode": mode, **dict(metadata or {})}
-            candidate_metadata.update(dict(record.metadata))
+            candidate_metadata = dict(record.metadata)
+            candidate_metadata.update({**dict(metadata or {}), "external_state_mode": mode})
             candidate = Candidate(
                 candidate_id=candidate_id,
                 genes=list(values),

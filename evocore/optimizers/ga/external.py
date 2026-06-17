@@ -97,8 +97,8 @@ class GeneticAlgorithmExternalStateMixin:
         metadata: Mapping[str, object] | None = None,
     ) -> Candidate:
         values = resolve_warm_start_values(record, self.gene_space)
-        candidate_metadata = dict(metadata or {})
-        candidate_metadata.update(dict(record.metadata))
+        candidate_metadata = dict(record.metadata)
+        candidate_metadata.update(dict(metadata or {}))
         return solution_to_candidate(
             Solution(list(values)),
             gene_space=self.gene_space,
@@ -316,8 +316,8 @@ class GeneticAlgorithmExternalStateMixin:
                 candidate_index=len(accepted),
                 origin=origin,
                 metadata={
-                    "external_state_mode": mode,
                     **dict(metadata or {}),
+                    "external_state_mode": mode,
                 },
             )
             accepted.append(candidate)

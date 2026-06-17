@@ -59,6 +59,25 @@ def test_tracked_warm_start_is_visible_as_scored_not_trusted(optimizer) -> None:
     assert len(optimizer.candidate_snapshot(scope="scored").candidates) == 2
 
 
+def test_user_metadata_cannot_override_internal_tracked_mode(optimizer) -> None:
+    optimizer.warm_start(
+        [
+            WarmStartRecord(
+                params={"x": 1.0, "y": 1.0},
+                score=10.0,
+                metadata={"external_state_mode": "state", "source": "archive"},
+            )
+        ],
+        mode="tracked",
+    )
+
+    scored = optimizer.candidate_snapshot(scope="scored").candidates
+    assert len(scored) == 1
+    assert scored[0].metadata["external_state_mode"] == "tracked"
+    assert scored[0].metadata["source"] == "archive"
+    assert optimizer.candidate_snapshot(scope="trusted").candidates == ()
+
+
 def test_duplicate_warm_start_values_are_skipped_consistently(optimizer) -> None:
     records = _warm_records()
     result = optimizer.warm_start([records[0], records[0]])
