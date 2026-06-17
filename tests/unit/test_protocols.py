@@ -5,6 +5,7 @@ from evocore import (
     EvaluationRecord,
     EvaluationStage,
     Evaluator,
+    ExternalStateOptimizer,
     Gene,
     GeneSpace,
     GeneticAlgorithmOptimizer,
@@ -59,3 +60,7 @@ def test_structural_evaluator_satisfies_evaluator_protocol_at_runtime() -> None:
 
     assert isinstance(evaluator, Evaluator)
     assert evaluator.evaluate([], context) == []
+
+
+def test_external_state_optimizer_protocol_is_runtime_checkable() -> None:
+    assert isinstance(ExternalStateOptimizer, type)

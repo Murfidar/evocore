@@ -84,3 +84,23 @@ def test_lifecycle_exports_accessible_from_top_level():
     assert evocore.EventRecord.__name__ == "EventRecord"
     assert evocore.EventHistory.__name__ == "EventHistory"
     assert evocore.ReproducibilityMetadata.__name__ == "ReproducibilityMetadata"
+
+
+def test_external_state_public_exports():
+    from evocore import (
+        CandidateSnapshot,
+        ExternalStateCapabilities,
+        ExternalStateOptimizer,
+        InjectionResult,
+        PopulationSnapshot,
+        WarmStartRecord,
+        cached_records,
+    )
+
+    assert WarmStartRecord is not None
+    assert CandidateSnapshot is not None
+    assert PopulationSnapshot is not None
+    assert ExternalStateCapabilities is not None
+    assert ExternalStateOptimizer is not None
+    assert InjectionResult is not None
+    assert cached_records is not None
