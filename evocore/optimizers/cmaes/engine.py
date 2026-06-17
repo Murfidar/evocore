@@ -30,6 +30,7 @@ from evocore.optimizers.cmaes.config import (
     cmaes_runtime_hooks,
     validate_cmaes_compatibility,
 )
+from evocore.optimizers.cmaes.external import CMAESExternalStateMixin
 from evocore.optimizers.config import OptimizerConfig
 from evocore.results import (
     EventHistory,
@@ -53,7 +54,7 @@ from evocore.search_space import (
 logger = logging.getLogger(__name__)
 
 
-class CMAESOptimizer(CMAESCheckpointingMixin, CMAESAskTellMixin):
+class CMAESOptimizer(CMAESExternalStateMixin, CMAESCheckpointingMixin, CMAESAskTellMixin):
     """Run covariance matrix adaptation evolution strategy optimization.
 
     Args:
