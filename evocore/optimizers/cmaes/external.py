@@ -63,15 +63,22 @@ class CMAESExternalStateMixin:
     def _external_scored_candidates(self) -> list[Candidate]:
         return [candidate for candidate in self._candidates_by_id.values() if candidate.scores]
 
+    def _external_is_trusted_candidate(self, candidate: Candidate) -> bool:
+        if candidate.metadata.get("external_state_mode") == "tracked":
+            return False
+        return any(
+            score.confidence in ("trusted_full", "cached") for score in candidate.scores.values()
+        )
+
     def _external_trusted_candidates(self) -> list[Candidate]:
         return [
             candidate
             for candidate in self._candidates_by_id.values()
-            if any(
-                score.confidence in ("trusted_full", "cached")
-                for score in candidate.scores.values()
-            )
+            if self._external_is_trusted_candidate(candidate)
         ]
+
+    def _trusted_count(self) -> int:
+        return len(self._external_trusted_candidates())
 
     def _external_candidates_for_scope(self, scope: SnapshotScope) -> list[Candidate]:
         if scope == "trusted":
