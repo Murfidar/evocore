@@ -40,6 +40,7 @@ from evocore.optimizers.de.config import (
     de_runtime_hooks,
     validate_de_compatibility,
 )
+from evocore.optimizers.de.external import DifferentialEvolutionExternalStateMixin
 from evocore.optimizers.de.multi_run import DifferentialEvolutionMultiRunMixin
 from evocore.results import (
     EventHistory,
@@ -61,6 +62,7 @@ def _evaluate_one_candidate(
 
 
 class DifferentialEvolutionOptimizer(
+    DifferentialEvolutionExternalStateMixin,
     DifferentialEvolutionCheckpointingMixin,
     DifferentialEvolutionAskTellMixin,
     DifferentialEvolutionMultiRunMixin,
