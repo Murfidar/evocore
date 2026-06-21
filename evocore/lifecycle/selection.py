@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass, field
 from typing import Literal
 
@@ -195,6 +196,9 @@ def _split_scored_candidates(
         if candidate.score is None:
             rejected.append(candidate)
             decisions.append(_decision(candidate, selected=False, reason="no_score"))
+        elif not math.isfinite(float(candidate.score)):
+            rejected.append(candidate)
+            decisions.append(_decision(candidate, selected=False, reason="non_finite_score"))
         else:
             scored.append(candidate)
     return scored, rejected, decisions

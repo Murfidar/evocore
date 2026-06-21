@@ -1,9 +1,11 @@
 from evocore import (
+    CandidateSnapshot,
     CompositeStopPolicy,
     ConvergencePolicy,
     EvaluationLimitPolicy,
     NoImprovementPolicy,
     OptimizationTelemetry,
+    PopulationSnapshot,
     UpdateResult,
 )
 
@@ -24,6 +26,38 @@ def _update(
         rejected_count=0,
         best_candidate_id="best" if best_score is not None else None,
         best_score=best_score,
+    )
+
+
+def _snapshot(candidate_id: str, score: float) -> CandidateSnapshot:
+    return CandidateSnapshot(
+        candidate_id=candidate_id,
+        candidate_hash=f"hash-{candidate_id}",
+        values=(score,),
+        params=None,
+        origin="memory_seed",
+        batch_id="batch-1",
+        event_index=1,
+        generation=None,
+        status="trusted",
+        stage="full",
+        confidence="trusted_full",
+        score=score,
+        scores={},
+        cost=0.0,
+        metadata={},
+    )
+
+
+def _population(*scores: float, direction: str = "maximize") -> PopulationSnapshot:
+    return PopulationSnapshot(
+        optimizer_type="GeneticAlgorithmOptimizer",
+        direction=direction,
+        event_index=1,
+        pending_batch_ids=(),
+        trusted_count=len(scores),
+        candidates=tuple(_snapshot(f"c-{index}", score) for index, score in enumerate(scores)),
+        telemetry=OptimizationTelemetry(),
     )
 
 
@@ -61,6 +95,20 @@ def test_evaluation_limit_policy_prefers_explicit_telemetry_snapshot() -> None:
     assert decision.metadata["observed_evaluations"] == 5
 
 
+def test_evaluation_limit_policy_does_not_move_backward_for_stale_telemetry() -> None:
+    current = OptimizationTelemetry()
+    current.record_full(5, stage="full", cost=0.0)
+    stale = OptimizationTelemetry()
+    stale.record_full(1, stage="full", cost=0.0)
+    policy = EvaluationLimitPolicy(max_evaluations=5)
+
+    assert policy.observe(telemetry=current).stop is True
+    decision = policy.observe(telemetry=stale)
+
+    assert decision.stop is True
+    assert decision.metadata["observed_evaluations"] == 5
+
+
 def test_no_improvement_policy_stops_after_window_without_improvement() -> None:
     policy = NoImprovementPolicy(window=2, min_delta=0.5, score_direction="maximize")
 
@@ -84,6 +132,16 @@ def test_no_improvement_policy_resets_on_improvement() -> None:
     assert decision.metadata["stale_count"] == 0
 
 
+def test_no_improvement_policy_uses_configured_direction_for_snapshot() -> None:
+    policy = NoImprovementPolicy(window=1, score_direction="minimize")
+
+    policy.observe(snapshot=_population(1.0, 9.0, direction="maximize"))
+    decision = policy.observe(snapshot=_population(0.5, 10.0, direction="maximize"))
+
+    assert decision.stop is False
+    assert decision.metadata["best_score"] == 0.5
+
+
 def test_convergence_policy_stops_when_target_reached_for_maximize() -> None:
     policy = ConvergencePolicy(target_score=5.0, score_direction="maximize")
 
@@ -99,6 +157,15 @@ def test_convergence_policy_stops_when_target_reached_for_minimize() -> None:
 
     assert policy.observe(_update(best_score=1.1)).stop is False
     assert policy.observe(_update(best_score=1.0)).stop is True
+
+
+def test_convergence_policy_uses_configured_direction_for_snapshot() -> None:
+    policy = ConvergencePolicy(target_score=2.0, score_direction="minimize")
+
+    decision = policy.observe(snapshot=_population(1.0, 9.0, direction="maximize"))
+
+    assert decision.stop is True
+    assert decision.metadata["best_score"] == 1.0
 
 
 def test_composite_stop_policy_returns_first_stop_decision() -> None:

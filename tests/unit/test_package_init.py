@@ -138,3 +138,11 @@ def test_phase2b_stopping_public_exports():
     assert NoImprovementPolicy is not None
     assert StopDecision is not None
     assert StopPolicy is not None
+
+
+def test_phase2c_composition_public_exports():
+    from evocore import derive_child_seed, inner_result_record, lineage_metadata
+
+    assert derive_child_seed is not None
+    assert inner_result_record is not None
+    assert lineage_metadata is not None

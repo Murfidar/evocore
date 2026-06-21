@@ -60,11 +60,14 @@ def _validate_direction(direction: Direction) -> Direction:
     return direction
 
 
-def _best_snapshot_score(snapshot: PopulationSnapshot) -> float | None:
+def _best_snapshot_score(
+    snapshot: PopulationSnapshot,
+    score_direction: Direction,
+) -> float | None:
     scored = [candidate.score for candidate in snapshot.candidates if candidate.score is not None]
     if not scored:
         return None
-    return max(scored) if snapshot.direction == "maximize" else min(scored)
+    return max(scored) if score_direction == "maximize" else min(scored)
 
 
 class EvaluationLimitPolicy:
@@ -121,7 +124,7 @@ class EvaluationLimitPolicy:
         source = telemetry or (snapshot.telemetry if snapshot is not None else None)
         if source is not None:
             observed = self._count_from_telemetry(source)
-            self._observed_evaluations = observed
+            self._observed_evaluations = max(self._observed_evaluations, observed)
         elif update is not None:
             self._observed_evaluations += self._count_from_update(update)
 
@@ -175,7 +178,7 @@ class NoImprovementPolicy:
         if update is not None and update.best_score is not None:
             return float(update.best_score)
         if snapshot is not None:
-            return _best_snapshot_score(snapshot)
+            return _best_snapshot_score(snapshot, self.score_direction)
         return None
 
     def observe(
@@ -244,7 +247,7 @@ class ConvergencePolicy:
         """Stop once the best score reaches the configured convergence target."""
         best_score = update.best_score if update is not None else None
         if best_score is None and snapshot is not None:
-            best_score = _best_snapshot_score(snapshot)
+            best_score = _best_snapshot_score(snapshot, self.score_direction)
         if best_score is None:
             return _ok()
 

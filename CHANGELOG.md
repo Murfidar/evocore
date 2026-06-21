@@ -18,6 +18,19 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Added lifecycle stop policies for external ask/tell workflows, including
   evaluation caps, no-improvement windows, convergence thresholds, and composite
   stop decisions.
+- Added hybrid composition helpers for nested expensive optimization workflows,
+  including deterministic child seeds, lineage metadata, and inner-result
+  evaluation records.
+
+### Fixed
+
+- Preserved archive insertion counters and best-score observation provenance
+  across durable archive workflows, rejected direction changes on non-empty
+  archives, and excluded non-finite scores from survivor selection.
+- Made stop-policy snapshot scoring honor each policy's configured direction and
+  kept cumulative evaluation-limit counts monotonic across stale telemetry.
+- Protected canonical hybrid-composition lineage fields from caller metadata
+  overrides.
 
 ## [1.0.0] - 2026-06-05
 

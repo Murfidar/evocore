@@ -1,14 +1,18 @@
 import pytest
 
 from evocore import (
+    Candidate,
     CandidateArchive,
     CandidateSnapshot,
+    EvaluationRecord,
+    GeneSpace,
     PopulationSnapshot,
     WarmStartRecord,
 )
 from evocore.core import ConfigurationError
 from evocore.lifecycle import OptimizationTelemetry
 from evocore.lifecycle.archives import ARCHIVE_SCHEMA_VERSION
+from evocore.lifecycle.external import build_candidate_snapshot
 
 
 def _snapshot(
@@ -141,6 +145,77 @@ def test_candidate_archive_round_trips_json_safe_dict() -> None:
     assert restored.duplicate_policy == "keep_best"
     assert restored.score_direction == "maximize"
     assert restored.entries == archive.entries
+
+
+def test_candidate_archive_round_trip_preserves_next_inserted_index() -> None:
+    archive = CandidateArchive(duplicate_policy="keep_first")
+    archive.add_candidates(
+        [
+            _snapshot("c-1", "same", 1.0),
+            _snapshot("c-2", "same", 2.0),
+        ],
+        source="stage1",
+    )
+
+    restored = CandidateArchive.from_dict(archive.to_dict())
+    restored.add_candidates([_snapshot("c-3", "new", 3.0)], source="stage2")
+
+    assert restored.entries[-1].inserted_index == 2
+
+
+def test_candidate_archive_preserves_best_score_observation_provenance() -> None:
+    space = GeneSpace.uniform(-1.0, 1.0, 1)
+    candidate = Candidate(candidate_id="c-1", genes=[0.0], batch_id="batch-1")
+    candidate.apply_record(
+        EvaluationRecord(
+            candidate_id="c-1",
+            batch_id="batch-1",
+            score=10.0,
+            confidence="trusted_full",
+            stage="full",
+            metrics={"folds": 5},
+            metadata={"validation_fold": 5},
+        )
+    )
+    candidate.apply_record(
+        EvaluationRecord(
+            candidate_id="c-1",
+            batch_id="batch-1",
+            score=5.0,
+            confidence="cached",
+            stage="cached",
+            metrics={"cache_age": 2},
+            metadata={"cache_reason": "memory"},
+        )
+    )
+    snapshot = build_candidate_snapshot(candidate, gene_space=space, direction="maximize")
+    archive = CandidateArchive(score_direction="maximize")
+
+    archive.add_candidates([snapshot], source="trusted")
+
+    entry = archive.entries[0]
+    assert entry.score == 10.0
+    assert entry.stage == "full"
+    assert entry.confidence == "trusted_full"
+    assert entry.metrics == {"folds": 5}
+    assert entry.metadata["record_metadata"] == {"validation_fold": 5}
+
+
+def test_candidate_archive_rejects_direction_change_after_entries_exist() -> None:
+    archive = CandidateArchive()
+    archive.add_candidates([_snapshot("c-1", "hash-a", 1.0)], source="stage1")
+    population = PopulationSnapshot(
+        optimizer_type="GeneticAlgorithmOptimizer",
+        direction="minimize",
+        event_index=4,
+        pending_batch_ids=(),
+        trusted_count=1,
+        candidates=(_snapshot("c-2", "hash-b", 2.0),),
+        telemetry=OptimizationTelemetry(),
+    )
+
+    with pytest.raises(ConfigurationError, match="direction"):
+        archive.add_population(population, source="stage2")
 
 
 def test_candidate_archive_rejects_snapshot_without_score() -> None:

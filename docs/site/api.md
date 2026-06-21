@@ -63,6 +63,12 @@ shape, without subclassing.
 
 ::: evocore.lifecycle.cached_records
 
+::: evocore.lifecycle.derive_child_seed
+
+::: evocore.lifecycle.lineage_metadata
+
+::: evocore.lifecycle.inner_result_record
+
 ::: evocore.lifecycle.CandidateArchive
 
 ::: evocore.lifecycle.ArchiveEntry

@@ -132,7 +132,8 @@ archive_records = archive.to_warm_start_records(k=8, stage="archive_seed")
 
 Select directly from optimizer snapshots when making immediate promotion
 decisions. Use archive exports when you want durable search memory that can seed
-future runs.
+future runs. Once an archive contains entries, later population snapshots must
+use the same score direction. Candidate selection rejects non-finite scores.
 
 ## Inject External Candidates
 
@@ -164,32 +165,71 @@ state.
 ## Hybrid Outer GA And Inner CMA-ES
 
 A common expensive workflow is an outer optimizer over structures or templates
-and an inner optimizer over active continuous parameters:
+and an inner optimizer over active continuous parameters.
 
 ```python
+from evocore import (
+    CMAESOptimizer,
+    GeneticAlgorithmOptimizer,
+    derive_child_seed,
+    inner_result_record,
+    lineage_metadata,
+)
+
+
 outer = GeneticAlgorithmOptimizer(template_space, population_size=24, seed=100)
 
 for template_candidate in outer.ask(4):
+    template_hash = template_candidate.candidate_hash(template_space)
+    inner_seed = derive_child_seed(
+        parent_seed=100,
+        candidate_hash=template_hash,
+        stage="inner_cma",
+    )
     template = decode_template(template_candidate.params)
     inner_space = template.active_parameter_space()
-    inner = CMAESOptimizer(inner_space, population_size=16, seed=template_candidate.event_index)
+    inner = CMAESOptimizer(inner_space, population_size=16, seed=inner_seed)
 
     prior_records = lookup_template_archive(template.name)
     if prior_records:
         inner.warm_start(prior_records, mode="state", cma_mean_strategy="top_k_centroid")
 
     tuned = run_inner_backtests(inner, template)
-    report_outer_score(template_candidate, tuned.best_score)
+    metadata = lineage_metadata(
+        outer_candidate=template_candidate,
+        gene_space=template_space,
+        inner_optimizer_type="CMAESOptimizer",
+        inner_seed=inner_seed,
+        stage="inner_cma",
+        metadata={"template_name": template.name},
+    )
+    outer.tell(
+        [
+            inner_result_record(
+                outer_candidate=template_candidate,
+                gene_space=template_space,
+                score=tuned.best_score,
+                confidence="trusted_full",
+                stage="inner_cma",
+                metadata=metadata,
+            )
+        ]
+    )
 ```
 
 When resuming a CMA-ES checkpoint after a state warm start, construct the
 optimizer with the same warm-started `initial_mean` context used for the saved
 run before loading the checkpoint.
 
+Caller metadata may add domain fields such as `template_name`, but it cannot
+override canonical lineage identity, seed, stage, batch, or checkpoint fields.
+
 ## Stop Long-Running Ask/Tell Loops
 
 Stop policies are reusable helpers for external loops. They do not spend budget
-and do not mutate optimizer state.
+and do not mutate optimizer state. Snapshot scoring follows each policy's
+`score_direction`, and cumulative evaluation-limit counts remain monotonic until
+`reset()` is called.
 
 ```python
 from evocore import CompositeStopPolicy, EvaluationLimitPolicy, NoImprovementPolicy

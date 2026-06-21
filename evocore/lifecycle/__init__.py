@@ -19,6 +19,7 @@ from evocore.lifecycle.checkpointing import (
     telemetry_from_checkpoint,
     telemetry_to_checkpoint,
 )
+from evocore.lifecycle.composition import derive_child_seed, inner_result_record, lineage_metadata
 from evocore.lifecycle.conversion import candidate_to_solution, solution_to_candidate
 from evocore.lifecycle.events import EventHistory, EventRecord, StopReason, append_run_stop_event
 from evocore.lifecycle.external import (
@@ -123,9 +124,12 @@ __all__ = [
     "candidate_from_checkpoint",
     "candidate_to_checkpoint",
     "candidate_to_solution",
+    "derive_child_seed",
     "event_history_from_checkpoint",
     "event_history_to_checkpoint",
+    "inner_result_record",
     "is_state_update_confidence",
+    "lineage_metadata",
     "score_for_direction",
     "select_candidates",
     "solution_to_candidate",
