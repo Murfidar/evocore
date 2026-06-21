@@ -13,6 +13,18 @@ from evocore.lifecycle.external import CandidateSnapshot
 from evocore.lifecycle.records import Candidate, EvaluationConfidence, EvaluationRecord
 from evocore.search_space import GeneSpace
 
+_LINEAGE_METADATA_KEYS = frozenset(
+    {
+        "composition_stage",
+        "inner_checkpoint_path",
+        "inner_optimizer_type",
+        "inner_seed",
+        "outer_batch_id",
+        "outer_candidate_hash",
+        "outer_candidate_id",
+    }
+)
+
 
 def _json_metadata(value: Mapping[str, object] | None, *, field_name: str) -> dict[str, object]:
     payload = json_safe(dict(value or {}))
@@ -71,7 +83,7 @@ def lineage_metadata(
     checkpoint_path: str | None = None,
     metadata: Mapping[str, object] | None = None,
 ) -> dict[str, object]:
-    """Build JSON-safe lineage metadata for a nested optimizer run."""
+    """Build JSON-safe lineage metadata with protected canonical identity fields."""
     if not inner_optimizer_type:
         raise ConfigurationError("inner_optimizer_type must be non-empty.")
     if not stage:
@@ -80,18 +92,22 @@ def lineage_metadata(
         outer_candidate,
         gene_space=gene_space,
     )
-    payload = {
-        "outer_candidate_id": candidate_id,
-        "outer_candidate_hash": candidate_hash,
-        "inner_optimizer_type": inner_optimizer_type,
-        "inner_seed": int(inner_seed),
-        "composition_stage": stage,
-    }
+    payload = _json_metadata(metadata, field_name="metadata")
+    for key in _LINEAGE_METADATA_KEYS:
+        payload.pop(key, None)
+    payload.update(
+        {
+            "outer_candidate_id": candidate_id,
+            "outer_candidate_hash": candidate_hash,
+            "inner_optimizer_type": inner_optimizer_type,
+            "inner_seed": int(inner_seed),
+            "composition_stage": stage,
+        }
+    )
     if batch_id is not None:
         payload["outer_batch_id"] = batch_id
     if checkpoint_path is not None:
         payload["inner_checkpoint_path"] = str(checkpoint_path)
-    payload.update(_json_metadata(metadata, field_name="metadata"))
     return _json_metadata(payload, field_name="lineage metadata")
 
 

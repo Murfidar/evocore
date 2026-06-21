@@ -10,6 +10,7 @@ from evocore.core.errors import ConfigurationError
 from evocore.core.serialization import json_safe, stable_json_dumps
 from evocore.lifecycle.external import CandidateSnapshot, PopulationSnapshot, WarmStartRecord
 from evocore.lifecycle.records import (
+    STATE_UPDATE_CONFIDENCES,
     Direction,
     EvaluationConfidence,
     ScoreObservation,
@@ -42,13 +43,26 @@ def _json_mapping(value: object, *, field_name: str) -> dict[str, object]:
     return payload
 
 
-def _snapshot_metrics(snapshot: CandidateSnapshot) -> dict[str, object]:
-    observation: ScoreObservation | None = None
+def _snapshot_score_observation(snapshot: CandidateSnapshot) -> ScoreObservation | None:
+    if snapshot.score is None:
+        return None
+
+    def matches(observation: ScoreObservation | None) -> bool:
+        return bool(
+            observation is not None
+            and observation.score is not None
+            and observation.confidence in STATE_UPDATE_CONFIDENCES
+            and float(observation.score) == float(snapshot.score)
+        )
+
     if snapshot.stage is not None:
-        observation = snapshot.scores.get(snapshot.stage)
-    if observation is None:
-        return {}
-    return dict(observation.metrics)
+        current = snapshot.scores.get(snapshot.stage)
+        if matches(current):
+            return current
+    for observation in reversed(tuple(snapshot.scores.values())):
+        if matches(observation):
+            return observation
+    return None
 
 
 @dataclass(frozen=True)
@@ -107,21 +121,29 @@ class ArchiveEntry:
         """Create an archive entry from a detached scored candidate snapshot."""
         if snapshot.score is None or not math.isfinite(float(snapshot.score)):
             raise ConfigurationError("ArchiveEntry requires a finite score.")
-        if snapshot.confidence not in ("trusted_full", "cached"):
+        observation = _snapshot_score_observation(snapshot)
+        confidence = snapshot.confidence if observation is None else observation.confidence
+        stage = snapshot.stage if observation is None else observation.stage
+        if confidence not in ("trusted_full", "cached"):
             raise ConfigurationError("ArchiveEntry confidence must be trusted_full or cached.")
-        if not snapshot.stage:
+        if not stage:
             raise ConfigurationError("ArchiveEntry stage must be non-empty.")
+        metrics = {} if observation is None else dict(observation.metrics)
+        metadata = dict(snapshot.metadata)
+        if observation is not None:
+            metadata["metrics"] = dict(observation.metrics)
+            metadata["record_metadata"] = dict(observation.metadata)
         return cls(
             candidate_id=snapshot.candidate_id,
             candidate_hash=snapshot.candidate_hash,
             values=tuple(snapshot.values),
             params=None if snapshot.params is None else dict(snapshot.params),
             score=float(snapshot.score),
-            confidence=snapshot.confidence,
-            stage=snapshot.stage,
+            confidence=confidence,
+            stage=stage,
             cost=float(snapshot.cost),
-            metrics=_snapshot_metrics(snapshot),
-            metadata=dict(snapshot.metadata),
+            metrics=metrics,
+            metadata=metadata,
             source=source,
             inserted_index=inserted_index,
         )
@@ -205,6 +227,10 @@ class CandidateArchive:
         source: str,
     ) -> tuple[ArchiveEntry, ...]:
         """Add all candidates from a population snapshot and inherit its direction."""
+        if self._entries_by_hash and snapshot.direction != self.score_direction:
+            raise ConfigurationError(
+                "PopulationSnapshot direction cannot change a non-empty CandidateArchive."
+            )
         self.score_direction = snapshot.direction
         return self.add_candidates(snapshot.candidates, source=source)
 
@@ -340,6 +366,19 @@ class CandidateArchive:
                 archive._next_inserted_index,
                 entry.inserted_index + 1,
             )
+        raw_next_inserted_index = payload.get("next_inserted_index")
+        if raw_next_inserted_index is not None:
+            if not isinstance(raw_next_inserted_index, int) or isinstance(
+                raw_next_inserted_index, bool
+            ):
+                raise ConfigurationError(
+                    "CandidateArchive next_inserted_index must be an integer."
+                )
+            if raw_next_inserted_index < archive._next_inserted_index:
+                raise ConfigurationError(
+                    "CandidateArchive next_inserted_index cannot precede stored entries."
+                )
+            archive._next_inserted_index = raw_next_inserted_index
         return archive
 
 

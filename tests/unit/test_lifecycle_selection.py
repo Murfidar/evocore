@@ -1,3 +1,5 @@
+import math
+
 import pytest
 
 from evocore import CandidateSnapshot, FamilyQuota, SpecialistCap, select_candidates
@@ -154,3 +156,16 @@ def test_select_candidates_rejects_candidates_without_score() -> None:
     assert result.selected == ()
     assert result.rejected[0].candidate_id == "c-1"
     assert result.decisions[0].reason == "no_score"
+
+
+@pytest.mark.parametrize("score", [math.nan, math.inf, -math.inf])
+def test_select_candidates_rejects_non_finite_scores(score: float) -> None:
+    result = select_candidates(
+        [_candidate("c-1", "h-1", score)],
+        k=1,
+        score_direction="maximize",
+    )
+
+    assert result.selected == ()
+    assert result.rejected[0].candidate_id == "c-1"
+    assert result.decisions[0].reason == "non_finite_score"

@@ -132,7 +132,8 @@ archive_records = archive.to_warm_start_records(k=8, stage="archive_seed")
 
 Select directly from optimizer snapshots when making immediate promotion
 decisions. Use archive exports when you want durable search memory that can seed
-future runs.
+future runs. Once an archive contains entries, later population snapshots must
+use the same score direction. Candidate selection rejects non-finite scores.
 
 ## Inject External Candidates
 
@@ -220,10 +221,15 @@ When resuming a CMA-ES checkpoint after a state warm start, construct the
 optimizer with the same warm-started `initial_mean` context used for the saved
 run before loading the checkpoint.
 
+Caller metadata may add domain fields such as `template_name`, but it cannot
+override canonical lineage identity, seed, stage, batch, or checkpoint fields.
+
 ## Stop Long-Running Ask/Tell Loops
 
 Stop policies are reusable helpers for external loops. They do not spend budget
-and do not mutate optimizer state.
+and do not mutate optimizer state. Snapshot scoring follows each policy's
+`score_direction`, and cumulative evaluation-limit counts remain monotonic until
+`reset()` is called.
 
 ```python
 from evocore import CompositeStopPolicy, EvaluationLimitPolicy, NoImprovementPolicy

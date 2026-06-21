@@ -87,6 +87,35 @@ def test_lineage_metadata_from_candidate_requires_gene_space_for_hash() -> None:
     assert metadata["outer_candidate_hash"] == space.value_hash([1.0, 2.0])
 
 
+def test_lineage_metadata_protects_canonical_fields_from_user_metadata() -> None:
+    metadata = lineage_metadata(
+        outer_candidate=_snapshot(),
+        inner_optimizer_type="CMAESOptimizer",
+        inner_seed=123,
+        stage="inner_cma",
+        metadata={
+            "outer_candidate_id": "forged",
+            "outer_candidate_hash": "forged-hash",
+            "outer_batch_id": "forged-batch",
+            "inner_optimizer_type": "ForgedOptimizer",
+            "inner_seed": 999,
+            "composition_stage": "forged-stage",
+            "inner_checkpoint_path": "forged.json",
+            "template_name": "template-a",
+        },
+    )
+
+    assert metadata == {
+        "outer_candidate_id": "outer-1",
+        "outer_candidate_hash": "hash-outer",
+        "outer_batch_id": "outer-batch",
+        "inner_optimizer_type": "CMAESOptimizer",
+        "inner_seed": 123,
+        "composition_stage": "inner_cma",
+        "template_name": "template-a",
+    }
+
+
 def test_inner_result_record_targets_outer_candidate() -> None:
     snapshot = _snapshot()
     record = inner_result_record(
