@@ -18,6 +18,9 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Added lifecycle stop policies for external ask/tell workflows, including
   evaluation caps, no-improvement windows, convergence thresholds, and composite
   stop decisions.
+- Added hybrid composition helpers for nested expensive optimization workflows,
+  including deterministic child seeds, lineage metadata, and inner-result
+  evaluation records.
 
 ## [1.0.0] - 2026-06-05
 

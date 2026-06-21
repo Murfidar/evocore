@@ -76,6 +76,9 @@ from evocore.lifecycle import (
     UpdateResult,
     WarmStartRecord,
     cached_records,
+    derive_child_seed,
+    inner_result_record,
+    lineage_metadata,
     select_candidates,
 )
 from evocore.optimizers import (
@@ -217,6 +220,9 @@ __all__ = [
     "_core",
     "cached_records",
     "config_hash",
+    "derive_child_seed",
+    "inner_result_record",
+    "lineage_metadata",
     "load_checkpoint",
     "py_derive_seed",
     "save_checkpoint",

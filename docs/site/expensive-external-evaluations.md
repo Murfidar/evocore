@@ -164,22 +164,56 @@ state.
 ## Hybrid Outer GA And Inner CMA-ES
 
 A common expensive workflow is an outer optimizer over structures or templates
-and an inner optimizer over active continuous parameters:
+and an inner optimizer over active continuous parameters.
 
 ```python
+from evocore import (
+    CMAESOptimizer,
+    GeneticAlgorithmOptimizer,
+    derive_child_seed,
+    inner_result_record,
+    lineage_metadata,
+)
+
+
 outer = GeneticAlgorithmOptimizer(template_space, population_size=24, seed=100)
 
 for template_candidate in outer.ask(4):
+    template_hash = template_candidate.candidate_hash(template_space)
+    inner_seed = derive_child_seed(
+        parent_seed=100,
+        candidate_hash=template_hash,
+        stage="inner_cma",
+    )
     template = decode_template(template_candidate.params)
     inner_space = template.active_parameter_space()
-    inner = CMAESOptimizer(inner_space, population_size=16, seed=template_candidate.event_index)
+    inner = CMAESOptimizer(inner_space, population_size=16, seed=inner_seed)
 
     prior_records = lookup_template_archive(template.name)
     if prior_records:
         inner.warm_start(prior_records, mode="state", cma_mean_strategy="top_k_centroid")
 
     tuned = run_inner_backtests(inner, template)
-    report_outer_score(template_candidate, tuned.best_score)
+    metadata = lineage_metadata(
+        outer_candidate=template_candidate,
+        gene_space=template_space,
+        inner_optimizer_type="CMAESOptimizer",
+        inner_seed=inner_seed,
+        stage="inner_cma",
+        metadata={"template_name": template.name},
+    )
+    outer.tell(
+        [
+            inner_result_record(
+                outer_candidate=template_candidate,
+                gene_space=template_space,
+                score=tuned.best_score,
+                confidence="trusted_full",
+                stage="inner_cma",
+                metadata=metadata,
+            )
+        ]
+    )
 ```
 
 When resuming a CMA-ES checkpoint after a state warm start, construct the
