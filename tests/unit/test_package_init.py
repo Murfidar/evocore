@@ -173,7 +173,20 @@ def test_phase3b_penalty_public_exports():
 
 
 def test_phase3c_cma_public_exports():
-    from evocore import ProjectedWarmStartResult, build_projected_cma_mean
+    from evocore import (
+        CMAESRestartDecision,
+        CMAESRestartPolicy,
+        FixedCMAESRestartPolicy,
+        IPOPCMAESRestartPolicy,
+        ProjectedWarmStartResult,
+        build_projected_cma_mean,
+        create_cmaes_restart,
+    )
 
+    assert CMAESRestartDecision is not None
+    assert CMAESRestartPolicy is not None
+    assert FixedCMAESRestartPolicy is not None
+    assert IPOPCMAESRestartPolicy is not None
     assert ProjectedWarmStartResult is not None
     assert build_projected_cma_mean is not None
+    assert create_cmaes_restart is not None

@@ -97,11 +97,16 @@ from evocore.optimizers import (
     config_hash,
 )
 from evocore.optimizers.cmaes import (
+    CMAESRestartDecision,
+    CMAESRestartPolicy,
     CategoricalDistributionState,
     CMAESOptimizer,
+    FixedCMAESRestartPolicy,
+    IPOPCMAESRestartPolicy,
     IntegerMarginDistribution,
     ProjectedWarmStartResult,
     build_projected_cma_mean,
+    create_cmaes_restart,
 )
 from evocore.optimizers.de import DifferentialEvolutionOptimizer
 from evocore.optimizers.ga import GeneticAlgorithmOptimizer
@@ -165,6 +170,8 @@ __all__ = [
     "BudgetPolicy",
     "BudgetScheduler",
     "CMAESOptimizer",
+    "CMAESRestartDecision",
+    "CMAESRestartPolicy",
     "Callback",
     "Candidate",
     "CandidateArchive",
@@ -202,6 +209,7 @@ __all__ = [
     "FitnessError",
     "FitnessWarning",
     "FloatIndividual",
+    "FixedCMAESRestartPolicy",
     "Gene",
     "GeneKind",
     "GeneSpace",
@@ -214,6 +222,7 @@ __all__ = [
     "InjectionResult",
     "IntegerIndividual",
     "IntegerMarginDistribution",
+    "IPOPCMAESRestartPolicy",
     "InverseDistanceAdvisor",
     "MetricsLogger",
     "MutationOperator",
@@ -258,6 +267,7 @@ __all__ = [
     "build_projected_cma_mean",
     "config_hash",
     "constraint_penalty_record",
+    "create_cmaes_restart",
     "derive_child_seed",
     "inner_result_record",
     "is_state_update_confidence",

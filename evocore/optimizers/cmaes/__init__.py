@@ -12,14 +12,26 @@ from evocore.optimizers.cmaes.projection import (
     ProjectedWarmStartResult,
     build_projected_cma_mean,
 )
+from evocore.optimizers.cmaes.restarts import (
+    CMAESRestartDecision,
+    CMAESRestartPolicy,
+    FixedCMAESRestartPolicy,
+    IPOPCMAESRestartPolicy,
+    create_cmaes_restart,
+)
 
 __all__ = [
     "CMAESAskTellMixin",
     "CMAESCheckpointingMixin",
     "CMAESExternalStateMixin",
     "CMAESOptimizer",
+    "CMAESRestartDecision",
+    "CMAESRestartPolicy",
     "CategoricalDistributionState",
+    "FixedCMAESRestartPolicy",
+    "IPOPCMAESRestartPolicy",
     "IntegerMarginDistribution",
     "ProjectedWarmStartResult",
     "build_projected_cma_mean",
+    "create_cmaes_restart",
 ]
