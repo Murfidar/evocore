@@ -29,13 +29,15 @@ class IntegerMarginDistribution:
         """Return normalized integer probabilities with a minimum margin."""
         if sigma <= 0.0 or not math.isfinite(sigma):
             raise ConfigurationError("IntegerMarginDistribution sigma must be finite and > 0.")
-        raw: dict[int, float] = {}
+        log_weights: dict[int, float] = {}
         for value in range(self.low, self.high + 1):
             z = (float(value) - float(mean)) / sigma
-            raw[value] = math.exp(-0.5 * z * z)
+            log_weights[value] = -0.5 * z * z
+        max_log_weight = max(log_weights.values())
+        raw = {key: math.exp(value - max_log_weight) for key, value in log_weights.items()}
         total = sum(raw.values())
         probabilities = {key: value / total for key, value in raw.items()}
-        categories = len(probabilities)
+        categories = self.high - self.low + 1
         floor_total = self.min_probability * categories
         if floor_total >= 1.0:
             raise ConfigurationError(
@@ -45,8 +47,11 @@ class IntegerMarginDistribution:
             key: self.min_probability + (1.0 - floor_total) * value
             for key, value in probabilities.items()
         }
-        adjusted_total = sum(adjusted.values())
-        return {key: value / adjusted_total for key, value in adjusted.items()}
+        drift = 1.0 - sum(adjusted.values())
+        if drift:
+            best_key = max(adjusted, key=adjusted.__getitem__)
+            adjusted[best_key] += drift
+        return adjusted
 
 
 @dataclass

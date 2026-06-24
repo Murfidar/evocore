@@ -26,12 +26,18 @@ class _CMAESOptimizerLike(Protocol):
     parallel: str
     n_workers: int
     track_diversity: bool
+    integer_strategy: str
+    integer_min_probability: float
     callbacks: Sequence[object]
     gene_space: GeneSpace | None
 
 
 def build_cmaes_config(optimizer: _CMAESOptimizerLike) -> OptimizerConfig:
     """Build the canonical CMA-ES optimizer config."""
+    distribution_parameters = {"initial_sigma": optimizer.initial_sigma}
+    if optimizer.integer_strategy != "round" or float(optimizer.integer_min_probability) != 0.02:
+        distribution_parameters["integer_strategy"] = optimizer.integer_strategy
+        distribution_parameters["integer_min_probability"] = optimizer.integer_min_probability
     return OptimizerConfig(
         optimizer_type="CMAESOptimizer",
         parameters={
@@ -48,7 +54,7 @@ def build_cmaes_config(optimizer: _CMAESOptimizerLike) -> OptimizerConfig:
         components={
             "distribution": {
                 "type": "cma_es",
-                "parameters": {"initial_sigma": optimizer.initial_sigma},
+                "parameters": distribution_parameters,
             }
         },
     )
@@ -64,6 +70,23 @@ def cmaes_reproducibility_status(
 ) -> tuple[ReproducibilityStatus, tuple[str, ...]]:
     """Return reproducibility status and notes for a CMA-ES optimizer."""
     return reproducibility_from_hooks(cmaes_runtime_hooks(optimizer))
+
+
+def _validate_integer_strategy_config(optimizer: _CMAESOptimizerLike) -> None:
+    if optimizer.integer_strategy not in ("round", "margin"):
+        raise ConfigurationError("integer_strategy must be 'round' or 'margin'.")
+    if not (0.0 < float(optimizer.integer_min_probability) < 1.0):
+        raise ConfigurationError("integer_min_probability must be in (0, 1).")
+    if optimizer.integer_strategy != "margin":
+        return
+    for gene in optimizer.gene_space.genes:
+        if gene.kind != "int":
+            continue
+        range_size = int(gene.high) - int(gene.low) + 1
+        if float(optimizer.integer_min_probability) * range_size >= 1.0:
+            raise ConfigurationError(
+                "integer_min_probability is too large for integer gene range."
+            )
 
 
 def validate_cmaes_compatibility(optimizer: _CMAESOptimizerLike) -> None:
@@ -101,6 +124,7 @@ def validate_cmaes_compatibility(optimizer: _CMAESOptimizerLike) -> None:
         and len(optimizer.initial_mean) != optimizer.gene_space.length
     ):
         raise ConfigurationError("initial_mean length must match gene_space.length.")
+    _validate_integer_strategy_config(optimizer)
 
 
 __all__ = [

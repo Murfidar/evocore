@@ -355,6 +355,18 @@ def test_cmaes_strategy_parameter_change_alters_hash():
     assert small_sigma.config_hash() != large_sigma.config_hash()
 
 
+def test_cmaes_margin_strategy_changes_config_hash() -> None:
+    space = GeneSpace([Gene("x", "int", 0, 3), Gene("y", "float", -1.0, 1.0)])
+
+    assert (
+        CMAESOptimizer(space, integer_strategy="round").config_hash()
+        != CMAESOptimizer(
+            space,
+            integer_strategy="margin",
+        ).config_hash()
+    )
+
+
 def test_cmaes_callback_hook_is_visible_in_reproducibility(tmp_path):
     engine = CMAESOptimizer(
         GeneSpace.uniform(-2.0, 2.0, 3),

@@ -36,6 +36,21 @@ def test_apply_bounds_and_round_for_int_genes():
     assert engine._decode_solution([10.2, 0.25]).values == [10, 0.25]
 
 
+def test_cmaes_default_integer_strategy_is_round() -> None:
+    optimizer = CMAESOptimizer(
+        GeneSpace([Gene("x", "int", 0, 3), Gene("y", "float", -1.0, 1.0)]),
+        population_size=4,
+        seed=1,
+    )
+
+    assert optimizer.integer_strategy == "round"
+
+
+def test_cmaes_rejects_invalid_integer_strategy() -> None:
+    with pytest.raises(ConfigurationError, match="integer_strategy"):
+        CMAESOptimizer(GeneSpace([Gene("x", "int", 0, 3)]), integer_strategy="bad")
+
+
 def test_cmaes_run_returns_result():
     engine = CMAESOptimizer(
         GeneSpace.uniform(-2.0, 2.0, 3), population_size=10, max_generations=5, seed=42
