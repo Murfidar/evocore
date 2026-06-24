@@ -170,3 +170,10 @@ def test_phase3b_penalty_public_exports():
     assert ParameterValidator is not None
     assert constraint_penalty_record is not None
     assert is_trusted_confidence("cached")
+
+
+def test_phase3c_cma_public_exports():
+    from evocore import ProjectedWarmStartResult, build_projected_cma_mean
+
+    assert ProjectedWarmStartResult is not None
+    assert build_projected_cma_mean is not None

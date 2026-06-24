@@ -8,6 +8,10 @@ from evocore.optimizers.cmaes.mixed import (
     CategoricalDistributionState,
     IntegerMarginDistribution,
 )
+from evocore.optimizers.cmaes.projection import (
+    ProjectedWarmStartResult,
+    build_projected_cma_mean,
+)
 
 __all__ = [
     "CMAESAskTellMixin",
@@ -16,4 +20,6 @@ __all__ = [
     "CMAESOptimizer",
     "CategoricalDistributionState",
     "IntegerMarginDistribution",
+    "ProjectedWarmStartResult",
+    "build_projected_cma_mean",
 ]

@@ -100,6 +100,8 @@ from evocore.optimizers.cmaes import (
     CategoricalDistributionState,
     CMAESOptimizer,
     IntegerMarginDistribution,
+    ProjectedWarmStartResult,
+    build_projected_cma_mean,
 )
 from evocore.optimizers.de import DifferentialEvolutionOptimizer
 from evocore.optimizers.ga import GeneticAlgorithmOptimizer
@@ -234,6 +236,7 @@ __all__ = [
     "ProgressBar",
     "ProjectionResult",
     "ProjectionSnapshot",
+    "ProjectedWarmStartResult",
     "RepairRecord",
     "ReproducibilityMetadata",
     "RuntimeHookSignature",
@@ -252,6 +255,7 @@ __all__ = [
     "__version__",
     "_core",
     "cached_records",
+    "build_projected_cma_mean",
     "config_hash",
     "constraint_penalty_record",
     "derive_child_seed",
