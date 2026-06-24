@@ -331,8 +331,6 @@ def test_cmaes_config_signature_uses_nested_component_shape():
             "direction": "maximize",
             "initial_mean": [0.0, 0.1, 0.2],
             "initial_sigma": 0.4,
-            "integer_min_probability": 0.02,
-            "integer_strategy": "round",
             "max_generations": 8,
             "n_workers": None,
             "parallel": "none",
@@ -343,11 +341,7 @@ def test_cmaes_config_signature_uses_nested_component_shape():
         "components": {
             "distribution": {
                 "type": "cma_es",
-                "parameters": {
-                    "initial_sigma": 0.4,
-                    "integer_min_probability": 0.02,
-                    "integer_strategy": "round",
-                },
+                "parameters": {"initial_sigma": 0.4},
             }
         },
     }
@@ -364,10 +358,13 @@ def test_cmaes_strategy_parameter_change_alters_hash():
 def test_cmaes_margin_strategy_changes_config_hash() -> None:
     space = GeneSpace([Gene("x", "int", 0, 3), Gene("y", "float", -1.0, 1.0)])
 
-    assert CMAESOptimizer(space, integer_strategy="round").config_hash() != CMAESOptimizer(
-        space,
-        integer_strategy="margin",
-    ).config_hash()
+    assert (
+        CMAESOptimizer(space, integer_strategy="round").config_hash()
+        != CMAESOptimizer(
+            space,
+            integer_strategy="margin",
+        ).config_hash()
+    )
 
 
 def test_cmaes_callback_hook_is_visible_in_reproducibility(tmp_path):

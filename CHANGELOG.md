@@ -28,6 +28,9 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   `constraint_penalty` evaluation records, allowing invalid projected candidates
   to complete ask/tell batches without becoming trusted archive, warm-start, or
   best-candidate evidence.
+- Added Phase 3C CMA helpers for projected active-space warm starts, opt-in
+  integer-margin sampling, exact ask/tell resume under margin sampling, and
+  lifecycle-managed restart planning.
 
 ### Fixed
 

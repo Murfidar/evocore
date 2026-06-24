@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import math
-import random
 import time
 from collections.abc import Callable, Sequence
 from typing import Any, Literal
@@ -73,16 +72,38 @@ def _sample_integer_margin(
         "latent_value": float(latent_value).hex(),
     }
     digest = canonical_json_hash(payload)
-    rng = random.Random(int(digest[:16], 16))
-    draw = rng.random()
+    draw = int(digest[:16], 16) / float(16**16)
     cumulative = 0.0
-    last_value = next(reversed(sorted(probabilities)))
-    for value in sorted(probabilities):
+    sorted_values = sorted(probabilities)
+    last_value = sorted_values[-1]
+    for value in sorted_values:
         cumulative += float(probabilities[value])
         if draw <= cumulative:
             return int(value)
         last_value = int(value)
     return last_value
+
+
+def _validate_integer_strategy_config(
+    *,
+    gene_space: GeneSpace,
+    integer_strategy: str,
+    integer_min_probability: float,
+) -> None:
+    if integer_strategy not in ("round", "margin"):
+        raise ConfigurationError("integer_strategy must be 'round' or 'margin'.")
+    if not (0.0 < float(integer_min_probability) < 1.0):
+        raise ConfigurationError("integer_min_probability must be in (0, 1).")
+    if integer_strategy != "margin":
+        return
+    for gene in gene_space.genes:
+        if gene.kind != "int":
+            continue
+        range_size = int(gene.high) - int(gene.low) + 1
+        if float(integer_min_probability) * range_size >= 1.0:
+            raise ConfigurationError(
+                "integer_min_probability is too large for integer gene range."
+            )
 
 
 class CMAESOptimizer(CMAESExternalStateMixin, CMAESCheckpointingMixin, CMAESAskTellMixin):
@@ -156,18 +177,11 @@ class CMAESOptimizer(CMAESExternalStateMixin, CMAESCheckpointingMixin, CMAESAskT
             raise ConfigurationError("initial_sigma must be > 0.")
         if initial_mean is not None and len(initial_mean) != gene_space.length:
             raise ConfigurationError("initial_mean length must match gene_space.length.")
-        if integer_strategy not in ("round", "margin"):
-            raise ConfigurationError("integer_strategy must be 'round' or 'margin'.")
-        if not (0.0 < float(integer_min_probability) < 1.0):
-            raise ConfigurationError("integer_min_probability must be in (0, 1).")
-        if integer_strategy == "margin":
-            for gene in gene_space.genes:
-                if gene.kind == "int":
-                    range_size = int(gene.high) - int(gene.low) + 1
-                    if float(integer_min_probability) * range_size >= 1.0:
-                        raise ConfigurationError(
-                            "integer_min_probability is too large for integer gene range."
-                        )
+        _validate_integer_strategy_config(
+            gene_space=gene_space,
+            integer_strategy=integer_strategy,
+            integer_min_probability=integer_min_probability,
+        )
 
         self.gene_space = gene_space
         self.population_size = population_size

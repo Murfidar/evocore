@@ -154,7 +154,7 @@ def test_cma_resume_ask_tell_checkpoint_next_ask_matches_uninterrupted(tmp_path)
         restored.tell([_trusted_records(first_batch)[0]])
 
 
-def test_margin_cma_resume_next_ask_matches_uninterrupted(tmp_path) -> None:
+def test_margin_cma_resume_next_ask_matches_uninterrupted() -> None:
     space = GeneSpace([Gene("x", "int", 0, 3), Gene("y", "float", -1.0, 1.0)])
     uninterrupted = CMAESOptimizer(
         space,

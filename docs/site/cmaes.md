@@ -14,6 +14,47 @@ results while using direction-aware comparison internally. In ask/tell mode, com
 batches of `trusted_full` or `cached` records update the covariance state. Cached records
 reuse trusted previous full observations and do not spend fresh full-evaluation budget.
 
+Integer genes use deterministic rounding by default. Set
+`integer_strategy="margin"` to sample integer coordinates from an
+`IntegerMarginDistribution` with a configurable `integer_min_probability`; CMA-ES still
+updates from the original continuous samples so ask/tell checkpoints resume exactly.
+
+## Projected Warm Starts
+
+Use `build_projected_cma_mean(...)` when historical trusted records live in a larger
+domain parameter space and an inner CMA-ES run should tune only the active numeric
+subspace:
+
+```python
+from evocore import CMAESOptimizer, WarmStartRecord, build_projected_cma_mean
+
+projected = build_projected_cma_mean(
+    projection=active_projection,
+    records=[
+        WarmStartRecord(params={"template": 1, "fast": 5.0, "slow": 40.0}, score=12.0)
+    ],
+    direction="maximize",
+)
+
+optimizer = CMAESOptimizer(
+    active_projection.optimizer_space,
+    initial_mean=projected.initial_mean,
+    population_size=8,
+    seed=42,
+)
+```
+
+Records that cannot be represented in the active projection are reported in
+`ProjectedWarmStartResult.rejected` and are not used to construct the mean.
+
+## Restart Helpers
+
+`FixedCMAESRestartPolicy`, `IPOPCMAESRestartPolicy`, and
+`create_cmaes_restart(...)` create fresh CMA-ES optimizers from lifecycle-managed
+restart decisions. Restart policies reject parents with pending ask/tell batches and
+derive deterministic child seeds from the parent seed, gene-space hash, restart index,
+and restart reason.
+
 ## Rust State Snapshots
 
 `PyCMAESState` exposes a Rust-backed state snapshot primitive:
@@ -113,4 +154,6 @@ optimizer.validate_compatibility()
 
 The CMA-ES config hash covers public strategy inputs such as population size, initial
 mean, initial sigma, maximum generations, seed, direction, and supported parallel mode.
-Gene-space identity remains separate through `space.signature()` and `space.hash()`.
+The default `integer_strategy="round"` preserves existing config identity; non-default
+integer margin settings also participate in the config hash. Gene-space identity remains
+separate through `space.signature()` and `space.hash()`.

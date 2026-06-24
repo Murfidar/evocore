@@ -65,6 +65,7 @@ class FixedCMAESRestartPolicy:
         restart_index: int,
         reason: str,
     ) -> CMAESRestartDecision:
+        """Return a restart decision with the configured population size."""
         _reject_pending_restart(parent)
         return _restart_decision(
             parent=parent,
@@ -97,10 +98,9 @@ class IPOPCMAESRestartPolicy:
         restart_index: int,
         reason: str,
     ) -> CMAESRestartDecision:
+        """Return a restart decision with IPOP population growth."""
         _reject_pending_restart(parent)
-        population_size = self.base_population_size * (
-            self.growth_factor ** int(restart_index)
-        )
+        population_size = self.base_population_size * (self.growth_factor ** int(restart_index))
         return _restart_decision(
             parent=parent,
             restart_index=restart_index,

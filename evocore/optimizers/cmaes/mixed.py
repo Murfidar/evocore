@@ -34,9 +34,7 @@ class IntegerMarginDistribution:
             z = (float(value) - float(mean)) / sigma
             log_weights[value] = -0.5 * z * z
         max_log_weight = max(log_weights.values())
-        raw = {
-            key: math.exp(value - max_log_weight) for key, value in log_weights.items()
-        }
+        raw = {key: math.exp(value - max_log_weight) for key, value in log_weights.items()}
         total = sum(raw.values())
         probabilities = {key: value / total for key, value in raw.items()}
         categories = self.high - self.low + 1
