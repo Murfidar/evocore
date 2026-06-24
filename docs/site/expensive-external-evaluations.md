@@ -224,6 +224,125 @@ run before loading the checkpoint.
 Caller metadata may add domain fields such as `template_name`, but it cannot
 override canonical lineage identity, seed, stage, batch, or checkpoint fields.
 
+## Projected Template Optimization
+
+External expensive systems often choose a structure first, then tune only the
+parameters active for that structure. Use an outer optimizer for structures and
+`ActiveGeneProjection` to compile the active inner coordinates.
+
+```python
+from evocore import (
+    CMAESOptimizer,
+    CandidateArchive,
+    EvaluationRecord,
+    Gene,
+    GeneSpace,
+    GeneticAlgorithmOptimizer,
+    WarmStartRecord,
+    derive_child_seed,
+)
+from evocore.lifecycle import constraint_penalty_record
+from evocore.search_space import (
+    ActiveGeneProjection,
+    BinaryThresholdTransform,
+    ConstraintViolation,
+    ExponentialIntegerTransform,
+)
+
+
+outer_space = GeneSpace([Gene("family", "int", 0, 2), Gene("mode", "int", 0, 1)])
+outer = GeneticAlgorithmOptimizer(outer_space, population_size=24, seed=100)
+archive = CandidateArchive(score_direction="maximize")
+
+for template_candidate in outer.ask(4):
+    family = int(template_candidate.genes[0])
+    projection = ActiveGeneProjection(
+        source_space=GeneSpace(
+            [
+                Gene("family", "int", 0, 2),
+                Gene("lookback_log", "float", 1.0, 5.0),
+                Gene("use_filter", "float", 0.0, 1.0),
+            ]
+        ),
+        active_names=["lookback_log", "use_filter"],
+        structural_bindings={"family": family},
+        transforms={
+            "lookback_log": ExponentialIntegerTransform(base=2.0),
+            "use_filter": BinaryThresholdTransform(),
+        },
+        identity_keys=("family",),
+        schema_id="template-family",
+        schema_version="1",
+    )
+    inner_seed = derive_child_seed(
+        parent_seed=100,
+        candidate_hash=template_candidate.candidate_hash(outer_space),
+        stage="inner_cma",
+    )
+    inner = CMAESOptimizer(
+        projection.optimizer_space,
+        population_size=16,
+        seed=inner_seed,
+        integer_strategy="margin",
+    )
+
+    prior_records = [
+        WarmStartRecord(
+            params={"lookback_log": 3.0, "use_filter": 1.0},
+            score=8.0,
+            confidence="cached",
+            stage="template_archive",
+            metadata={"family": family, "source": "search_memory"},
+        )
+    ]
+    inner.warm_start(prior_records, mode="state")
+
+    records = []
+    for candidate in inner.ask():
+        decoded = projection.reconstruct(candidate.genes)
+        if decoded.parameters["lookback_log"] < 3:
+            records.append(
+                constraint_penalty_record(
+                    candidate=candidate,
+                    stage="projection",
+                    direction="maximize",
+                    violations=[
+                        ConstraintViolation(
+                            code="min_lookback",
+                            message="lookback must be at least 3",
+                            names=("lookback_log",),
+                        )
+                    ],
+                    metadata={"projection_hash": decoded.projection_hash},
+                )
+            )
+            continue
+
+        score = expensive_backtest(decoded.parameters)
+        records.append(
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=score,
+                confidence="trusted_full",
+                stage="full",
+                metadata={
+                    "family": family,
+                    "projection_hash": decoded.projection_hash,
+                },
+            )
+        )
+
+    inner.tell(records)
+    archive.add_population(inner.candidate_snapshot(scope="trusted"), source="inner_cma")
+```
+
+Cached records, archives, family quotas, specialist caps, and survivor selection
+remain lifecycle helpers. Projection only owns the boundary between named domain
+parameters and optimizer-native coordinates. Use trusted snapshots for archive
+promotion; scored snapshots may include `constraint_penalty` records that update
+optimizer state but are intentionally not archive or warm-start evidence.
+
 ## Stop Long-Running Ask/Tell Loops
 
 Stop policies are reusable helpers for external loops. They do not spend budget

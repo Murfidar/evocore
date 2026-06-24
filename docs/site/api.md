@@ -139,6 +139,14 @@ shape, without subclassing.
 
 ::: evocore.optimizers.cmaes.CategoricalDistributionState
 
+::: evocore.optimizers.cmaes.ProjectedWarmStartResult
+
+::: evocore.optimizers.cmaes.build_projected_cma_mean
+
+::: evocore.optimizers.cmaes.FixedCMAESRestartPolicy
+
+::: evocore.optimizers.cmaes.IPOPCMAESRestartPolicy
+
 ::: evocore.optimizers.OptimizerConfig
 
 ::: evocore.optimizers.RuntimeHookSignature
