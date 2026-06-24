@@ -21,6 +21,9 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Added hybrid composition helpers for nested expensive optimization workflows,
   including deterministic child seeds, lineage metadata, and inner-result
   evaluation records.
+- Added Phase 3A projection primitives for active named parameter spaces,
+  including portable transforms, projection snapshots, projected identity
+  hashes, and durable repair/constraint records.
 
 ### Fixed
 

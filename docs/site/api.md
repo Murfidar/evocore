@@ -14,6 +14,28 @@
 
 ::: evocore.search_space.decode_gene_values
 
+::: evocore.search_space.ActiveGeneProjection
+
+::: evocore.search_space.ParameterProjection
+
+::: evocore.search_space.ProjectionResult
+
+::: evocore.search_space.ProjectionSnapshot
+
+::: evocore.search_space.ParameterTransform
+
+::: evocore.search_space.IdentityTransform
+
+::: evocore.search_space.BinaryThresholdTransform
+
+::: evocore.search_space.ExponentialIntegerTransform
+
+::: evocore.search_space.OutputNameTransform
+
+::: evocore.search_space.ConstraintViolation
+
+::: evocore.search_space.RepairRecord
+
 ::: evocore.optimizers.operators.BoundsPolicy
 
 ::: evocore.optimizers.operators.CrossoverOperator
