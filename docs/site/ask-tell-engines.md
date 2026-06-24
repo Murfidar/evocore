@@ -53,6 +53,10 @@ Confidence values are explicit:
   update optimizer state and consume full-evaluation budget.
 - `cached` records carry finite raw scores from trusted previous full evaluations. They
   update optimizer state but do not consume fresh full-evaluation budget.
+- `constraint_penalty` records carry finite deterministic penalty scores for candidates
+  that fail projection or domain validation. They can complete state-update batches and
+  update penalty telemetry, but they are not trusted evidence for warm starts, archives,
+  top-k promotion, or best-candidate reporting.
 - `partial` and `surrogate` records carry finite scores for scheduling, telemetry, and
   history, but they cannot become optimizer best state.
 - `rejected` records represent recoverable candidate-level failures. They must use
@@ -60,14 +64,20 @@ Confidence values are explicit:
 
 Raw user scores are preserved. Optimizers use `direction="maximize"` or
 `direction="minimize"` to compare candidates without rewriting the score stored in
-`EvaluationRecord`. State best-candidate tracking compares only state-eligible
-`trusted_full` and `cached` scores, so partial and surrogate scores cannot become the
-reported optimizer best. `OptimizerStateSummary.trusted_count` counts candidates with
-state-eligible records.
+`EvaluationRecord`. Batch state updates accept `trusted_full`, `cached`, and
+`constraint_penalty` records. Trusted workflows compare only `trusted_full` and `cached`
+scores, so partial, surrogate, rejected, and constraint-penalty records cannot become
+the reported optimizer best. `OptimizerStateSummary.trusted_count` counts candidates
+with trusted evidence.
 
 Invalid records raise `FitnessError`: unknown candidates, unknown explicit batch IDs,
 batch mismatches, duplicate candidate/stage records, non-finite non-rejected scores, and
 scored `rejected` records are rejected.
+
+Use `constraint_penalty_record(...)` to convert deterministic validation failures into
+zero-cost penalty records while preserving structured violation metadata. `TRUSTED_CONFIDENCES`
+and `STATE_UPDATE_CONFIDENCES` expose the public confidence sets used by archives,
+warm starts, snapshots, and optimizer batch completion.
 
 ## External State
 
