@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from evocore.lifecycle.records import (
-    STATE_UPDATE_CONFIDENCES,
+    TRUSTED_CONFIDENCES,
     Candidate,
     CandidateOrigin,
     Direction,
@@ -17,7 +17,7 @@ from evocore.search_space.solutions import GeneValue, Solution
 
 def _has_state_observation(candidate: Candidate) -> bool:
     return any(
-        observation.score is not None and observation.confidence in STATE_UPDATE_CONFIDENCES
+        observation.score is not None and observation.confidence in TRUSTED_CONFIDENCES
         for observation in candidate.scores.values()
     )
 

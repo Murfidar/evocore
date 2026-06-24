@@ -33,6 +33,8 @@ from evocore.lifecycle.external import (
 from evocore.lifecycle.policies import BudgetPolicy
 from evocore.lifecycle.protocols import Evaluator, ExternalStateOptimizer, Optimizer
 from evocore.lifecycle.records import (
+    STATE_UPDATE_CONFIDENCES,
+    TRUSTED_CONFIDENCES,
     Candidate,
     CandidateOrigin,
     CandidateStatus,
@@ -42,7 +44,9 @@ from evocore.lifecycle.records import (
     EvaluationRecord,
     EvaluationStage,
     ScoreObservation,
+    constraint_penalty_record,
     is_state_update_confidence,
+    is_trusted_confidence,
     score_for_direction,
 )
 from evocore.lifecycle.scheduler import BudgetScheduler
@@ -72,6 +76,8 @@ from evocore.lifecycle.telemetry import (
 
 __all__ = [
     "ARCHIVE_SCHEMA_VERSION",
+    "STATE_UPDATE_CONFIDENCES",
+    "TRUSTED_CONFIDENCES",
     "AcceptanceDecision",
     "ArchiveEntry",
     "ArchiveExport",
@@ -124,11 +130,13 @@ __all__ = [
     "candidate_from_checkpoint",
     "candidate_to_checkpoint",
     "candidate_to_solution",
+    "constraint_penalty_record",
     "derive_child_seed",
     "event_history_from_checkpoint",
     "event_history_to_checkpoint",
     "inner_result_record",
     "is_state_update_confidence",
+    "is_trusted_confidence",
     "lineage_metadata",
     "score_for_direction",
     "select_candidates",

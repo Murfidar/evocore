@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol, runtime_checkable
 
 from evocore.core.errors import ConfigurationError
 from evocore.core.serialization import canonical_json_hash, json_safe
-from evocore.search_space.constraints import ConstraintViolation, RepairRecord
+from evocore.search_space.constraints import (
+    ConstraintViolation,
+    ParameterRepair,
+    ParameterValidator,
+    RepairRecord,
+)
 from evocore.search_space.genes import GeneSpace
 from evocore.search_space.solutions import GeneValue
 from evocore.search_space.transforms import IdentityTransform, ParameterTransform
@@ -29,6 +34,8 @@ class ProjectionSnapshot:
     active_names: tuple[str, ...]
     structural_bindings: Mapping[str, object]
     transform_signatures: Mapping[str, Mapping[str, object]]
+    repair_signatures: tuple[Mapping[str, object], ...]
+    validator_signatures: tuple[Mapping[str, object], ...]
     identity_keys: tuple[str, ...]
     checkpointable: bool
     signature_hash: str
@@ -89,6 +96,8 @@ class ActiveGeneProjection:
         active_names: Sequence[str],
         structural_bindings: Mapping[str, object] | None = None,
         transforms: Mapping[str, ParameterTransform] | None = None,
+        repairs: Sequence[ParameterRepair | Callable[..., object]] = (),
+        validators: Sequence[ParameterValidator | Callable[..., object]] = (),
         identity_keys: Sequence[str] = (),
         schema_id: str = "active_gene_projection",
         schema_version: str = "1",
@@ -146,12 +155,18 @@ class ActiveGeneProjection:
         self.optimizer_space = GeneSpace(active_genes, has_names=True)
         self.structural_bindings = safe_bindings
         self.transforms = resolved_transforms
+        self.repairs = tuple(repairs)
+        self.validators = tuple(validators)
         self.identity_keys = ordered_identity_keys
         self.schema_id = str(schema_id)
         self.schema_version = str(schema_version)
-        self.checkpointable = bool(checkpointable) and all(
-            bool(getattr(transform, "checkpointable", False))
-            for transform in self.transforms.values()
+        self.checkpointable = (
+            bool(checkpointable)
+            and all(
+                bool(getattr(transform, "checkpointable", False))
+                for transform in self.transforms.values()
+            )
+            and all(_hook_checkpointable(hook) for hook in (*self.repairs, *self.validators))
         )
 
     def project(self, parameters: Mapping[str, object]) -> ProjectionResult:
@@ -195,6 +210,9 @@ class ActiveGeneProjection:
                 ) from exc
 
         safe_parameters = _json_mapping(parameters, field_name="parameters")
+        safe_parameters, repairs = self._apply_repairs(safe_parameters)
+        violations = self._validate_parameters(safe_parameters)
+        signature_hash = self._signature_hash(require_checkpointable=False)
         parameter_hash = canonical_json_hash(
             {
                 "schema_version": 1,
@@ -204,7 +222,7 @@ class ActiveGeneProjection:
         projection_hash = canonical_json_hash(
             {
                 "schema_version": 1,
-                "signature_hash": self.snapshot().signature_hash,
+                "signature_hash": signature_hash,
                 "active_values": {name: safe_parameters[name] for name in self.active_names},
                 "identity_values": {
                     key: safe_parameters[key]
@@ -219,59 +237,30 @@ class ActiveGeneProjection:
             optimizer_values=copy.deepcopy(optimizer_values),
             active_names=self.active_names,
             structural_bindings=copy.deepcopy(self.structural_bindings),
-            repairs=(),
-            violations=(),
+            repairs=repairs,
+            violations=violations,
             projection_hash=projection_hash,
             parameter_hash=parameter_hash,
-            metadata={"projection_signature_hash": self.snapshot().signature_hash},
-            valid=True,
+            metadata={"projection_signature_hash": signature_hash},
+            valid=not violations,
             checkpointable=self.checkpointable,
         )
 
     def signature(self) -> Mapping[str, object]:
         """Return a JSON-safe projection behavior signature."""
-        snapshot = self.snapshot()
-        return {
-            "schema_version": snapshot.schema_version,
-            "schema_id": snapshot.schema_id,
-            "user_schema_version": snapshot.user_schema_version,
-            "source_space_hash": snapshot.source_space_hash,
-            "optimizer_space_hash": snapshot.optimizer_space_hash,
-            "active_names": list(snapshot.active_names),
-            "structural_identity": self._structural_identity(),
-            "transform_signatures": {
-                key: dict(value) for key, value in snapshot.transform_signatures.items()
-            },
-            "identity_keys": list(snapshot.identity_keys),
-            "checkpointable": snapshot.checkpointable,
-        }
+        return self._signature_payload(require_checkpointable=True)
 
     def snapshot(self) -> ProjectionSnapshot:
         """Return a detached JSON-safe snapshot of projection behavior."""
         if not self.checkpointable:
             raise ConfigurationError(
-                "ActiveGeneProjection contains runtime-only transforms and cannot snapshot."
+                "ActiveGeneProjection contains runtime-only transforms or hooks and cannot snapshot."
             )
 
-        transform_signatures = {
-            name: _json_mapping(
-                self.transforms[name].signature(),
-                field_name=f"transform {name!r} signature",
-            )
-            for name in self.active_names
-        }
-        signature_payload = {
-            "schema_version": 1,
-            "schema_id": self.schema_id,
-            "user_schema_version": self.schema_version,
-            "source_space_hash": self.source_space.hash(),
-            "optimizer_space_hash": self.optimizer_space.hash(),
-            "active_names": list(self.active_names),
-            "structural_identity": self._structural_identity(),
-            "transform_signatures": transform_signatures,
-            "identity_keys": list(self.identity_keys),
-            "checkpointable": self.checkpointable,
-        }
+        signature_payload = self._signature_payload(require_checkpointable=True)
+        transform_signatures = signature_payload["transform_signatures"]
+        repair_signatures = signature_payload["repair_signatures"]
+        validator_signatures = signature_payload["validator_signatures"]
         signature_hash = canonical_json_hash(signature_payload)
         return ProjectionSnapshot(
             schema_version=1,
@@ -284,6 +273,8 @@ class ActiveGeneProjection:
             active_names=self.active_names,
             structural_bindings=copy.deepcopy(self.structural_bindings),
             transform_signatures=copy.deepcopy(transform_signatures),
+            repair_signatures=copy.deepcopy(repair_signatures),
+            validator_signatures=copy.deepcopy(validator_signatures),
             identity_keys=self.identity_keys,
             checkpointable=self.checkpointable,
             signature_hash=signature_hash,
@@ -300,12 +291,127 @@ class ActiveGeneProjection:
             if key in self.structural_bindings
         }
 
+    def _apply_repairs(
+        self,
+        parameters: Mapping[str, object],
+    ) -> tuple[dict[str, object], tuple[RepairRecord, ...]]:
+        repaired_parameters = dict(parameters)
+        repairs: list[RepairRecord] = []
+        for hook in self.repairs:
+            result = (
+                hook.repair(repaired_parameters)
+                if hasattr(hook, "repair")
+                else hook(repaired_parameters)
+            )
+            if (
+                not isinstance(result, tuple)
+                or len(result) != 2
+                or not isinstance(result[0], Mapping)
+            ):
+                raise ConfigurationError(
+                    "ActiveGeneProjection repair hooks must return (parameters, repairs)."
+                )
+            repaired_parameters = _json_mapping(result[0], field_name="repaired parameters")
+            for record in result[1]:
+                if not isinstance(record, RepairRecord):
+                    raise ConfigurationError(
+                        "ActiveGeneProjection repair hooks must return RepairRecord entries."
+                    )
+                repairs.append(record)
+        return repaired_parameters, tuple(repairs)
+
+    def _validate_parameters(
+        self,
+        parameters: Mapping[str, object],
+    ) -> tuple[ConstraintViolation, ...]:
+        violations: list[ConstraintViolation] = []
+        for hook in self.validators:
+            result = hook.validate(parameters) if hasattr(hook, "validate") else hook(parameters)
+            for violation in result:
+                if not isinstance(violation, ConstraintViolation):
+                    raise ConfigurationError(
+                        "ActiveGeneProjection validators must return ConstraintViolation entries."
+                    )
+                violations.append(violation)
+        return tuple(violations)
+
+    def _signature_payload(self, *, require_checkpointable: bool) -> dict[str, object]:
+        transform_signatures = {
+            name: _json_mapping(
+                self.transforms[name].signature(),
+                field_name=f"transform {name!r} signature",
+            )
+            for name in self.active_names
+        }
+        return {
+            "schema_version": 1,
+            "schema_id": self.schema_id,
+            "user_schema_version": self.schema_version,
+            "source_space_hash": self.source_space.hash(),
+            "optimizer_space_hash": self.optimizer_space.hash(),
+            "active_names": list(self.active_names),
+            "structural_identity": self._structural_identity(),
+            "transform_signatures": transform_signatures,
+            "repair_signatures": _hook_signatures(
+                self.repairs,
+                hook_kind="repair",
+                require_checkpointable=require_checkpointable,
+            ),
+            "validator_signatures": _hook_signatures(
+                self.validators,
+                hook_kind="validator",
+                require_checkpointable=require_checkpointable,
+            ),
+            "identity_keys": list(self.identity_keys),
+            "checkpointable": self.checkpointable,
+        }
+
+    def _signature_hash(self, *, require_checkpointable: bool) -> str:
+        return canonical_json_hash(
+            self._signature_payload(require_checkpointable=require_checkpointable)
+        )
+
 
 def _json_mapping(value: Mapping[str, object], *, field_name: str) -> dict[str, object]:
     payload = json_safe(dict(value))
     if not isinstance(payload, dict):
         raise ConfigurationError(f"{field_name} must be a JSON-safe mapping.")
     return payload
+
+
+def _hook_checkpointable(hook: object) -> bool:
+    return bool(getattr(hook, "checkpointable", False)) and hasattr(hook, "signature")
+
+
+def _hook_signatures(
+    hooks: Sequence[object],
+    *,
+    hook_kind: str,
+    require_checkpointable: bool,
+) -> tuple[Mapping[str, object], ...]:
+    signatures: list[Mapping[str, object]] = []
+    for index, hook in enumerate(hooks):
+        if _hook_checkpointable(hook):
+            signatures.append(
+                _json_mapping(
+                    hook.signature(),
+                    field_name=f"{hook_kind} hook {index} signature",
+                )
+            )
+            continue
+        if require_checkpointable:
+            raise ConfigurationError(
+                f"ActiveGeneProjection {hook_kind} hook {index} is runtime-only."
+            )
+        signatures.append(
+            {
+                "hook_kind": hook_kind,
+                "index": index,
+                "checkpointable": False,
+                "runtime_only": True,
+            }
+        )
+    return tuple(signatures)
 
 
 __all__ = [

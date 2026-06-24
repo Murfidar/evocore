@@ -24,6 +24,10 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Added Phase 3A projection primitives for active named parameter spaces,
   including portable transforms, projection snapshots, projected identity
   hashes, and durable repair/constraint records.
+- Added Phase 3B deterministic repair/validation hooks and
+  `constraint_penalty` evaluation records, allowing invalid projected candidates
+  to complete ask/tell batches without becoming trusted archive, warm-start, or
+  best-candidate evidence.
 
 ### Fixed
 

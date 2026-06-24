@@ -25,6 +25,7 @@ from evocore.lifecycle import (
     OptimizerStateSummary,
     candidate_to_solution,
     is_state_update_confidence,
+    is_trusted_confidence,
 )
 from evocore.lifecycle.ask_tell_helpers import (
     evaluation_context_for_candidates,
@@ -406,15 +407,15 @@ class DifferentialEvolutionOptimizer(
 
             if stage.confidence == "trusted_full":
                 self.tell(records)
-                state_eligible_count = sum(
-                    1 for record in records if is_state_update_confidence(record.confidence)
+                trusted_record_count = sum(
+                    1 for record in records if is_trusted_confidence(record.confidence)
                 )
                 fresh_full_count = sum(
                     1 for record in records if record.confidence == "trusted_full"
                 )
-                if state_eligible_count == 0:
+                if trusted_record_count == 0:
                     raise FitnessError(
-                        "Evaluator returned no state-eligible records for the final stage; "
+                        "Evaluator returned no trusted records for the final stage; "
                         "trusted_full or cached records are required."
                     )
                 return fresh_full_count, list(assigned), list(records)

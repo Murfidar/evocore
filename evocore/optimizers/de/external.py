@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 
 from evocore.core.errors import ConfigurationError
 from evocore.lifecycle import (
+    TRUSTED_CONFIDENCES,
     AcceptanceDecision,
     Candidate,
     CandidateBatch,
@@ -108,7 +109,7 @@ class DifferentialEvolutionExternalStateMixin:
         k: int = 10,
         *,
         scope: SnapshotScope = "trusted",
-        confidence: tuple[EvaluationConfidence, ...] = ("trusted_full", "cached"),
+        confidence: tuple[EvaluationConfidence, ...] = TRUSTED_CONFIDENCES,
     ) -> tuple[CandidateSnapshot, ...]:
         """Return top-k detached DE candidate snapshots."""
         return top_candidate_snapshots(

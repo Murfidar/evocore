@@ -5,6 +5,7 @@ from collections.abc import Mapping, Sequence
 from evocore import _core
 from evocore.core.errors import ConfigurationError
 from evocore.lifecycle import (
+    TRUSTED_CONFIDENCES,
     AcceptanceDecision,
     Candidate,
     CandidateBatch,
@@ -66,9 +67,7 @@ class CMAESExternalStateMixin:
     def _external_is_trusted_candidate(self, candidate: Candidate) -> bool:
         if candidate.metadata.get("external_state_mode") == "tracked":
             return False
-        return any(
-            score.confidence in ("trusted_full", "cached") for score in candidate.scores.values()
-        )
+        return any(score.confidence in TRUSTED_CONFIDENCES for score in candidate.scores.values())
 
     def _external_trusted_candidates(self) -> list[Candidate]:
         return [
@@ -122,7 +121,7 @@ class CMAESExternalStateMixin:
         k: int = 10,
         *,
         scope: SnapshotScope = "trusted",
-        confidence: tuple[EvaluationConfidence, ...] = ("trusted_full", "cached"),
+        confidence: tuple[EvaluationConfidence, ...] = TRUSTED_CONFIDENCES,
     ) -> tuple[CandidateSnapshot, ...]:
         """Return top-k detached CMA-ES candidate snapshots."""
         return top_candidate_snapshots(

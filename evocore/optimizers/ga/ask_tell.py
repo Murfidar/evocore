@@ -18,6 +18,7 @@ from evocore.lifecycle import (
     batch_id_from_seed,
     candidate_to_solution,
     is_state_update_confidence,
+    is_trusted_confidence,
     solution_to_candidate,
 )
 from evocore.lifecycle.ask_tell_helpers import (
@@ -127,7 +128,7 @@ class GeneticAlgorithmAskTellMixin:
 
     def tell(self, records: Sequence[EvaluationRecord]) -> UpdateResult:
         """Update GA state from vNext evaluation records."""
-        trusted = partial = surrogate = cached = rejected = 0
+        trusted = partial = surrogate = cached = penalty = rejected = 0
         acceptance_decisions: list[AcceptanceDecision] = []
         touched_batch_ids: set[str] = set()
         for record in records:
@@ -141,7 +142,8 @@ class GeneticAlgorithmAskTellMixin:
             candidate.apply_record(record)
             self._append_tell_event(candidate, record)
             if is_state_update_confidence(record.confidence):
-                self._record_state_candidate(candidate)
+                if is_trusted_confidence(record.confidence):
+                    self._record_state_candidate(candidate)
                 acceptance_decisions.append(
                     AcceptanceDecision(
                         candidate_id=record.candidate_id,
@@ -159,6 +161,8 @@ class GeneticAlgorithmAskTellMixin:
                 partial += 1
             elif confidence == "surrogate":
                 surrogate += 1
+            elif confidence == "constraint_penalty":
+                penalty += 1
             else:
                 rejected += 1
 
@@ -179,6 +183,7 @@ class GeneticAlgorithmAskTellMixin:
             surrogate_count=surrogate,
             cached_count=cached,
             rejected_count=rejected,
+            penalty_count=penalty,
             best_candidate_id=best_candidate_id,
             best_score=best_score,
             consumed_batch_ids=consumed_batch_ids,

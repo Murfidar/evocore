@@ -12,6 +12,7 @@ from evocore.core.errors import ConfigurationError, FitnessError
 from evocore.core.serialization import json_safe
 from evocore.lifecycle.records import (
     STATE_UPDATE_CONFIDENCES,
+    TRUSTED_CONFIDENCES,
     Candidate,
     CandidateOrigin,
     CandidateStatus,
@@ -62,7 +63,7 @@ class WarmStartRecord:
         has_params = self.params is not None
         if has_values == has_params:
             raise ConfigurationError("WarmStartRecord requires values or params, not both.")
-        if self.confidence not in STATE_UPDATE_CONFIDENCES:
+        if self.confidence not in TRUSTED_CONFIDENCES:
             raise ConfigurationError("WarmStartRecord confidence must be trusted_full or cached.")
         if not isinstance(self.stage, str) or not self.stage:
             raise ConfigurationError("WarmStartRecord stage must be a non-empty string.")

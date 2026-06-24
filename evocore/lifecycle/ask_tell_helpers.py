@@ -21,7 +21,14 @@ from evocore.lifecycle.records import (
 from evocore.lifecycle.telemetry import OptimizationTelemetry
 from evocore.search_space import GeneSpace
 
-TelemetryLabel = Literal["trusted", "partial", "surrogate", "cached", "rejected"]
+TelemetryLabel = Literal[
+    "trusted",
+    "partial",
+    "surrogate",
+    "cached",
+    "constraint_penalty",
+    "rejected",
+]
 
 
 def candidate_and_batch_for_record(
@@ -124,6 +131,9 @@ def record_evaluation_telemetry(
     if record.confidence == "surrogate":
         telemetry.record_screened(1)
         return "surrogate"
+    if record.confidence == "constraint_penalty":
+        telemetry.record_constraint_penalty(1, stage=record.stage)
+        return "constraint_penalty"
     telemetry.record_eliminated(1, stage=record.stage)
     return "rejected"
 

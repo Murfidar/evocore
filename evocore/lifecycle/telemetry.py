@@ -23,6 +23,7 @@ class OptimizationTelemetry:
     candidates_partial_evaluated: int = 0
     candidates_full_evaluated: int = 0
     candidates_cached: int = 0
+    candidates_constraint_penalized: int = 0
     promoted_by_stage: dict[str, int] = field(default_factory=dict)
     eliminated_by_stage: dict[str, int] = field(default_factory=dict)
     cost_by_stage: dict[str, float] = field(default_factory=dict)
@@ -63,6 +64,11 @@ class OptimizationTelemetry:
         self.candidates_cached += int(count)
         self.cost_by_stage[stage] = self.cost_by_stage.get(stage, 0.0) + float(cost)
 
+    def record_constraint_penalty(self, count: int, *, stage: str) -> None:
+        """Record deterministic constraint penalties that update optimizer state."""
+        self.candidates_constraint_penalized += int(count)
+        self.eliminated_by_stage[stage] = self.eliminated_by_stage.get(stage, 0) + int(count)
+
     def record_promoted(self, count: int, *, stage: str) -> None:
         """Record candidates promoted from a stage."""
         self.promoted_by_stage[stage] = self.promoted_by_stage.get(stage, 0) + int(count)
@@ -81,6 +87,7 @@ class OptimizationTelemetry:
             "candidates_partial_evaluated": self.candidates_partial_evaluated,
             "candidates_full_evaluated": self.candidates_full_evaluated,
             "candidates_cached": self.candidates_cached,
+            "candidates_constraint_penalized": self.candidates_constraint_penalized,
             "promoted_by_stage": {
                 key: self.promoted_by_stage[key] for key in sorted(self.promoted_by_stage)
             },
@@ -117,6 +124,7 @@ class UpdateResult:
     surrogate_count: int
     cached_count: int
     rejected_count: int
+    penalty_count: int = 0
     best_candidate_id: str | None = None
     best_score: float | None = None
     consumed_batch_ids: tuple[str, ...] = ()
