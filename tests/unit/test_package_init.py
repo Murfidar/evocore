@@ -146,3 +146,11 @@ def test_phase2c_composition_public_exports():
     assert derive_child_seed is not None
     assert inner_result_record is not None
     assert lineage_metadata is not None
+
+
+def test_phase3a_projection_public_exports():
+    from evocore import ActiveGeneProjection, BinaryThresholdTransform, ConstraintViolation
+
+    assert ActiveGeneProjection is not None
+    assert BinaryThresholdTransform is not None
+    assert ConstraintViolation is not None
