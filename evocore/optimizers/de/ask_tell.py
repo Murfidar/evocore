@@ -12,6 +12,7 @@ from evocore.lifecycle import (
     UpdateResult,
     batch_id_from_seed,
     is_state_update_confidence,
+    is_trusted_confidence,
     solution_to_candidate,
 )
 from evocore.lifecycle.ask_tell_helpers import (
@@ -268,7 +269,14 @@ class DifferentialEvolutionAskTellMixin:
 
     def tell(self, records: Sequence[EvaluationRecord]) -> UpdateResult:
         """Apply evaluation records and return a DE update summary."""
-        counts = {"trusted": 0, "partial": 0, "surrogate": 0, "cached": 0, "rejected": 0}
+        counts = {
+            "trusted": 0,
+            "partial": 0,
+            "surrogate": 0,
+            "cached": 0,
+            "constraint_penalty": 0,
+            "rejected": 0,
+        }
         consumed_batch_ids: set[str] = set()
         acceptance_decisions: list[AcceptanceDecision] = []
         for record in records:
@@ -278,7 +286,30 @@ class DifferentialEvolutionAskTellMixin:
             confidence = self._apply_telemetry_for_record(record)
             counts[confidence] += 1
             if is_state_update_confidence(record.confidence):
-                if candidate.candidate_id not in self._trial_target_slots:
+                if not is_trusted_confidence(record.confidence):
+                    if candidate.candidate_id in self._trial_target_slots:
+                        self._complete_pending_strategy_trial(
+                            candidate.candidate_id,
+                            accepted=False,
+                        )
+                    decision = AcceptanceDecision(
+                        candidate_id=candidate.candidate_id,
+                        batch_id=batch.batch_id,
+                        accepted_for_state=True,
+                        reason="constraint_penalty_state_record",
+                        target_slot=self._trial_target_slots.get(candidate.candidate_id),
+                    )
+                    acceptance_decisions.append(decision)
+                    self._append_tell_event(
+                        candidate,
+                        record,
+                        metadata={
+                            "accepted_for_state": True,
+                            "acceptance_reason": decision.reason,
+                            "target_slot": decision.target_slot,
+                        },
+                    )
+                elif candidate.candidate_id not in self._trial_target_slots:
                     self._target_candidate_ids.append(candidate.candidate_id)
                     self._record_best_candidate(candidate)
                     decision = AcceptanceDecision(
@@ -331,6 +362,7 @@ class DifferentialEvolutionAskTellMixin:
             surrogate_count=counts["surrogate"],
             cached_count=counts["cached"],
             rejected_count=counts["rejected"],
+            penalty_count=counts["constraint_penalty"],
             best_candidate_id=best_candidate_id,
             best_score=best_score,
             consumed_batch_ids=tuple(sorted(consumed_batch_ids)),

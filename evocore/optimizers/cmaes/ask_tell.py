@@ -12,6 +12,7 @@ from evocore.lifecycle import (
     UpdateResult,
     batch_id_from_seed,
     is_state_update_confidence,
+    is_trusted_confidence,
     score_for_direction,
 )
 from evocore.lifecycle.ask_tell_helpers import (
@@ -40,7 +41,7 @@ class CMAESAskTellMixin:
         record: EvaluationRecord,
         trusted_records: list[EvaluationRecord],
     ) -> str:
-        if is_state_update_confidence(record.confidence) and (
+        if is_trusted_confidence(record.confidence) and (
             self.best_candidate is None
             or candidate.state_comparison_score(self.direction)
             > self.best_candidate.state_comparison_score(self.direction)
@@ -127,7 +128,13 @@ class CMAESAskTellMixin:
         """Update CMA state from trusted evaluation records."""
         trusted_records: list[EvaluationRecord] = []
         acceptance_decisions: list[AcceptanceDecision] = []
-        counts = {"partial": 0, "surrogate": 0, "cached": 0, "rejected": 0}
+        counts = {
+            "partial": 0,
+            "surrogate": 0,
+            "cached": 0,
+            "constraint_penalty": 0,
+            "rejected": 0,
+        }
         touched_batch_ids: set[str] = set()
         consumed_batch_ids: set[str] = set()
         for record in records:
@@ -162,6 +169,7 @@ class CMAESAskTellMixin:
             surrogate_count=counts["surrogate"],
             cached_count=counts["cached"],
             rejected_count=counts["rejected"],
+            penalty_count=counts["constraint_penalty"],
             best_candidate_id=best_candidate_id,
             best_score=best_score,
             consumed_batch_ids=tuple(sorted(consumed_batch_ids)),

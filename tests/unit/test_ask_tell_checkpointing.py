@@ -239,6 +239,28 @@ def test_ga_ask_tell_checkpoint_after_partial_tell_contains_accepted_record() ->
     assert payload["state"]["payload"]["trusted_candidate_ids"] == [candidates[0].candidate_id]
 
 
+def test_ga_constraint_penalties_complete_batch_without_trusted_candidates() -> None:
+    optimizer = _ga()
+    candidates = optimizer.ask(4)
+    records = [
+        EvaluationRecord(
+            candidate_id=candidate.candidate_id,
+            batch_id=candidate.batch_id,
+            score=-1.0e300,
+            confidence="constraint_penalty",
+            stage="projection",
+        )
+        for candidate in candidates
+    ]
+
+    update = optimizer.tell(records)
+
+    assert update.state_accepted_count == len(candidates)
+    assert update.trusted_count == 0
+    assert update.consumed_batch_ids == (candidates[0].batch_id,)
+    assert optimizer.candidate_snapshot(scope="trusted").candidates == ()
+
+
 def _records_for(candidates):
     return [
         _record(candidate.candidate_id, batch_id=candidate.batch_id, stage="full")

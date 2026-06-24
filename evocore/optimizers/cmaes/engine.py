@@ -19,7 +19,7 @@ from evocore.lifecycle import (
     Direction,
     OptimizationTelemetry,
     OptimizerStateSummary,
-    is_state_update_confidence,
+    is_trusted_confidence,
     score_for_direction,
 )
 from evocore.optimizers.cmaes.ask_tell import CMAESAskTellMixin
@@ -171,9 +171,7 @@ class CMAESOptimizer(CMAESExternalStateMixin, CMAESCheckpointingMixin, CMAESAskT
         return sum(
             1
             for candidate in self._candidates_by_id.values()
-            if any(
-                is_state_update_confidence(score.confidence) for score in candidate.scores.values()
-            )
+            if any(is_trusted_confidence(score.confidence) for score in candidate.scores.values())
         )
 
     def state_summary(self) -> OptimizerStateSummary:

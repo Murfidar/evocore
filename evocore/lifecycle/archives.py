@@ -10,7 +10,7 @@ from evocore.core.errors import ConfigurationError
 from evocore.core.serialization import json_safe, stable_json_dumps
 from evocore.lifecycle.external import CandidateSnapshot, PopulationSnapshot, WarmStartRecord
 from evocore.lifecycle.records import (
-    STATE_UPDATE_CONFIDENCES,
+    TRUSTED_CONFIDENCES,
     Direction,
     EvaluationConfidence,
     ScoreObservation,
@@ -51,7 +51,7 @@ def _snapshot_score_observation(snapshot: CandidateSnapshot) -> ScoreObservation
         return bool(
             observation is not None
             and observation.score is not None
-            and observation.confidence in STATE_UPDATE_CONFIDENCES
+            and observation.confidence in TRUSTED_CONFIDENCES
             and float(observation.score) == float(snapshot.score)
         )
 
@@ -87,7 +87,7 @@ class ArchiveEntry:
             raise ConfigurationError("ArchiveEntry candidate_id must be non-empty.")
         if not self.candidate_hash:
             raise ConfigurationError("ArchiveEntry candidate_hash must be non-empty.")
-        if self.confidence not in ("trusted_full", "cached"):
+        if self.confidence not in TRUSTED_CONFIDENCES:
             raise ConfigurationError("ArchiveEntry confidence must be trusted_full or cached.")
         if not self.stage:
             raise ConfigurationError("ArchiveEntry stage must be non-empty.")
@@ -124,7 +124,7 @@ class ArchiveEntry:
         observation = _snapshot_score_observation(snapshot)
         confidence = snapshot.confidence if observation is None else observation.confidence
         stage = snapshot.stage if observation is None else observation.stage
-        if confidence not in ("trusted_full", "cached"):
+        if confidence not in TRUSTED_CONFIDENCES:
             raise ConfigurationError("ArchiveEntry confidence must be trusted_full or cached.")
         if not stage:
             raise ConfigurationError("ArchiveEntry stage must be non-empty.")

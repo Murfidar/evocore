@@ -60,6 +60,28 @@ def test_de_initial_tell_fills_target_population_and_best_candidate() -> None:
     assert engine.state_summary().pending_batch_ids == ()
 
 
+def test_de_constraint_penalties_complete_batch_without_trusted_candidates() -> None:
+    engine = DifferentialEvolutionOptimizer(_mixed_space(), population_size=6, seed=42)
+    candidates = engine.ask()
+    records = [
+        EvaluationRecord(
+            candidate_id=candidate.candidate_id,
+            batch_id=candidate.batch_id,
+            score=-1.0e300,
+            confidence="constraint_penalty",
+            stage="projection",
+        )
+        for candidate in candidates
+    ]
+
+    result = engine.tell(records)
+
+    assert result.state_accepted_count == len(candidates)
+    assert result.trusted_count == 0
+    assert result.consumed_batch_ids == (candidates[0].batch_id,)
+    assert engine.candidate_snapshot(scope="trusted").candidates == ()
+
+
 def test_de_ask_rejects_non_positive_count() -> None:
     engine = DifferentialEvolutionOptimizer(_mixed_space(), population_size=6, seed=42)
 

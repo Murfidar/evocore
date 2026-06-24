@@ -5,12 +5,14 @@ from __future__ import annotations
 import hashlib
 import json
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Literal
 
 from evocore.core.errors import ConfigurationError, FitnessError
+from evocore.core.serialization import json_safe
 from evocore.search_space import GeneValue
+from evocore.search_space.constraints import ConstraintViolation
 
 if TYPE_CHECKING:
     from evocore.search_space import GeneSpace
@@ -34,13 +36,38 @@ CandidateStatus = Literal[
     "eliminated",
     "archived",
 ]
-EvaluationConfidence = Literal["surrogate", "partial", "cached", "trusted_full", "rejected"]
-STATE_UPDATE_CONFIDENCES: tuple[EvaluationConfidence, ...] = ("trusted_full", "cached")
+EvaluationConfidence = Literal[
+    "surrogate",
+    "partial",
+    "cached",
+    "trusted_full",
+    "constraint_penalty",
+    "rejected",
+]
+TRUSTED_CONFIDENCES: tuple[EvaluationConfidence, ...] = ("trusted_full", "cached")
+STATE_UPDATE_CONFIDENCES: tuple[EvaluationConfidence, ...] = (
+    "trusted_full",
+    "cached",
+    "constraint_penalty",
+)
+_VALID_CONFIDENCES: tuple[EvaluationConfidence, ...] = (
+    "surrogate",
+    "partial",
+    "cached",
+    "trusted_full",
+    "constraint_penalty",
+    "rejected",
+)
 
 
 def is_state_update_confidence(confidence: EvaluationConfidence) -> bool:
     """Return whether a confidence value is eligible for optimizer state updates."""
     return confidence in STATE_UPDATE_CONFIDENCES
+
+
+def is_trusted_confidence(confidence: EvaluationConfidence) -> bool:
+    """Return whether a confidence value is trusted evidence for archives and promotion."""
+    return confidence in TRUSTED_CONFIDENCES
 
 
 def score_for_direction(score: float, direction: Direction) -> float:
@@ -50,6 +77,46 @@ def score_for_direction(score: float, direction: Direction) -> float:
     if direction == "minimize":
         return -float(score)
     raise ConfigurationError("direction must be 'maximize' or 'minimize'.")
+
+
+def constraint_penalty_record(
+    *,
+    candidate: Candidate,
+    stage: str,
+    direction: Direction,
+    violations: Sequence[ConstraintViolation],
+    penalty_score: float | None = None,
+    metadata: Mapping[str, object] | None = None,
+) -> EvaluationRecord:
+    """Build a state-update penalty record for deterministic constraint failures."""
+    score = (
+        float(penalty_score)
+        if penalty_score is not None
+        else (-1.0e300 if direction == "maximize" else 1.0e300)
+    )
+    payload = dict(metadata or {})
+    payload["constraint_violations"] = [
+        {
+            "code": violation.code,
+            "message": violation.message,
+            "names": list(violation.names),
+            "hook_id": violation.hook_id,
+            "metadata": json_safe(dict(violation.metadata)),
+        }
+        for violation in violations
+    ]
+    safe_payload = json_safe(payload)
+    if not isinstance(safe_payload, dict):
+        raise FitnessError("constraint penalty metadata must be JSON-safe.")
+    return EvaluationRecord(
+        candidate_id=candidate.candidate_id,
+        batch_id=candidate.batch_id,
+        score=score,
+        confidence="constraint_penalty",
+        stage=stage,
+        cost=0.0,
+        metadata=safe_payload,
+    )
 
 
 @dataclass(frozen=True)
@@ -68,7 +135,7 @@ class EvaluationStage:
             raise ConfigurationError("EvaluationStage budget must be finite and > 0.")
         if not (0.0 < float(self.promote_fraction) <= 1.0):
             raise ConfigurationError("EvaluationStage promote_fraction must be in (0, 1].")
-        if self.confidence not in ("surrogate", "partial", "cached", "trusted_full", "rejected"):
+        if self.confidence not in _VALID_CONFIDENCES:
             raise ConfigurationError("EvaluationStage confidence is invalid.")
 
 
@@ -126,7 +193,7 @@ class EvaluationRecord:
             raise FitnessError("EvaluationRecord candidate_id must be non-empty.")
         if not self.stage:
             raise FitnessError("EvaluationRecord stage must be non-empty.")
-        if self.confidence not in ("surrogate", "partial", "cached", "trusted_full", "rejected"):
+        if self.confidence not in _VALID_CONFIDENCES:
             raise FitnessError("EvaluationRecord confidence is invalid.")
         if self.confidence != "rejected" and (
             self.score is None or not math.isfinite(float(self.score))
@@ -187,10 +254,10 @@ class Candidate:
         )
         self.metadata["metrics"] = dict(record.metrics)
         self.metadata["record_metadata"] = dict(record.metadata)
-        if is_state_update_confidence(record.confidence):
-            self.status = "trusted"
-        elif record.confidence == "rejected":
+        if record.confidence in ("constraint_penalty", "rejected"):
             self.status = "eliminated"
+        elif is_state_update_confidence(record.confidence):
+            self.status = "trusted"
         elif record.confidence == "partial":
             self.status = "racing"
         else:

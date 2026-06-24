@@ -154,3 +154,19 @@ def test_phase3a_projection_public_exports():
     assert ActiveGeneProjection is not None
     assert BinaryThresholdTransform is not None
     assert ConstraintViolation is not None
+
+
+def test_phase3b_penalty_public_exports():
+    from evocore import (
+        TRUSTED_CONFIDENCES,
+        ParameterRepair,
+        ParameterValidator,
+        constraint_penalty_record,
+        is_trusted_confidence,
+    )
+
+    assert TRUSTED_CONFIDENCES == ("trusted_full", "cached")
+    assert ParameterRepair is not None
+    assert ParameterValidator is not None
+    assert constraint_penalty_record is not None
+    assert is_trusted_confidence("cached")

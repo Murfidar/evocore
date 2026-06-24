@@ -5,6 +5,7 @@ from collections.abc import Mapping, Sequence
 from evocore import _core
 from evocore.core.errors import ConfigurationError
 from evocore.lifecycle import (
+    TRUSTED_CONFIDENCES,
     AcceptanceDecision,
     Candidate,
     CandidateBatch,
@@ -133,7 +134,7 @@ class GeneticAlgorithmExternalStateMixin:
         k: int = 10,
         *,
         scope: SnapshotScope = "trusted",
-        confidence: tuple[EvaluationConfidence, ...] = ("trusted_full", "cached"),
+        confidence: tuple[EvaluationConfidence, ...] = TRUSTED_CONFIDENCES,
     ) -> tuple[CandidateSnapshot, ...]:
         """Return top-k detached GA candidate snapshots."""
         return top_candidate_snapshots(

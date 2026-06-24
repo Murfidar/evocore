@@ -31,7 +31,14 @@ _CANDIDATE_STATUSES = {
     "eliminated",
     "archived",
 }
-_EVALUATION_CONFIDENCES = {"surrogate", "partial", "cached", "trusted_full", "rejected"}
+_EVALUATION_CONFIDENCES = {
+    "surrogate",
+    "partial",
+    "cached",
+    "trusted_full",
+    "constraint_penalty",
+    "rejected",
+}
 _EVENT_TYPES = {"ask", "tell", "generation", "run_stop"}
 
 
@@ -391,6 +398,9 @@ def telemetry_from_checkpoint(payload: object) -> OptimizationTelemetry:
             data, "candidates_full_evaluated", "telemetry"
         ),
         candidates_cached=_non_negative_int(data, "candidates_cached", "telemetry"),
+        candidates_constraint_penalized=_non_negative_int(
+            data, "candidates_constraint_penalized", "telemetry"
+        ),
         promoted_by_stage=_counter_mapping(data, "promoted_by_stage", "telemetry"),
         eliminated_by_stage=_counter_mapping(data, "eliminated_by_stage", "telemetry"),
         cost_by_stage=_cost_mapping(data, "cost_by_stage", "telemetry"),

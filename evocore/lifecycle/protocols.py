@@ -17,6 +17,7 @@ from evocore.lifecycle.external import (
     WarmStartRecord,
 )
 from evocore.lifecycle.records import (
+    TRUSTED_CONFIDENCES,
     Candidate,
     CandidateOrigin,
     Direction,
@@ -91,7 +92,7 @@ class ExternalStateOptimizer(Optimizer, Protocol):
         k: int = 10,
         *,
         scope: SnapshotScope = "trusted",
-        confidence: tuple[EvaluationConfidence, ...] = ("trusted_full", "cached"),
+        confidence: tuple[EvaluationConfidence, ...] = TRUSTED_CONFIDENCES,
     ) -> tuple[CandidateSnapshot, ...]:
         """Return top-k read-only candidate snapshots."""
         raise NotImplementedError

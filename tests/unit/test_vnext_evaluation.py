@@ -156,6 +156,17 @@ def test_non_rejected_record_requires_finite_score() -> None:
         )
 
 
+def test_evaluation_record_accepts_constraint_penalty_score() -> None:
+    record = EvaluationRecord(
+        candidate_id="c-1",
+        score=-1.0e300,
+        confidence="constraint_penalty",
+        stage="projection",
+    )
+
+    assert record.confidence == "constraint_penalty"
+
+
 def test_telemetry_records_counts_and_costs() -> None:
     telemetry = OptimizationTelemetry()
     telemetry.record_proposed(5)
@@ -209,6 +220,7 @@ def test_telemetry_to_dict_exports_sorted_hashes_and_unique_count() -> None:
         "candidates_partial_evaluated": 2,
         "candidates_full_evaluated": 3,
         "candidates_cached": 1,
+        "candidates_constraint_penalized": 0,
         "promoted_by_stage": {"cheap": 2},
         "eliminated_by_stage": {"cheap": 1},
         "cost_by_stage": {"cheap": 0.5, "full": 2.0},

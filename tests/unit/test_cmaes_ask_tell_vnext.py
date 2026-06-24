@@ -40,6 +40,28 @@ def test_cma_ask_keeps_continuous_samples_separate_from_repaired_candidate_genes
         assert isinstance(continuous[0], float)
 
 
+def test_cma_constraint_penalties_complete_batch_without_trusted_candidates() -> None:
+    engine = CMAESOptimizer(_space(), population_size=4, seed=7)
+    candidates = engine.ask()
+    records = [
+        EvaluationRecord(
+            candidate_id=candidate.candidate_id,
+            batch_id=candidate.batch_id,
+            score=-1.0e300,
+            confidence="constraint_penalty",
+            stage="projection",
+        )
+        for candidate in candidates
+    ]
+
+    result = engine.tell(records)
+
+    assert result.state_accepted_count == len(candidates)
+    assert result.trusted_count == 0
+    assert result.consumed_batch_ids == (candidates[0].batch_id,)
+    assert engine.candidate_snapshot(scope="trusted").candidates == ()
+
+
 def test_cma_ask_records_append_only_ask_events() -> None:
     space = _space()
     engine = CMAESOptimizer(space, population_size=4, seed=7)
