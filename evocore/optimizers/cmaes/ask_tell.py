@@ -97,7 +97,14 @@ class CMAESAskTellMixin:
         event_index = self._event_index
         batch_id = batch_id_from_seed(self.seed, event_index)
         samples_continuous = state.ask(self.seed, event_index)
-        samples_discrete = [self._apply_bounds_and_round(sample) for sample in samples_continuous]
+        samples_discrete = [
+            self._apply_integer_strategy(
+                sample,
+                event_index=event_index,
+                candidate_index=index,
+            )
+            for index, sample in enumerate(samples_continuous)
+        ]
         candidates: list[Candidate] = []
         continuous_samples_by_id: dict[str, list[float]] = {}
         for index, sample in enumerate(samples_discrete):

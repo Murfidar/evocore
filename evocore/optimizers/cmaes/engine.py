@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import logging
 import math
+import random
 import time
 from collections.abc import Callable, Sequence
-from typing import Any
+from typing import Any, Literal
 
 from evocore import _core
 from evocore.callbacks import Callback, GenerationInfo
 from evocore.core.errors import ConfigurationError, FitnessError
 from evocore.core.parallel import ThreadParallel
-from evocore.core.serialization import package_version
+from evocore.core.serialization import canonical_json_hash, package_version
 from evocore.lifecycle import (
     Candidate,
     CandidateBatch,
@@ -31,6 +32,7 @@ from evocore.optimizers.cmaes.config import (
     validate_cmaes_compatibility,
 )
 from evocore.optimizers.cmaes.external import CMAESExternalStateMixin
+from evocore.optimizers.cmaes.mixed import IntegerMarginDistribution
 from evocore.optimizers.config import OptimizerConfig
 from evocore.results import (
     EventHistory,
@@ -52,6 +54,35 @@ from evocore.search_space import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _sample_integer_margin(
+    probabilities: dict[int, float],
+    *,
+    seed: int,
+    event_index: int,
+    candidate_index: int,
+    gene_index: int,
+    latent_value: float,
+) -> int:
+    payload = {
+        "seed": int(seed),
+        "event_index": int(event_index),
+        "candidate_index": int(candidate_index),
+        "gene_index": int(gene_index),
+        "latent_value": float(latent_value).hex(),
+    }
+    digest = canonical_json_hash(payload)
+    rng = random.Random(int(digest[:16], 16))
+    draw = rng.random()
+    cumulative = 0.0
+    last_value = next(reversed(sorted(probabilities)))
+    for value in sorted(probabilities):
+        cumulative += float(probabilities[value])
+        if draw <= cumulative:
+            return int(value)
+        last_value = int(value)
+    return last_value
 
 
 class CMAESOptimizer(CMAESExternalStateMixin, CMAESCheckpointingMixin, CMAESAskTellMixin):
@@ -86,6 +117,8 @@ class CMAESOptimizer(CMAESExternalStateMixin, CMAESCheckpointingMixin, CMAESAskT
         seed: int = 0,
         direction: Direction = "maximize",
         track_diversity: bool = False,
+        integer_strategy: Literal["round", "margin"] = "round",
+        integer_min_probability: float = 0.02,
         **legacy_kwargs: object,
     ) -> None:
         if gene_space is None:
@@ -123,6 +156,18 @@ class CMAESOptimizer(CMAESExternalStateMixin, CMAESCheckpointingMixin, CMAESAskT
             raise ConfigurationError("initial_sigma must be > 0.")
         if initial_mean is not None and len(initial_mean) != gene_space.length:
             raise ConfigurationError("initial_mean length must match gene_space.length.")
+        if integer_strategy not in ("round", "margin"):
+            raise ConfigurationError("integer_strategy must be 'round' or 'margin'.")
+        if not (0.0 < float(integer_min_probability) < 1.0):
+            raise ConfigurationError("integer_min_probability must be in (0, 1).")
+        if integer_strategy == "margin":
+            for gene in gene_space.genes:
+                if gene.kind == "int":
+                    range_size = int(gene.high) - int(gene.low) + 1
+                    if float(integer_min_probability) * range_size >= 1.0:
+                        raise ConfigurationError(
+                            "integer_min_probability is too large for integer gene range."
+                        )
 
         self.gene_space = gene_space
         self.population_size = population_size
@@ -137,6 +182,8 @@ class CMAESOptimizer(CMAESExternalStateMixin, CMAESCheckpointingMixin, CMAESAskT
             raise ConfigurationError("direction must be 'maximize' or 'minimize'.")
         self.direction = direction
         self.track_diversity = track_diversity
+        self.integer_strategy = integer_strategy
+        self.integer_min_probability = float(integer_min_probability)
         self.operators = OperatorCodec(gene_space, "sbx", "gaussian")
         self._fitness_warning_emitted = False
         self._state: _core.PyCMAESState | None = None
@@ -218,6 +265,42 @@ class CMAESOptimizer(CMAESExternalStateMixin, CMAESCheckpointingMixin, CMAESAskT
     def _apply_bounds_and_round(self, genes_f64: Sequence[float]) -> list[float]:
         repaired = decode_gene_values(self.gene_space, genes_f64)
         return encode_gene_values(self.gene_space, repaired)
+
+    def _apply_integer_strategy(
+        self,
+        genes_f64: Sequence[float],
+        *,
+        event_index: int,
+        candidate_index: int,
+    ) -> list[float]:
+        if self.integer_strategy == "round":
+            return self._apply_bounds_and_round(genes_f64)
+
+        values = self._apply_bounds_and_round(genes_f64)
+        sigma = max(self._sigma_abs(), 1.0e-12)
+        for gene_index, gene in enumerate(self.gene_space.genes):
+            if gene.kind != "int":
+                continue
+            margin = IntegerMarginDistribution(
+                low=int(gene.low),
+                high=int(gene.high),
+                min_probability=self.integer_min_probability,
+            )
+            probabilities = margin.probabilities(
+                mean=float(genes_f64[gene_index]),
+                sigma=sigma,
+            )
+            values[gene_index] = float(
+                _sample_integer_margin(
+                    probabilities,
+                    seed=self.seed,
+                    event_index=event_index,
+                    candidate_index=candidate_index,
+                    gene_index=gene_index,
+                    latent_value=float(genes_f64[gene_index]),
+                )
+            )
+        return values
 
     def _decode_solution(
         self,
@@ -416,7 +499,8 @@ class CMAESOptimizer(CMAESExternalStateMixin, CMAESCheckpointingMixin, CMAESAskT
             gen_start = time.perf_counter()
             samples_continuous = state.ask(self.seed, gen)
             samples_discrete = [
-                self._apply_bounds_and_round(sample) for sample in samples_continuous
+                self._apply_integer_strategy(sample, event_index=gen, candidate_index=index)
+                for index, sample in enumerate(samples_continuous)
             ]
             individuals = [self._decode_solution(sample) for sample in samples_discrete]
             fitnesses, nan_count = self._evaluate_all(individuals, objective_fn, gen)

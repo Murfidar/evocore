@@ -154,6 +154,42 @@ def test_cma_resume_ask_tell_checkpoint_next_ask_matches_uninterrupted(tmp_path)
         restored.tell([_trusted_records(first_batch)[0]])
 
 
+def test_margin_cma_resume_next_ask_matches_uninterrupted(tmp_path) -> None:
+    space = GeneSpace([Gene("x", "int", 0, 3), Gene("y", "float", -1.0, 1.0)])
+    uninterrupted = CMAESOptimizer(
+        space,
+        population_size=4,
+        seed=12,
+        integer_strategy="margin",
+    )
+    restored = CMAESOptimizer(
+        space,
+        population_size=4,
+        seed=12,
+        integer_strategy="margin",
+    )
+
+    batch = uninterrupted.ask()
+    uninterrupted.tell(
+        [
+            EvaluationRecord(
+                candidate_id=candidate.candidate_id,
+                batch_id=candidate.batch_id,
+                score=float(index),
+                confidence="trusted_full",
+                stage="full",
+            )
+            for index, candidate in enumerate(batch)
+        ]
+    )
+    checkpoint = uninterrupted.ask_tell_checkpoint()
+    restored.resume_ask_tell_checkpoint(checkpoint.to_dict())
+
+    assert [candidate.genes for candidate in restored.ask()] == [
+        candidate.genes for candidate in uninterrupted.ask()
+    ]
+
+
 def test_cma_resume_partial_confidence_records_keeps_batch_pending(tmp_path) -> None:
     source = _optimizer()
     candidates = source.ask()

@@ -26,6 +26,8 @@ class _CMAESOptimizerLike(Protocol):
     parallel: str
     n_workers: int
     track_diversity: bool
+    integer_strategy: str
+    integer_min_probability: float
     callbacks: Sequence[object]
     gene_space: GeneSpace | None
 
@@ -44,11 +46,17 @@ def build_cmaes_config(optimizer: _CMAESOptimizerLike) -> OptimizerConfig:
             "parallel": optimizer.parallel,
             "n_workers": optimizer.n_workers,
             "track_diversity": optimizer.track_diversity,
+            "integer_strategy": optimizer.integer_strategy,
+            "integer_min_probability": optimizer.integer_min_probability,
         },
         components={
             "distribution": {
                 "type": "cma_es",
-                "parameters": {"initial_sigma": optimizer.initial_sigma},
+                "parameters": {
+                    "initial_sigma": optimizer.initial_sigma,
+                    "integer_strategy": optimizer.integer_strategy,
+                    "integer_min_probability": optimizer.integer_min_probability,
+                },
             }
         },
     )
@@ -101,6 +109,18 @@ def validate_cmaes_compatibility(optimizer: _CMAESOptimizerLike) -> None:
         and len(optimizer.initial_mean) != optimizer.gene_space.length
     ):
         raise ConfigurationError("initial_mean length must match gene_space.length.")
+    if optimizer.integer_strategy not in ("round", "margin"):
+        raise ConfigurationError("integer_strategy must be 'round' or 'margin'.")
+    if not (0.0 < float(optimizer.integer_min_probability) < 1.0):
+        raise ConfigurationError("integer_min_probability must be in (0, 1).")
+    if optimizer.integer_strategy == "margin":
+        for gene in optimizer.gene_space.genes:
+            if gene.kind == "int":
+                range_size = int(gene.high) - int(gene.low) + 1
+                if float(optimizer.integer_min_probability) * range_size >= 1.0:
+                    raise ConfigurationError(
+                        "integer_min_probability is too large for integer gene range."
+                    )
 
 
 __all__ = [
