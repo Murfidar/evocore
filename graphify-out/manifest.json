@@ -1,8 +1,8 @@
 {
   "D:\\Kerja\\pribadi\\evocore\\evocore\\__init__.py": {
-    "mtime": 1781341822.7870328,
-    "ast_hash": "bee1ca5b83b55e0e9004e2746874df60",
-    "semantic_hash": "bee1ca5b83b55e0e9004e2746874df60"
+    "mtime": 1782326536.1037097,
+    "ast_hash": "acd208d71f339efbc4f39e1a7225dd40",
+    "semantic_hash": "acd208d71f339efbc4f39e1a7225dd40"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\callbacks\\__init__.py": {
     "mtime": 1779334417.427033,
@@ -55,14 +55,14 @@
     "semantic_hash": "f7f0cb3887c1a49a60187b3b779da03c"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\__init__.py": {
-    "mtime": 1780395290.4406817,
-    "ast_hash": "06b6bbe47a2f5301587e9718b2ee3183",
-    "semantic_hash": "06b6bbe47a2f5301587e9718b2ee3183"
+    "mtime": 1782321663.226231,
+    "ast_hash": "ab191a91b1165108973aa91ce9095ec2",
+    "semantic_hash": "ab191a91b1165108973aa91ce9095ec2"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\ask_tell_helpers.py": {
-    "mtime": 1781341822.788031,
-    "ast_hash": "666c11da7ce83331d60d24c70d11affa",
-    "semantic_hash": "666c11da7ce83331d60d24c70d11affa"
+    "mtime": 1782321663.2272258,
+    "ast_hash": "176e7c93b28b540e9b9c625b24557042",
+    "semantic_hash": "176e7c93b28b540e9b9c625b24557042"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\batches.py": {
     "mtime": 1779334417.4325888,
@@ -70,14 +70,14 @@
     "semantic_hash": "5a77f43479487afe07d0293faa1bde44"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\checkpointing.py": {
-    "mtime": 1779334417.4325888,
-    "ast_hash": "215ac45a705ac2142a2680f70e1fe7d1",
-    "semantic_hash": "215ac45a705ac2142a2680f70e1fe7d1"
+    "mtime": 1782321663.2282252,
+    "ast_hash": "d691fc49cf7b5ddb73270ffc46e7aca3",
+    "semantic_hash": "d691fc49cf7b5ddb73270ffc46e7aca3"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\conversion.py": {
-    "mtime": 1779334417.433769,
-    "ast_hash": "0d30f960f75539b37784b63d43c37776",
-    "semantic_hash": "0d30f960f75539b37784b63d43c37776"
+    "mtime": 1782321663.2292275,
+    "ast_hash": "9585906c57346e9c299736630e0e6cad",
+    "semantic_hash": "9585906c57346e9c299736630e0e6cad"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\events.py": {
     "mtime": 1779334417.433769,
@@ -90,14 +90,14 @@
     "semantic_hash": "157a2649f6f9de453d6896c56a90beac"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\protocols.py": {
-    "mtime": 1779334417.4347692,
-    "ast_hash": "2095615ba6ac8ebd375c82f707520702",
-    "semantic_hash": "2095615ba6ac8ebd375c82f707520702"
+    "mtime": 1782321663.230224,
+    "ast_hash": "dfa1cdfc4c9bf014a72011617b5c3eaa",
+    "semantic_hash": "dfa1cdfc4c9bf014a72011617b5c3eaa"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\records.py": {
-    "mtime": 1779334417.4347692,
-    "ast_hash": "99b65bf2fd1d64b4d44aac241bd645c7",
-    "semantic_hash": "99b65bf2fd1d64b4d44aac241bd645c7"
+    "mtime": 1782321663.231224,
+    "ast_hash": "d4c86de511f0bdebb21ef9ec097dbc67",
+    "semantic_hash": "d4c86de511f0bdebb21ef9ec097dbc67"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\scheduler.py": {
     "mtime": 1779334417.4347692,
@@ -105,9 +105,9 @@
     "semantic_hash": "2aaf074f515c8348936d4235aeac1e54"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\telemetry.py": {
-    "mtime": 1780395290.4416838,
-    "ast_hash": "3aea5ef10f15f424ac7d1373578efc43",
-    "semantic_hash": "3aea5ef10f15f424ac7d1373578efc43"
+    "mtime": 1782321663.231224,
+    "ast_hash": "08ae6c95bb556df55011c5a6375cadea",
+    "semantic_hash": "08ae6c95bb556df55011c5a6375cadea"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\__init__.py": {
     "mtime": 1780395290.4426866,
@@ -115,14 +115,14 @@
     "semantic_hash": "6d78dd73fa27c859fff57e2ca15d57a7"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\cmaes\\__init__.py": {
-    "mtime": 1779334417.437128,
-    "ast_hash": "0cd5cf586dafc10a7e6ea0c3814d1190",
-    "semantic_hash": "0cd5cf586dafc10a7e6ea0c3814d1190"
+    "mtime": 1782326536.1037097,
+    "ast_hash": "0b9f26a1977a361c54731b70d729d821",
+    "semantic_hash": "0b9f26a1977a361c54731b70d729d821"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\cmaes\\ask_tell.py": {
-    "mtime": 1781341822.7890325,
-    "ast_hash": "aa102eaec48386507a01f50562386872",
-    "semantic_hash": "aa102eaec48386507a01f50562386872"
+    "mtime": 1782326536.1047099,
+    "ast_hash": "441b124a227767a96911394cdf08f594",
+    "semantic_hash": "441b124a227767a96911394cdf08f594"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\cmaes\\checkpointing.py": {
     "mtime": 1779334417.4383035,
@@ -130,19 +130,19 @@
     "semantic_hash": "720069c53b041cd1e99e677995f72b1c"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\cmaes\\config.py": {
-    "mtime": 1779334417.4383035,
-    "ast_hash": "8627f67df25383f933128c265d375141",
-    "semantic_hash": "8627f67df25383f933128c265d375141"
+    "mtime": 1782326536.1047099,
+    "ast_hash": "0117cdc5260c0b9303bd35f01ef6964f",
+    "semantic_hash": "0117cdc5260c0b9303bd35f01ef6964f"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\cmaes\\engine.py": {
-    "mtime": 1781341822.7890325,
-    "ast_hash": "e9b7fc3ba34abc489c019f949d36e5d7",
-    "semantic_hash": "e9b7fc3ba34abc489c019f949d36e5d7"
+    "mtime": 1782326536.105712,
+    "ast_hash": "101ce557c68592a977cdebf40f32641c",
+    "semantic_hash": "101ce557c68592a977cdebf40f32641c"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\cmaes\\mixed.py": {
-    "mtime": 1779334417.4393642,
-    "ast_hash": "9a5c1df82f018f956af7b142ad890b77",
-    "semantic_hash": "9a5c1df82f018f956af7b142ad890b77"
+    "mtime": 1782326536.105712,
+    "ast_hash": "c1dd58806317d55b3a3b35aeee43d8d0",
+    "semantic_hash": "c1dd58806317d55b3a3b35aeee43d8d0"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\config.py": {
     "mtime": 1779334417.4393642,
@@ -150,9 +150,9 @@
     "semantic_hash": "9d3954d0c8796fb80cf83307833e398f"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\de\\__init__.py": {
-    "mtime": 1780395290.4436839,
-    "ast_hash": "387a670e8d62f4738117c9cdc2fbaa26",
-    "semantic_hash": "387a670e8d62f4738117c9cdc2fbaa26"
+    "mtime": 1781673265.3209474,
+    "ast_hash": "7cc0696e93ae181724591f3314d25add",
+    "semantic_hash": "7cc0696e93ae181724591f3314d25add"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\de\\adaptive.py": {
     "mtime": 1780618927.6839924,
@@ -160,9 +160,9 @@
     "semantic_hash": "a448e687cdec99fa16cbcb8a59313993"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\de\\ask_tell.py": {
-    "mtime": 1781341822.7900307,
-    "ast_hash": "a0a73026460abcae8cda59935e44f1c1",
-    "semantic_hash": "a0a73026460abcae8cda59935e44f1c1"
+    "mtime": 1782321663.2342243,
+    "ast_hash": "56971a51f6c401b7c00b3a3e9b55324e",
+    "semantic_hash": "56971a51f6c401b7c00b3a3e9b55324e"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\de\\checkpointing.py": {
     "mtime": 1780467678.0340047,
@@ -175,9 +175,9 @@
     "semantic_hash": "214d8452645f5444f75493aec2c85462"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\de\\engine.py": {
-    "mtime": 1781341822.7910328,
-    "ast_hash": "145f27e679646f2baa3553b2b41cc517",
-    "semantic_hash": "145f27e679646f2baa3553b2b41cc517"
+    "mtime": 1782321663.2352467,
+    "ast_hash": "d337327dabf5954d5eab849b15c5c452",
+    "semantic_hash": "d337327dabf5954d5eab849b15c5c452"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\de\\kernel.py": {
     "mtime": 1781341822.7930324,
@@ -195,14 +195,14 @@
     "semantic_hash": "9c64126a9b57ad1ff13486e582c0c2d2"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\ga\\__init__.py": {
-    "mtime": 1779334417.4408722,
-    "ast_hash": "1c9b26a20f615850b29e9310cc714dd0",
-    "semantic_hash": "1c9b26a20f615850b29e9310cc714dd0"
+    "mtime": 1781673265.3219483,
+    "ast_hash": "0ff189dec4bf3135703b4a5bf7cd8861",
+    "semantic_hash": "0ff189dec4bf3135703b4a5bf7cd8861"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\ga\\ask_tell.py": {
-    "mtime": 1781341822.7940316,
-    "ast_hash": "eab94590d12e210142ae82f1010b462b",
-    "semantic_hash": "eab94590d12e210142ae82f1010b462b"
+    "mtime": 1782321663.2362258,
+    "ast_hash": "3c0820362f339ee82d3a03758a69fe06",
+    "semantic_hash": "3c0820362f339ee82d3a03758a69fe06"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\ga\\checkpointing.py": {
     "mtime": 1779334417.441873,
@@ -215,9 +215,9 @@
     "semantic_hash": "91beec18da6f581c71712f95aa4bff46"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\ga\\engine.py": {
-    "mtime": 1779364643.7955208,
-    "ast_hash": "dadc95c9d8c0fd3ebff19a0e5ab2df1e",
-    "semantic_hash": "dadc95c9d8c0fd3ebff19a0e5ab2df1e"
+    "mtime": 1781673265.3229475,
+    "ast_hash": "d03e9aac68e43824606a71a4211204f6",
+    "semantic_hash": "d03e9aac68e43824606a71a4211204f6"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\ga\\generation_loop.py": {
     "mtime": 1779334417.4443166,
@@ -265,9 +265,9 @@
     "semantic_hash": "dac060d0a935ab9722425758e31e6ff8"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\search_space\\__init__.py": {
-    "mtime": 1781341822.796033,
-    "ast_hash": "0d6fef4af48de6a748bd22fc6bc1122d",
-    "semantic_hash": "0d6fef4af48de6a748bd22fc6bc1122d"
+    "mtime": 1782321663.237226,
+    "ast_hash": "fc90237279062ce76c5e8bf8abf4be84",
+    "semantic_hash": "fc90237279062ce76c5e8bf8abf4be84"
   },
   "D:\\Kerja\\pribadi\\evocore\\evocore\\search_space\\codec.py": {
     "mtime": 1781341822.7970324,
@@ -580,9 +580,9 @@
     "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_ask_tell_checkpointing.py": {
-    "mtime": 1779364643.800522,
-    "ast_hash": "ec17d525904f4554efc2e203184f46e5",
-    "semantic_hash": "ec17d525904f4554efc2e203184f46e5"
+    "mtime": 1782321663.2392259,
+    "ast_hash": "32117d8ce272422e12d243b3c6c03cf4",
+    "semantic_hash": "32117d8ce272422e12d243b3c6c03cf4"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_callbacks.py": {
     "mtime": 1779334417.485885,
@@ -600,19 +600,19 @@
     "semantic_hash": "96271a5cb5f80ca44003febc122ec048"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_cmaes_ask_tell_checkpointing.py": {
-    "mtime": 1779334417.487128,
-    "ast_hash": "bd6998f86f3d8387eca58e53b2d7dc88",
-    "semantic_hash": "bd6998f86f3d8387eca58e53b2d7dc88"
+    "mtime": 1782326536.1077113,
+    "ast_hash": "13fd26df02bb1d808040a7cd513f3c77",
+    "semantic_hash": "13fd26df02bb1d808040a7cd513f3c77"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_cmaes_ask_tell_vnext.py": {
-    "mtime": 1781341822.8030324,
-    "ast_hash": "92c1a8280bd2cdf64c7c3205fcd98ce3",
-    "semantic_hash": "92c1a8280bd2cdf64c7c3205fcd98ce3"
+    "mtime": 1782321663.240225,
+    "ast_hash": "06d4eb1d21adb3318db19ff08e9290b8",
+    "semantic_hash": "06d4eb1d21adb3318db19ff08e9290b8"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_cmaes_engine.py": {
-    "mtime": 1780395290.450688,
-    "ast_hash": "bf4a007b0b3ba93f2106febe1d07b0a0",
-    "semantic_hash": "bf4a007b0b3ba93f2106febe1d07b0a0"
+    "mtime": 1782326536.1077113,
+    "ast_hash": "f97986e58d9d3115bf2365bf74f350fd",
+    "semantic_hash": "f97986e58d9d3115bf2365bf74f350fd"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_cmaes_rust.py": {
     "mtime": 1779334417.4892104,
@@ -620,9 +620,9 @@
     "semantic_hash": "b21b185c199f69048b7964a301f52929"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_de_ask_tell.py": {
-    "mtime": 1781341822.8040304,
-    "ast_hash": "1d1ae3ecdfe8d8cb0c5e1f00cdcda34c",
-    "semantic_hash": "1d1ae3ecdfe8d8cb0c5e1f00cdcda34c"
+    "mtime": 1782321663.2412274,
+    "ast_hash": "82ae3ba305a2aed6f8c78e4717c3bff3",
+    "semantic_hash": "82ae3ba305a2aed6f8c78e4717c3bff3"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_de_checkpointing.py": {
     "mtime": 1780618927.7105412,
@@ -725,14 +725,14 @@
     "semantic_hash": "a10a0e564bc228be99b099ef483b158a"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_optimizer_config.py": {
-    "mtime": 1779364643.8083951,
-    "ast_hash": "9e84f3f07fe7bcb986fda11024a3c575",
-    "semantic_hash": "9e84f3f07fe7bcb986fda11024a3c575"
+    "mtime": 1782326536.108712,
+    "ast_hash": "b6fd88569b095afca080c457049c7608",
+    "semantic_hash": "b6fd88569b095afca080c457049c7608"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_package_init.py": {
-    "mtime": 1780395290.455681,
-    "ast_hash": "361a5ea822fdccdeec1170afcaee650f",
-    "semantic_hash": "361a5ea822fdccdeec1170afcaee650f"
+    "mtime": 1782326536.1097107,
+    "ast_hash": "0a81cebdbabd1b0e02f5b0301f0f1750",
+    "semantic_hash": "0a81cebdbabd1b0e02f5b0301f0f1750"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_packaging_config.py": {
     "mtime": 1780618927.7195415,
@@ -750,9 +750,9 @@
     "semantic_hash": "393e2fee10fde1d044c195e70c1f7429"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_protocols.py": {
-    "mtime": 1780395290.456681,
-    "ast_hash": "3bc683094db2c68c435258d60ceb95a7",
-    "semantic_hash": "3bc683094db2c68c435258d60ceb95a7"
+    "mtime": 1781673265.327951,
+    "ast_hash": "e9c364be7ee25c57c9eaa12c2d76775c",
+    "semantic_hash": "e9c364be7ee25c57c9eaa12c2d76775c"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_reproduce_rust.py": {
     "mtime": 1779064006.2455308,
@@ -800,9 +800,9 @@
     "semantic_hash": "d1fa1609f045e83f6e203b32c9d6f207"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_vnext_evaluation.py": {
-    "mtime": 1780395290.4576821,
-    "ast_hash": "6c930164119ea745f29f3eb77e9d3aba",
-    "semantic_hash": "6c930164119ea745f29f3eb77e9d3aba"
+    "mtime": 1782321663.2422252,
+    "ast_hash": "606ffae429dce79328cbbbf0489d495a",
+    "semantic_hash": "606ffae429dce79328cbbbf0489d495a"
   },
   "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_vnext_policy_scheduler.py": {
     "mtime": 1779334417.5055795,
@@ -850,9 +850,9 @@
     "semantic_hash": "f82d1775e2f91ae28f5abc36b9d83df9"
   },
   "D:\\Kerja\\pribadi\\evocore\\CHANGELOG.md": {
-    "mtime": 1781341822.7810311,
-    "ast_hash": "1c83b31a519b7aecc85c2a9946ee7060",
-    "semantic_hash": "1c83b31a519b7aecc85c2a9946ee7060"
+    "mtime": 1782376114.360888,
+    "ast_hash": "609e49639b55d9caa2e9ad53988608ee",
+    "semantic_hash": "609e49639b55d9caa2e9ad53988608ee"
   },
   "D:\\Kerja\\pribadi\\evocore\\README.md": {
     "mtime": 1779334417.3950174,
@@ -865,19 +865,19 @@
     "semantic_hash": "2f348749e1f0696b1b29e00395ed9bab"
   },
   "D:\\Kerja\\pribadi\\evocore\\docs\\site\\api.md": {
-    "mtime": 1781341822.7830324,
-    "ast_hash": "cba250030cc947da43d5c32fdb828569",
-    "semantic_hash": "cba250030cc947da43d5c32fdb828569"
+    "mtime": 1782376114.3628871,
+    "ast_hash": "ac58e69b4bdb9084a850caa4733cdb88",
+    "semantic_hash": "ac58e69b4bdb9084a850caa4733cdb88"
   },
   "D:\\Kerja\\pribadi\\evocore\\docs\\site\\ask-tell-engines.md": {
-    "mtime": 1780395290.4361687,
-    "ast_hash": "90c4cddbf7e0357c005bf19e28d15154",
-    "semantic_hash": "90c4cddbf7e0357c005bf19e28d15154"
+    "mtime": 1782321663.2252266,
+    "ast_hash": "1a83d6882f795bdfa625ab01f40f37a6",
+    "semantic_hash": "1a83d6882f795bdfa625ab01f40f37a6"
   },
   "D:\\Kerja\\pribadi\\evocore\\docs\\site\\budget-aware-optimization.md": {
-    "mtime": 1780445503.4768171,
-    "ast_hash": "79e398e588459b1bcbc9c903b1dfb1b5",
-    "semantic_hash": "79e398e588459b1bcbc9c903b1dfb1b5"
+    "mtime": 1781673265.314949,
+    "ast_hash": "fb493e8f3d81a32e8b2b17468184d887",
+    "semantic_hash": "fb493e8f3d81a32e8b2b17468184d887"
   },
   "D:\\Kerja\\pribadi\\evocore\\docs\\site\\callbacks-checkpointing.md": {
     "mtime": 1780445503.4788158,
@@ -885,9 +885,9 @@
     "semantic_hash": "c27290c0e9a5e7af85083c8265ddf016"
   },
   "D:\\Kerja\\pribadi\\evocore\\docs\\site\\cmaes.md": {
-    "mtime": 1779364643.7900019,
-    "ast_hash": "5811bd135330651fbe42598ecb33dee5",
-    "semantic_hash": "5811bd135330651fbe42598ecb33dee5"
+    "mtime": 1782326536.1027095,
+    "ast_hash": "5ac0fd90a362480a86b3b68a840dec43",
+    "semantic_hash": "5ac0fd90a362480a86b3b68a840dec43"
   },
   "D:\\Kerja\\pribadi\\evocore\\docs\\site\\de.md": {
     "mtime": 1780618927.6799936,
@@ -895,9 +895,9 @@
     "semantic_hash": "423207240eac8205a8c0502db713ed6a"
   },
   "D:\\Kerja\\pribadi\\evocore\\docs\\site\\examples.md": {
-    "mtime": 1781341822.7840297,
-    "ast_hash": "ac2b42663a9e95e3a50c5e3aed45fd60",
-    "semantic_hash": "ac2b42663a9e95e3a50c5e3aed45fd60"
+    "mtime": 1781673265.314949,
+    "ast_hash": "01eb0179225c5ee5cad9ee24300b79f1",
+    "semantic_hash": "01eb0179225c5ee5cad9ee24300b79f1"
   },
   "D:\\Kerja\\pribadi\\evocore\\docs\\site\\ga-benchmark-parity.md": {
     "mtime": 1779334417.3995817,
@@ -925,9 +925,9 @@
     "semantic_hash": "c377ae0a411ee4904fc99237bfc9571f"
   },
   "D:\\Kerja\\pribadi\\evocore\\docs\\site\\mixed-variable-search.md": {
-    "mtime": 1779334417.401582,
-    "ast_hash": "b7f60fcdd38beb628da7d3941dcd2f93",
-    "semantic_hash": "b7f60fcdd38beb628da7d3941dcd2f93"
+    "mtime": 1782376114.363899,
+    "ast_hash": "393b59cf4e905ac52bf6f178b6dbec84",
+    "semantic_hash": "393b59cf4e905ac52bf6f178b6dbec84"
   },
   "D:\\Kerja\\pribadi\\evocore\\docs\\site\\operator-contract.md": {
     "mtime": 1779364643.7919967,
@@ -1315,13 +1315,253 @@
     "semantic_hash": "ac681f1ad42f72652b55ee62721e9d09"
   },
   "D:\\Kerja\\pribadi\\evocore\\mkdocs.yml": {
-    "mtime": 1781341822.7980323,
-    "ast_hash": "5ad15cd32dffef2ba247e83436d63a5c",
-    "semantic_hash": "5ad15cd32dffef2ba247e83436d63a5c"
+    "mtime": 1781673265.3249464,
+    "ast_hash": "445702e13aa14f3c7952c6d197a79351",
+    "semantic_hash": "445702e13aa14f3c7952c6d197a79351"
   },
   "D:\\Kerja\\pribadi\\evocore\\requirements.txt": {
     "mtime": 1779334417.4755638,
     "ast_hash": "8d55bd84b12492b081f6641eaade4795",
     "semantic_hash": "8d55bd84b12492b081f6641eaade4795"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\archives.py": {
+    "mtime": 1782321663.2272258,
+    "ast_hash": "ae0b8115126b1a5db8f818b318bac525",
+    "semantic_hash": "ae0b8115126b1a5db8f818b318bac525"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\composition.py": {
+    "mtime": 1782013293.2684941,
+    "ast_hash": "0d87f38c38b8a141fcd1e46bbc301b7a",
+    "semantic_hash": "0d87f38c38b8a141fcd1e46bbc301b7a"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\external.py": {
+    "mtime": 1782321663.2292275,
+    "ast_hash": "10dab972543f73fc0140949ac2cb9d8d",
+    "semantic_hash": "10dab972543f73fc0140949ac2cb9d8d"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\selection.py": {
+    "mtime": 1782013293.2695048,
+    "ast_hash": "cca34ffc86f6065dc6447130c2b28176",
+    "semantic_hash": "cca34ffc86f6065dc6447130c2b28176"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\lifecycle\\stopping.py": {
+    "mtime": 1782013293.2695048,
+    "ast_hash": "a466a679fb584e541e35e547cc1ae4d0",
+    "semantic_hash": "a466a679fb584e541e35e547cc1ae4d0"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\cmaes\\external.py": {
+    "mtime": 1782321663.2332265,
+    "ast_hash": "f6b59a5ec63bbb5a2587ed638801d440",
+    "semantic_hash": "f6b59a5ec63bbb5a2587ed638801d440"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\cmaes\\projection.py": {
+    "mtime": 1782326536.105712,
+    "ast_hash": "ff9d8996b418a41f2bd6df5e7fb10d1b",
+    "semantic_hash": "ff9d8996b418a41f2bd6df5e7fb10d1b"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\cmaes\\restarts.py": {
+    "mtime": 1782326536.106709,
+    "ast_hash": "739d86d5bf0a09950c3a4e95ef15e9b3",
+    "semantic_hash": "739d86d5bf0a09950c3a4e95ef15e9b3"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\de\\external.py": {
+    "mtime": 1782321663.2352467,
+    "ast_hash": "441c43e4c0f3333136fc2241145eb6ca",
+    "semantic_hash": "441c43e4c0f3333136fc2241145eb6ca"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\optimizers\\ga\\external.py": {
+    "mtime": 1782321663.237226,
+    "ast_hash": "26c6da2b2272f6ee6042b41d5e6d12c8",
+    "semantic_hash": "26c6da2b2272f6ee6042b41d5e6d12c8"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\search_space\\constraints.py": {
+    "mtime": 1782321663.2382255,
+    "ast_hash": "48b6d843c1316e43627a27c11f448f34",
+    "semantic_hash": "48b6d843c1316e43627a27c11f448f34"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\search_space\\projection.py": {
+    "mtime": 1782376114.3648887,
+    "ast_hash": "c0262292ee6f4ea9b4c36b35d0103225",
+    "semantic_hash": "c0262292ee6f4ea9b4c36b35d0103225"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\evocore\\search_space\\transforms.py": {
+    "mtime": 1782306341.5552912,
+    "ast_hash": "ea1c486a30e9acb945b2fc5feed7dbf9",
+    "semantic_hash": "ea1c486a30e9acb945b2fc5feed7dbf9"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\integration\\test_phase3_expensive_projection_recipe.py": {
+    "mtime": 1782376114.3658879,
+    "ast_hash": "f8ba07c9acd928560e6ff8bcc0fa5581",
+    "semantic_hash": "f8ba07c9acd928560e6ff8bcc0fa5581"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\property\\test_integer_margin_properties.py": {
+    "mtime": 1782326536.106709,
+    "ast_hash": "d864032bacbd55ff2247007138d953b0",
+    "semantic_hash": "d864032bacbd55ff2247007138d953b0"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\property\\test_projection_properties.py": {
+    "mtime": 1782306341.5552912,
+    "ast_hash": "896e41af3e0ba27591eeb4a1070bb8e2",
+    "semantic_hash": "896e41af3e0ba27591eeb4a1070bb8e2"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_cmaes_external_state.py": {
+    "mtime": 1781673265.3249464,
+    "ast_hash": "09cdb9c4de6166a700743e8e61a33389",
+    "semantic_hash": "09cdb9c4de6166a700743e8e61a33389"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_cmaes_projection.py": {
+    "mtime": 1782376114.3668942,
+    "ast_hash": "62568beb485424c1e8e8408f255bc5df",
+    "semantic_hash": "62568beb485424c1e8e8408f255bc5df"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_cmaes_restarts.py": {
+    "mtime": 1782326536.108712,
+    "ast_hash": "538e4e8373bb09878f2340b449978aea",
+    "semantic_hash": "538e4e8373bb09878f2340b449978aea"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_constraints_penalty.py": {
+    "mtime": 1782321663.240225,
+    "ast_hash": "8ecbf0cec4836cd76537f8fee8196881",
+    "semantic_hash": "8ecbf0cec4836cd76537f8fee8196881"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_de_external_state.py": {
+    "mtime": 1781673265.3259497,
+    "ast_hash": "c35fe5950a6de8c603f48373957e07c4",
+    "semantic_hash": "c35fe5950a6de8c603f48373957e07c4"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_external_state_core.py": {
+    "mtime": 1781673265.3259497,
+    "ast_hash": "8164e3ad35738eaca4c1523d451065c5",
+    "semantic_hash": "8164e3ad35738eaca4c1523d451065c5"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_external_state_optimizer_contract.py": {
+    "mtime": 1781673265.3269484,
+    "ast_hash": "14d7f1b65056f7072106c54b770784fe",
+    "semantic_hash": "14d7f1b65056f7072106c54b770784fe"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_ga_external_state.py": {
+    "mtime": 1781673265.3269484,
+    "ast_hash": "18baf78e54906959eb782d690529903b",
+    "semantic_hash": "18baf78e54906959eb782d690529903b"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_lifecycle_archives.py": {
+    "mtime": 1782013293.2710109,
+    "ast_hash": "2b57e7ff281c323499d626e82223b77c",
+    "semantic_hash": "2b57e7ff281c323499d626e82223b77c"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_lifecycle_composition.py": {
+    "mtime": 1782013293.2720194,
+    "ast_hash": "26eb47388c7e8dd0654003b47d954a24",
+    "semantic_hash": "26eb47388c7e8dd0654003b47d954a24"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_lifecycle_selection.py": {
+    "mtime": 1782013293.2730262,
+    "ast_hash": "494405747fb8a0916cd240ae729bdcd4",
+    "semantic_hash": "494405747fb8a0916cd240ae729bdcd4"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_lifecycle_stopping.py": {
+    "mtime": 1782013293.2730262,
+    "ast_hash": "e921c6caf394419dde331dab6fbcae84",
+    "semantic_hash": "e921c6caf394419dde331dab6fbcae84"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_phase2a_external_optimizer_integration.py": {
+    "mtime": 1781680448.033481,
+    "ast_hash": "190b013397706b05b74d2437ef9c17d9",
+    "semantic_hash": "190b013397706b05b74d2437ef9c17d9"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_phase2b_stop_policy_integration.py": {
+    "mtime": 1781699279.3719094,
+    "ast_hash": "955a8bddf593ef080e2aaafb66a9f6ee",
+    "semantic_hash": "955a8bddf593ef080e2aaafb66a9f6ee"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_phase2c_hybrid_recipe.py": {
+    "mtime": 1782013293.2760234,
+    "ast_hash": "a1a032b518a416b4fccc381d5039dbe6",
+    "semantic_hash": "a1a032b518a416b4fccc381d5039dbe6"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\tests\\unit\\test_projection.py": {
+    "mtime": 1782376114.3668942,
+    "ast_hash": "a10c75d7fda051d266c729a1a92b77aa",
+    "semantic_hash": "a10c75d7fda051d266c729a1a92b77aa"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\site\\expensive-external-evaluations.md": {
+    "mtime": 1782376114.3628871,
+    "ast_hash": "abf786fab35de17ebcd2988f501e87c7",
+    "semantic_hash": "abf786fab35de17ebcd2988f501e87c7"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\plans\\2026-06-17-phase-1-cmaes-external-state-api.md": {
+    "mtime": 1781667832.6009681,
+    "ast_hash": "4cbf3cacdb67a4d12ce0ee79088931d5",
+    "semantic_hash": "4cbf3cacdb67a4d12ce0ee79088931d5"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\plans\\2026-06-17-phase-1-de-external-state-api.md": {
+    "mtime": 1781667832.601969,
+    "ast_hash": "fe11c5631e3e5b97ec0f073a233c3333",
+    "semantic_hash": "fe11c5631e3e5b97ec0f073a233c3333"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\plans\\2026-06-17-phase-1-docs-compatibility-and-recipes.md": {
+    "mtime": 1781667832.601969,
+    "ast_hash": "1148f0f6a021ede5b1a064cc3ab0fa37",
+    "semantic_hash": "1148f0f6a021ede5b1a064cc3ab0fa37"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\plans\\2026-06-17-phase-1-ga-external-state-api.md": {
+    "mtime": 1781667832.6029677,
+    "ast_hash": "86ea5f3e9ff0bbe8bf6970b55fe57e2c",
+    "semantic_hash": "86ea5f3e9ff0bbe8bf6970b55fe57e2c"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\plans\\2026-06-17-phase-1-shared-external-state-api.md": {
+    "mtime": 1781667832.6039705,
+    "ast_hash": "e2806db96b3e8d9a8e1a8eb30238a677",
+    "semantic_hash": "e2806db96b3e8d9a8e1a8eb30238a677"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\plans\\2026-06-17-phase-2a-archive-selection-toolkit.md": {
+    "mtime": 1781678448.518699,
+    "ast_hash": "a517439209dcce425cca3214ee015515",
+    "semantic_hash": "a517439209dcce425cca3214ee015515"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\plans\\2026-06-17-phase-2b-stop-policies.md": {
+    "mtime": 1781678448.519701,
+    "ast_hash": "b444215d6758bb4dafbe1d716e6699cc",
+    "semantic_hash": "b444215d6758bb4dafbe1d716e6699cc"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\plans\\2026-06-17-phase-2c-hybrid-composition-recipes.md": {
+    "mtime": 1781678448.519701,
+    "ast_hash": "71c7379d4edcdda6f472a35986f2531e",
+    "semantic_hash": "71c7379d4edcdda6f472a35986f2531e"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\plans\\2026-06-24-evocore-phase-3a-projection-transforms.md": {
+    "mtime": 1782303458.6210845,
+    "ast_hash": "5142708b0a4a826df443f6f8a5b5b081",
+    "semantic_hash": "5142708b0a4a826df443f6f8a5b5b081"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\plans\\2026-06-24-evocore-phase-3b-constraints-penalties.md": {
+    "mtime": 1782303458.6226668,
+    "ast_hash": "3f1c4439be0c4250f7a52a1fa3fe8f3a",
+    "semantic_hash": "3f1c4439be0c4250f7a52a1fa3fe8f3a"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\plans\\2026-06-24-evocore-phase-3c-active-mixed-cma.md": {
+    "mtime": 1782303458.6226668,
+    "ast_hash": "0056fb615b31a17702f89a1f8d0bef6d",
+    "semantic_hash": "0056fb615b31a17702f89a1f8d0bef6d"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\plans\\2026-06-24-evocore-phase-3d-external-recipe-compatibility.md": {
+    "mtime": 1782303458.624261,
+    "ast_hash": "60f0b7b6bfcb15ce3c7fe66da81fb494",
+    "semantic_hash": "60f0b7b6bfcb15ce3c7fe66da81fb494"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\specs\\2026-06-17-evocore-phase-1-external-integration-api-design.md": {
+    "mtime": 1781667832.6039705,
+    "ast_hash": "003393dc7b680ef978e1e6cf284cb43e",
+    "semantic_hash": "003393dc7b680ef978e1e6cf284cb43e"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\specs\\2026-06-17-evocore-phase-2-expensive-optimization-toolkit-design.md": {
+    "mtime": 1781678448.5207002,
+    "ast_hash": "6bb7a58ad82d8f25110afe597485e3a6",
+    "semantic_hash": "6bb7a58ad82d8f25110afe597485e3a6"
+  },
+  "D:\\Kerja\\pribadi\\evocore\\docs\\superpowers\\specs\\2026-06-22-evocore-phase-3-projection-cma-design.md": {
+    "mtime": 1782303458.624261,
+    "ast_hash": "6f31181aca130f07c587a4a746bd4d72",
+    "semantic_hash": "6f31181aca130f07c587a4a746bd4d72"
   }
 }
