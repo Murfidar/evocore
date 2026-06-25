@@ -1,153 +1,185 @@
-# Graph Report - .  (2026-06-14)
+# Graph Report - .  (2026-06-25)
 
 ## Corpus Check
-- 265 files · ~312,979 words
+- 85 files · ~359,695 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 2899 nodes · 7927 edges · 125 communities (118 shown, 7 thin omitted)
-- Extraction: 86% EXTRACTED · 14% INFERRED · 0% AMBIGUOUS · INFERRED: 1142 edges (avg confidence: 0.53)
-- Token cost: 317,536 input · 29,564 output
+- 3829 nodes · 10786 edges · 157 communities (143 shown, 14 thin omitted)
+- Extraction: 81% EXTRACTED · 19% INFERRED · 0% AMBIGUOUS · INFERRED: 2096 edges (avg confidence: 0.54)
+- Token cost: 0 input · 0 output
 
 ## Community Hubs (Navigation)
-- [[_COMMUNITY_Genetic Algorithm Operators|Genetic Algorithm Operators]]
-- [[_COMMUNITY_Differential Evolution jDE Adaptation|Differential Evolution jDE Adaptation]]
-- [[_COMMUNITY_CMA-ES New|CMA-ES New]]
-- [[_COMMUNITY_Differential Evolution Checkpointing|Differential Evolution Checkpointing]]
-- [[_COMMUNITY_Differential Evolution Genetic Algorithm|Differential Evolution Genetic Algorithm]]
-- [[_COMMUNITY_Progress Base Stopping|Progress Base Stopping]]
-- [[_COMMUNITY_Differential Evolution Budget Scheduler|Differential Evolution Budget Scheduler]]
-- [[_COMMUNITY_CMA-ES Engine|CMA-ES Engine]]
-- [[_COMMUNITY_Telemetry Lifecycle Evaluation|Telemetry Lifecycle Evaluation]]
-- [[_COMMUNITY_Differential Evolution Engine|Differential Evolution Engine]]
-- [[_COMMUNITY_Lifecycle Event History Checkpointing|Lifecycle Event History Checkpointing]]
-- [[_COMMUNITY_Differential Evolution Plans|Differential Evolution Plans]]
-- [[_COMMUNITY_Operators Contract Optimizers|Operators Contract Optimizers]]
-- [[_COMMUNITY_Differential Evolution Genetic Algorithm|Differential Evolution Genetic Algorithm]]
-- [[_COMMUNITY_Differential Evolution Lifecycle|Differential Evolution Lifecycle]]
-- [[_COMMUNITY_CMA-ES Generation Loop|CMA-ES Generation Loop]]
-- [[_COMMUNITY_CMA-ES Search Space|CMA-ES Search Space]]
-- [[_COMMUNITY_Differential Evolution jDE Adaptation|Differential Evolution jDE Adaptation]]
-- [[_COMMUNITY_Genetic Algorithm Engine|Genetic Algorithm Engine]]
-- [[_COMMUNITY_Genetic Algorithm Operators|Genetic Algorithm Operators]]
-- [[_COMMUNITY_CMA-ES Engine|CMA-ES Engine]]
-- [[_COMMUNITY_Search Space Individual Accessible|Search Space Individual Accessible]]
-- [[_COMMUNITY_CMA-ES Samples|CMA-ES Samples]]
-- [[_COMMUNITY_Search Space Examples Bounds|Search Space Examples Bounds]]
-- [[_COMMUNITY_Differential Evolution Engine|Differential Evolution Engine]]
-- [[_COMMUNITY_Genetic Algorithm Hook|Genetic Algorithm Hook]]
-- [[_COMMUNITY_Lib Codec Crossover|Lib Codec Crossover]]
-- [[_COMMUNITY_Genetic Algorithm Ask Tell|Genetic Algorithm Ask Tell]]
-- [[_COMMUNITY_Operators Mutation Crossover|Operators Mutation Crossover]]
-- [[_COMMUNITY_Lifecycle Conversion Score|Lifecycle Conversion Score]]
-- [[_COMMUNITY_Reproduce Population Bounds|Reproduce Population Bounds]]
-- [[_COMMUNITY_Genetic Algorithm Rng|Genetic Algorithm Rng]]
-- [[_COMMUNITY_Differential Evolution Checkpointing|Differential Evolution Checkpointing]]
-- [[_COMMUNITY_Lifecycle Checkpointing Deserialise|Lifecycle Checkpointing Deserialise]]
-- [[_COMMUNITY_Genetic Algorithm Checkpointing|Genetic Algorithm Checkpointing]]
-- [[_COMMUNITY_Reproduce Testreproducepopulation Population|Reproduce Testreproducepopulation Population]]
-- [[_COMMUNITY_Lifecycle Protocols Telemetry|Lifecycle Protocols Telemetry]]
-- [[_COMMUNITY_Genetic Algorithm Run|Genetic Algorithm Run]]
-- [[_COMMUNITY_Differential Evolution Hash|Differential Evolution Hash]]
-- [[_COMMUNITY_Surrogate Inverse Distance|Surrogate Inverse Distance]]
-- [[_COMMUNITY_Genetic Algorithm Ask Tell|Genetic Algorithm Ask Tell]]
-- [[_COMMUNITY_Genetic Algorithm Generate|Genetic Algorithm Generate]]
-- [[_COMMUNITY_Properties Operators Contract|Properties Operators Contract]]
-- [[_COMMUNITY_Differential Evolution Strategy|Differential Evolution Strategy]]
-- [[_COMMUNITY_Individual Len New|Individual Len New]]
-- [[_COMMUNITY_Selection Tournament Rank|Selection Tournament Rank]]
-- [[_COMMUNITY_Differential Evolution Ask Tell|Differential Evolution Ask Tell]]
-- [[_COMMUNITY_CMA-ES Search Space|CMA-ES Search Space]]
-- [[_COMMUNITY_Exceptions Subclasses Fitness|Exceptions Subclasses Fitness]]
-- [[_COMMUNITY_Differential Evolution Run|Differential Evolution Run]]
-- [[_COMMUNITY_Genetic Algorithm Ask Tell|Genetic Algorithm Ask Tell]]
-- [[_COMMUNITY_Selection Correct All|Selection Correct All]]
-- [[_COMMUNITY_Differential Evolution Generate|Differential Evolution Generate]]
-- [[_COMMUNITY_CMA-ES Checkpointing|CMA-ES Checkpointing]]
-- [[_COMMUNITY_Binary Ops Operators|Binary Ops Operators]]
-- [[_COMMUNITY_Ops Operators Mutation|Ops Operators Mutation]]
-- [[_COMMUNITY_CMA-ES Ask Tell|CMA-ES Ask Tell]]
-- [[_COMMUNITY_2026 05 Contract|2026 05 Contract]]
-- [[_COMMUNITY_Checkpointing Optimizer Envelope|Checkpointing Optimizer Envelope]]
-- [[_COMMUNITY_Differential Evolution Checkpointing|Differential Evolution Checkpointing]]
-- [[_COMMUNITY_Parallel Evaluation Sequential Correct|Parallel Evaluation Sequential Correct]]
-- [[_COMMUNITY_CMA-ES Ask Tell|CMA-ES Ask Tell]]
-- [[_COMMUNITY_Reproducibility Domain Imports|Reproducibility Domain Imports]]
-- [[_COMMUNITY_Differential Evolution Checkpointing|Differential Evolution Checkpointing]]
-- [[_COMMUNITY_Genetic Algorithm Generation Loop|Genetic Algorithm Generation Loop]]
-- [[_COMMUNITY_Ops Operators Mutation|Ops Operators Mutation]]
-- [[_COMMUNITY_Genetic Algorithm Run|Genetic Algorithm Run]]
-- [[_COMMUNITY_CMA-ES Mixed|CMA-ES Mixed]]
-- [[_COMMUNITY_Parallel Evaluation Evaluate Batch|Parallel Evaluation Evaluate Batch]]
-- [[_COMMUNITY_Differential Evolution Mixed|Differential Evolution Mixed]]
-- [[_COMMUNITY_Differential Evolution Engine|Differential Evolution Engine]]
-- [[_COMMUNITY_Search Space Signature This|Search Space Signature This]]
-- [[_COMMUNITY_Differential Evolution Run|Differential Evolution Run]]
-- [[_COMMUNITY_Differential Evolution Specs|Differential Evolution Specs]]
-- [[_COMMUNITY_Differential Evolution Specs|Differential Evolution Specs]]
-- [[_COMMUNITY_Differential Evolution Kernel|Differential Evolution Kernel]]
-- [[_COMMUNITY_Differential Evolution Adaptive|Differential Evolution Adaptive]]
-- [[_COMMUNITY_Design Specs 2026|Design Specs 2026]]
-- [[_COMMUNITY_Genetic Algorithm Engine|Genetic Algorithm Engine]]
-- [[_COMMUNITY_Ask Tell Lifecycle Batch|Ask Tell Lifecycle Batch]]
-- [[_COMMUNITY_Plans 2026 V5|Plans 2026 V5]]
-- [[_COMMUNITY_Parallelism Plans 2026|Parallelism Plans 2026]]
-- [[_COMMUNITY_Telemetry Contract History|Telemetry Contract History]]
-- [[_COMMUNITY_CMA-ES Specs|CMA-ES Specs]]
-- [[_COMMUNITY_Specs 2026 06|Specs 2026 06]]
-- [[_COMMUNITY_Utils Derive Seed|Utils Derive Seed]]
-- [[_COMMUNITY_Selection Rank Top|Selection Rank Top]]
-- [[_COMMUNITY_Genetic Algorithm Engine|Genetic Algorithm Engine]]
-- [[_COMMUNITY_Genetic Algorithm Runtime|Genetic Algorithm Runtime]]
-- [[_COMMUNITY_Checkpointing Generation Loop Checkpointcallback|Checkpointing Generation Loop Checkpointcallback]]
-- [[_COMMUNITY_05 Production Hardening|05 Production Hardening]]
-- [[_COMMUNITY_Genetic Algorithm Operators|Genetic Algorithm Operators]]
-- [[_COMMUNITY_CMA-ES Expensive|CMA-ES Expensive]]
-- [[_COMMUNITY_Design Specs 2026|Design Specs 2026]]
-- [[_COMMUNITY_V5 Plans 2026|V5 Plans 2026]]
-- [[_COMMUNITY_V5 Plans 2026|V5 Plans 2026]]
-- [[_COMMUNITY_Plans 2026 Superpowers|Plans 2026 Superpowers]]
-- [[_COMMUNITY_Search Space Codec Decode|Search Space Codec Decode]]
-- [[_COMMUNITY_Expensive Optimizer Design|Expensive Optimizer Design]]
-- [[_COMMUNITY_Stabilization Objective Budget|Stabilization Objective Budget]]
-- [[_COMMUNITY_Differential Evolution Engine|Differential Evolution Engine]]
-- [[_COMMUNITY_Manifest V0 Checkpoints|Manifest V0 Checkpoints]]
-- [[_COMMUNITY_Manifest V0 Checkpoints|Manifest V0 Checkpoints]]
-- [[_COMMUNITY_Differential Evolution Adaptive|Differential Evolution Adaptive]]
-- [[_COMMUNITY_Genetic Algorithm Engine|Genetic Algorithm Engine]]
-- [[_COMMUNITY_Design Specs 2026|Design Specs 2026]]
-- [[_COMMUNITY_Checkpointing Compatibility Golden|Checkpointing Compatibility Golden]]
-- [[_COMMUNITY_Genetic Algorithm Mixed|Genetic Algorithm Mixed]]
-- [[_COMMUNITY_Spec Kind All|Spec Kind All]]
-- [[_COMMUNITY_Base Run Optimization|Base Run Optimization]]
-- [[_COMMUNITY_Differential Evolution Protocols|Differential Evolution Protocols]]
-- [[_COMMUNITY_Checkpoints Checkpointing Generation Loop|Checkpoints Checkpointing Generation Loop]]
-- [[_COMMUNITY_Genetic Algorithm Engine|Genetic Algorithm Engine]]
-- [[_COMMUNITY_05 Production Hardening|05 Production Hardening]]
+- [[_COMMUNITY_Gene Space Return The|Gene Space Return The]]
+- [[_COMMUNITY_External State Candidate Candidates|External State Candidate Candidates]]
+- [[_COMMUNITY_Stop Policy And The|Stop Policy And The]]
+- [[_COMMUNITY_Gene Operator Return Crossover|Gene Operator Return Crossover]]
+- [[_COMMUNITY_Optimizer Candidate State Return|Optimizer Candidate State Return]]
+- [[_COMMUNITY_Snapshot New Ask Tell|Snapshot New Ask Tell]]
+- [[_COMMUNITY_Gene Crossover Jde Mutation|Gene Crossover Jde Mutation]]
+- [[_COMMUNITY_Run The Generation Optimization|Run The Generation Optimization]]
+- [[_COMMUNITY_Evaluate Pool Process Optimizer|Evaluate Pool Process Optimizer]]
+- [[_COMMUNITY_CMA For Integer Generation|CMA For Integer Generation]]
+- [[_COMMUNITY_Checkpoint Fixture Load Manifest|Checkpoint Fixture Load Manifest]]
+- [[_COMMUNITY_Return Tell Configuration Optimizer|Return Tell Configuration Optimizer]]
+- [[_COMMUNITY_Generation Callback The Progress|Generation Callback The Progress]]
+- [[_COMMUNITY_Stage Policy Next Budget|Stage Policy Next Budget]]
+- [[_COMMUNITY_Operator Signature And Generation|Operator Signature And Generation]]
+- [[_COMMUNITY_Archive Candidate Snapshot Direction|Archive Candidate Snapshot Direction]]
+- [[_COMMUNITY_Contract Optimizer Rust Checkpoint|Contract Optimizer Rust Checkpoint]]
+- [[_COMMUNITY_Run Evaluator Policy Evaluate|Run Evaluator Policy Evaluate]]
+- [[_COMMUNITY_Candidates Candidate Select Selected|Candidates Candidate Select Selected]]
+- [[_COMMUNITY_External State Task CMA|External State Task CMA]]
+- [[_COMMUNITY_CMA Goals Checkpoint Candidate|CMA Goals Checkpoint Candidate]]
+- [[_COMMUNITY_Optimizer Ask Tell Release|Optimizer Ask Tell Release]]
+- [[_COMMUNITY_Candidate For One Snapshot|Candidate For One Snapshot]]
+- [[_COMMUNITY_Solution Return The Set|Solution Return The Set]]
+- [[_COMMUNITY_Samples Cmaesstate Correct Dict|Samples Cmaesstate Correct Dict]]
+- [[_COMMUNITY_CMA Budget Warm Candidate|CMA Budget Warm Candidate]]
+- [[_COMMUNITY_Task Checkpoint Archive Candidate|Task Checkpoint Archive Candidate]]
+- [[_COMMUNITY_Parameter Projection Repair For|Parameter Projection Repair For]]
+- [[_COMMUNITY_CMAES Run Return And|CMAES Run Return And]]
+- [[_COMMUNITY_Projection Hash Active Parameters|Projection Hash Active Parameters]]
+- [[_COMMUNITY_CMA Checkpoint State External|CMA Checkpoint State External]]
+- [[_COMMUNITY_Mutation Crossover Int Uniform|Mutation Crossover Int Uniform]]
+- [[_COMMUNITY_Reproduce Population Float Bounds|Reproduce Population Float Bounds]]
+- [[_COMMUNITY_Checkpoint From Deserialise Payload|Checkpoint From Deserialise Payload]]
+- [[_COMMUNITY_Optimizer The Config For|Optimizer The Config For]]
+- [[_COMMUNITY_CMA Projection Task Penalty|CMA Projection Task Penalty]]
+- [[_COMMUNITY_Sphere Smoke Mixed Parallel|Sphere Smoke Mixed Parallel]]
+- [[_COMMUNITY_Checkpoint Envelope Return Stable|Checkpoint Envelope Return Stable]]
+- [[_COMMUNITY_Run Optimizer Child Seed|Run Optimizer Child Seed]]
+- [[_COMMUNITY_State Trial Pending Parameters|State Trial Pending Parameters]]
+- [[_COMMUNITY_Checkpoint Stable From Resume|Checkpoint Stable From Resume]]
+- [[_COMMUNITY_Value The Return Optimizer|Value The Return Optimizer]]
+- [[_COMMUNITY_Population Reproduce Genes And|Population Reproduce Genes And]]
+- [[_COMMUNITY_Surrogate Advisor Inverse Distance|Surrogate Advisor Inverse Distance]]
+- [[_COMMUNITY_Checkpoint Stable Ask Tell|Checkpoint Stable Ask Tell]]
+- [[_COMMUNITY_Append Event One Only|Append Event One Only]]
+- [[_COMMUNITY_Gene Values Repair Encode|Gene Values Repair Encode]]
+- [[_COMMUNITY_Restart Decision Population With|Restart Decision Population With]]
+- [[_COMMUNITY_Tournament Fitness Rank Indices|Tournament Fitness Rank Indices]]
+- [[_COMMUNITY_For Trial Evaluation Ask|For Trial Evaluation Ask]]
+- [[_COMMUNITY_Candidate Seed Metadata Lineage|Candidate Seed Metadata Lineage]]
+- [[_COMMUNITY_Hook Return For Runtime|Hook Return For Runtime]]
+- [[_COMMUNITY_Checkpoint Ask Tell Resume|Checkpoint Ask Tell Resume]]
+- [[_COMMUNITY_Fixture After Optimizer CMAES|Fixture After Optimizer CMAES]]
+- [[_COMMUNITY_Gene Stable Space This|Gene Stable Space This]]
+- [[_COMMUNITY_Strategy Population Internal Return|Strategy Population Internal Return]]
+- [[_COMMUNITY_Individual Len Float Binary|Individual Len Float Binary]]
+- [[_COMMUNITY_Trial Tell And Target|Trial Tell And Target]]
+- [[_COMMUNITY_Projected CMA Values Mean|Projected CMA Values Mean]]
+- [[_COMMUNITY_Jde Pending Checkpoint Strategy|Jde Pending Checkpoint Strategy]]
+- [[_COMMUNITY_For Batch Tell Ask|For Batch Tell Ask]]
+- [[_COMMUNITY_Checkpoint Stable Ask Tell|Checkpoint Stable Ask Tell]]
+- [[_COMMUNITY_Optimizer CMA Reproducibility Validate|Optimizer CMA Reproducibility Validate]]
+- [[_COMMUNITY_Warning When Error Raised|Warning When Error Raised]]
+- [[_COMMUNITY_Ask CMA Tell Resume|Ask CMA Tell Resume]]
+- [[_COMMUNITY_Selection Correct Rust Returns|Selection Correct Rust Returns]]
+- [[_COMMUNITY_Fixture After Trial Initial|Fixture After Trial Initial]]
+- [[_COMMUNITY_Context Custom Passed Operators|Context Custom Passed Operators]]
+- [[_COMMUNITY_Crossover Point Binary Bit|Crossover Point Binary Bit]]
+- [[_COMMUNITY_Mutation Crossover Gaussian Blend|Mutation Crossover Gaussian Blend]]
+- [[_COMMUNITY_Config Default Bool CMAES|Config Default Bool CMAES]]
+- [[_COMMUNITY_Archive Candidate 2026 Budget|Archive Candidate 2026 Budget]]
+- [[_COMMUNITY_Contract Design Gene Codec|Contract Design Gene Codec]]
+- [[_COMMUNITY_Candidate Solution Lifecycle Result|Candidate Solution Lifecycle Result]]
+- [[_COMMUNITY_Integer Constraint Projection Task|Integer Constraint Projection Task]]
+- [[_COMMUNITY_CMA Tell Batch Ask|CMA Tell Batch Ask]]
+- [[_COMMUNITY_Checkpoint Trial Rejects Restores|Checkpoint Trial Rejects Restores]]
+- [[_COMMUNITY_Evaluate Sequential Parallel For|Evaluate Sequential Parallel For]]
+- [[_COMMUNITY_Int Mutation Uniform Gaussian|Int Mutation Uniform Gaussian]]
+- [[_COMMUNITY_Generation Config Hash Append|Generation Config Hash Append]]
+- [[_COMMUNITY_Ask Tell CMA Archive|Ask Tell CMA Archive]]
+- [[_COMMUNITY_Exports Public Accessible From|Exports Public Accessible From]]
+- [[_COMMUNITY_Tell Next Evaluation Ask|Tell Next Evaluation Ask]]
+- [[_COMMUNITY_Generation Result Solution Callbacks|Generation Result Solution Callbacks]]
+- [[_COMMUNITY_From Trial Kernel Generate|From Trial Kernel Generate]]
+- [[_COMMUNITY_Evaluate Batch Parallel Sequential|Evaluate Batch Parallel Sequential]]
+- [[_COMMUNITY_Mixed Space Gene Numeric|Mixed Space Gene Numeric]]
+- [[_COMMUNITY_Constraint Projection Deterministic For|Constraint Projection Deterministic For]]
+- [[_COMMUNITY_Config Signature JSON This|Config Signature JSON This]]
+- [[_COMMUNITY_Generation JSON Export Dictionaries|Generation JSON Export Dictionaries]]
+- [[_COMMUNITY_State Warm Start External|State Warm Start External]]
+- [[_COMMUNITY_Candidate Batch CMA State|Candidate Batch CMA State]]
+- [[_COMMUNITY_State Batch For Return|State Batch For Return]]
+- [[_COMMUNITY_CMA Checkpoint Contract Compatibility|CMA Checkpoint Contract Compatibility]]
+- [[_COMMUNITY_CMAES State Start Warm|CMAES State Start Warm]]
+- [[_COMMUNITY_Run Multiple Evaluator Optimizer|Run Multiple Evaluator Optimizer]]
+- [[_COMMUNITY_Checkpoint Run Boundary Acceptance|Checkpoint Run Boundary Acceptance]]
+- [[_COMMUNITY_Strategy Contract Rust Proposal|Strategy Contract Rust Proposal]]
+- [[_COMMUNITY_State Warm Start External|State Warm Start External]]
+- [[_COMMUNITY_Generate Trials Best Gene|Generate Trials Best Gene]]
+- [[_COMMUNITY_Candidate Evaluation And Batch|Candidate Evaluation And Batch]]
+- [[_COMMUNITY_Kernel Adapter And Rust|Kernel Adapter And Rust]]
+- [[_COMMUNITY_Telemetry Contract Gene Space|Telemetry Contract Gene Space]]
+- [[_COMMUNITY_Warm Start Space External|Warm Start Space External]]
+- [[_COMMUNITY_Evaluation Context Evaluator Parallelism|Evaluation Context Evaluator Parallelism]]
+- [[_COMMUNITY_Codec Bool Operator CMA|Codec Bool Operator CMA]]
+- [[_COMMUNITY_Derive Seed Different Diverge|Derive Seed Different Diverge]]
+- [[_COMMUNITY_Parallel Boundary Part Rust|Parallel Boundary Part Rust]]
+- [[_COMMUNITY_Design Fixed Genes Two|Design Fixed Genes Two]]
+- [[_COMMUNITY_Event Export JSON Safe|Event Export JSON Safe]]
+- [[_COMMUNITY_Optimizer Run Multiple Child|Optimizer Run Multiple Child]]
+- [[_COMMUNITY_Evaluator Protocol Runtime Space|Evaluator Protocol Runtime Space]]
+- [[_COMMUNITY_Non Finite Logs Generation|Non Finite Logs Generation]]
+- [[_COMMUNITY_Generation The Persist Checkpoint|Generation The Persist Checkpoint]]
+- [[_COMMUNITY_Optimizer Return The Configuration|Optimizer Return The Configuration]]
+- [[_COMMUNITY_Telemetry Checkpoint Optimization From|Telemetry Checkpoint Optimization From]]
+- [[_COMMUNITY_Architecture Derive Seed Part|Architecture Derive Seed Part]]
+- [[_COMMUNITY_Install Release And Local|Install Release And Local]]
+- [[_COMMUNITY_Operator Fixed Genes Exact|Operator Fixed Genes Exact]]
+- [[_COMMUNITY_Design Batch Optimizer Domain|Design Batch Optimizer Domain]]
+- [[_COMMUNITY_Candidate Rank Top String|Candidate Rank Top String]]
+- [[_COMMUNITY_Rust Proposal Committed Return|Rust Proposal Committed Return]]
+- [[_COMMUNITY_Event History Checkpoint From|Event History Checkpoint From]]
+- [[_COMMUNITY_CMA Part Python Mirror|CMA Part Python Mirror]]
+- [[_COMMUNITY_Decode Rust Into Solution|Decode Rust Into Solution]]
+- [[_COMMUNITY_Expensive Black Box Optimization|Expensive Black Box Optimization]]
+- [[_COMMUNITY_Budget And Contract Stabilization|Budget And Contract Stabilization]]
+- [[_COMMUNITY_Config CMAES Signature Round|Config CMAES Signature Round]]
+- [[_COMMUNITY_Generation End Counting Callback|Generation End Counting Callback]]
+- [[_COMMUNITY_Version Manifest JSON Checkpoint|Version Manifest JSON Checkpoint]]
+- [[_COMMUNITY_Version Manifest JSON Checkpoint|Version Manifest JSON Checkpoint]]
+- [[_COMMUNITY_State Summary Return Stable|State Summary Return Stable]]
+- [[_COMMUNITY_Evaluation Semantics And Design|Evaluation Semantics And Design]]
+- [[_COMMUNITY_Optimizer Lifecycle Consolidation Specific|Optimizer Lifecycle Consolidation Specific]]
+- [[_COMMUNITY_Gene Kind All Variants|Gene Kind All Variants]]
+- [[_COMMUNITY_Run Optimization After The|Run Optimization After The]]
+- [[_COMMUNITY_Mixed Gene Space Evaluator|Mixed Gene Space Evaluator]]
+- [[_COMMUNITY_Onemax Binary One Max|Onemax Binary One Max]]
+- [[_COMMUNITY_Sphere Optimization Evaluator Evaluate|Sphere Optimization Evaluator Evaluate]]
+- [[_COMMUNITY_Validate Compatibility Optimizer Operator|Validate Compatibility Optimizer Operator]]
+- [[_COMMUNITY_Checkpoint Fixture Generation|Checkpoint Fixture Generation]]
+- [[_COMMUNITY_Signature Return JSON Safe|Signature Return JSON Safe]]
+- [[_COMMUNITY_Signature Return JSON Safe|Signature Return JSON Safe]]
+- [[_COMMUNITY_Signature Return The Stable|Signature Return The Stable]]
+- [[_COMMUNITY_Signature Return Stable JSON|Signature Return Stable JSON]]
+- [[_COMMUNITY_Production Hardening Design Typed|Production Hardening Design Typed]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `ConfigurationError` - 297 edges
-2. `GeneSpace` - 203 edges
-3. `GeneticAlgorithmOptimizer` - 172 edges
-4. `EvaluationRecord` - 171 edges
-5. `Gene` - 146 edges
-6. `FitnessError` - 141 edges
-7. `DifferentialEvolutionOptimizer` - 119 edges
-8. `CheckpointError` - 115 edges
-9. `Candidate` - 98 edges
-10. `CMAESOptimizer` - 92 edges
+2. `EvaluationRecord` - 240 edges
+3. `GeneSpace` - 203 edges
+4. `GeneticAlgorithmOptimizer` - 189 edges
+5. `Candidate` - 147 edges
+6. `Gene` - 146 edges
+7. `FitnessError` - 141 edges
+8. `WarmStartRecord` - 138 edges
+9. `DifferentialEvolutionOptimizer` - 129 edges
+10. `CMAESOptimizer` - 123 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `Ask/Tell` --semantically_similar_to--> `Ask/Tell`  [INFERRED] [semantically similar]
+  docs/superpowers/plans/2026-06-17-phase-2b-stop-policies.md → mkdocs.yml
 - `GeneSpace` --uses--> `CheckpointError`  [INFERRED]
   tests/unit/test_de_checkpointing.py → evocore/core/errors.py
-- `Local Quality Hooks` --semantically_similar_to--> `Continuous Integration Workflow`  [INFERRED] [semantically similar]
-  .pre-commit-config.yaml → .github/workflows/ci.yml
-- `vNext Optimizer Model` --semantically_similar_to--> `Ask Tell Optimizer Protocol`  [INFERRED] [semantically similar]
-  README.md → docs/site/ask-tell-engines.md
-- `GeneSpace Stable Signature` --semantically_similar_to--> `Seed Reproducibility`  [INFERRED] [semantically similar]
-  docs/site/gene-space.md → README.md
-- `DifferentialEvolutionOptimizer` --uses--> `ConfigurationError`  [INFERRED]
-  tests/unit/test_de_ask_tell.py → evocore/core/errors.py
+- `GeneSpace` --uses--> `OptimizationTelemetry`  [INFERRED]
+  tests/unit/test_external_state_core.py → evocore/lifecycle/telemetry.py
+- `Differential Evolution optimizer implementation.` --references--> `DE Reproducibility`  [EXTRACTED]
+  evocore/optimizers/de/__init__.py → docs/site/de.md
+- `Genetic algorithm optimizer.` --references--> `GA Configuration Identity`  [EXTRACTED]
+  evocore/optimizers/ga/__init__.py → docs/site/ga.md
 
 ## Import Cycles
 - 1-file cycle: `src/cmaes.rs -> src/cmaes.rs`
@@ -156,476 +188,559 @@
 - 1-file cycle: `src/reproduce.rs -> src/reproduce.rs`
 - 1-file cycle: `src/selection.rs -> src/selection.rs`
 
-## Hyperedges (group relationships)
-- **Optimizer Lifecycle Contract** — site_ask_tell_engines_optimizer_protocol, site_budget_aware_optimization_budgetpolicy, site_ga_geneticalgorithmoptimizer, site_de_differentialevolutionoptimizer, site_cmaes_cmaesoptimizer [INFERRED 0.85]
-- **Checkpoint Compatibility Surface** — site_callbacks_checkpointing_stable_checkpoints, site_callbacks_checkpointing_checkpoint_compatibility, site_ga_ga_checkpoint_resume, site_de_de_ask_tell_checkpointing, site_cmaes_rust_state_snapshots [EXTRACTED 1.00]
-- **Mixed Search Space Optimizers** — site_gene_space_genespace, site_ga_mixed_bool_spaces, site_de_differentialevolutionoptimizer, site_cmaes_cmaesoptimizer [INFERRED 0.85]
-- **v5 layered architecture pattern** — site_index_rust_native_python_optimization, plans_2026_04_23_evocore_v5_part1_plan_two_layer_architecture, plans_2026_04_23_evocore_v5_part5_plan_operator_codec_boundary [INFERRED 0.85]
-- **ask/tell lifecycle contract** — plans_2026_05_07_evocore_vnext_expensive_optimizer_ask_tell_engines, plans_2026_05_14_optimizer_lifecycle_protocols_structural_optimizer_protocol, site_quickstart_evaluation_context_stage [INFERRED 0.85]
-- **reproducibility audit contract** — site_optimizer_telemetry_optimizer_config_reproducibility, plans_2026_05_14_genespace_contract_canonical_signature_hash, plans_2026_05_14_result_history_telemetry_contract_reproducibility_metadata [INFERRED 0.95]
-- **Checkpoint Contract Progression** — plans_2026_05_19_checkpoint_resume_contract_checkpoint_snapshot_envelope, plans_2026_05_19_ask_tell_checkpoints_lifecycle_checkpoint_serialization, plans_2026_05_20_cmaes_rust_state_snapshots_cmaes_rust_state_snapshot, plans_2026_05_21_cmaes_ask_tell_checkpoints_cmaes_ask_tell_checkpoint, plans_2026_05_21_checkpoint_compatibility_golden_fixtures_checkpoint_golden_fixtures [INFERRED 0.85]
-- **DE Strategy And Kernel Pipeline** — plans_2026_06_03_de_strategy_contract_plan_de_strategy_contract, plans_2026_06_03_de_built_in_strategies_plan_de_built_in_strategies, plans_2026_06_03_de_jde_adaptation_plan_jde_adaptive_strategy, plans_2026_06_04_de_rust_kernel_migration_de_rust_kernel, plans_2026_06_05_de_rust_kernel_adapter_de_kernel_adapter, plans_2026_06_05_de_strategy_metadata_contract_de_strategy_metadata_contract [INFERRED 0.95]
-- **Lifecycle Boundary Stabilization** — plans_2026_05_15_objective_evaluation_semantics_objective_semantics_contract, plans_2026_05_15_budget_termination_contract_max_evaluations_budget, plans_2026_05_19_candidate_solution_boundary_candidate_solution_boundary, plans_2026_05_19_candidate_solution_boundary_genespace_value_hashing, plans_2026_06_05_optimizer_lifecycle_helper_consolidation_lifecycle_ask_tell_helpers [INFERRED 0.85]
-- **chunk04_hyperedge_protocol_lifecycle** — specs_2026_05_13_optimizer_lifecycle_protocols_design_optimizer_protocol, specs_2026_05_13_optimizer_lifecycle_protocols_design_evaluation_record, specs_2026_05_09_vnext_explicit_batch_tokens_design_batch_ledger [INFERRED 0.95]
-- **chunk04_hyperedge_reproducibility_identity** — specs_2026_05_14_genespace_contract_design_canonical_genespace_signature, specs_2026_05_18_optimizer_configuration_contract_design_optimizer_config_hash, specs_2026_05_19_candidate_solution_boundary_design_genespace_value_hash [INFERRED 0.95]
-- **chunk04_hyperedge_checkpoint_resume_state** — specs_2026_05_19_checkpoint_resume_contract_design_stable_checkpoint_envelope, specs_2026_05_19_ask_tell_checkpoints_design_ga_ask_tell_checkpoint_payload, specs_2026_05_14_result_history_telemetry_contract_design_event_history [INFERRED 0.95]
-- **CMA-ES Checkpoint Continuation Surface** — specs_2026_05_20_cmaes_ask_tell_checkpoints_design_cmaes_ask_tell_checkpoints, specs_2026_05_20_cmaes_ask_tell_checkpoints_design_cmaes_checkpoint_payload, specs_2026_05_20_cmaes_rust_state_snapshots_design_pycmaesstate_snapshot_schema_v1, specs_2026_05_20_cmaes_ask_tell_checkpoints_design_cmaes_restore_contract, specs_2026_05_20_cmaes_ask_tell_checkpoints_design_cmaes_determinism_contract [EXTRACTED 1.00]
-- **DE Optimizer Evolution Roadmap** — specs_2026_05_21_differential_evolution_optimizer_design_differentialevolutionoptimizer, specs_2026_06_02_differential_evolution_stabilization_design_de_stabilization, specs_2026_06_02_differential_evolution_feature_parity_design_de_feature_parity_sprint, specs_2026_06_03_differential_evolution_strategy_adaptation_design_de_strategy_contract, specs_2026_06_04_de_rust_kernel_migration_design_de_rust_proposal_kernel [INFERRED 0.95]
-- **Search-Space Codec Parity Layer** — specs_2026_05_21_ga_mixed_bool_design_operator_codec_bool_boundary, specs_2026_06_05_search_space_codec_contract_design_neutral_codec_helpers, specs_2026_06_05_rust_gene_codec_parity_design_encoded_value_repair_semantics, specs_2026_06_05_de_rust_kernel_adapter_design_trialproposal_adapter_boundary [INFERRED 0.95]
+## Communities (157 total, 14 thin omitted)
 
-## Communities (125 total, 7 thin omitted)
+### Community 0 - "Gene Space Return The"
+Cohesion: 0.03
+Nodes (87): _cmaes_space(), canonical_json_hash(), Return a SHA-256 hash over canonical compact JSON., test_gene_space_hash_is_stable_for_equivalent_flat_spaces(), test_gene_space_value_hash_is_stable_for_equivalent_values(), test_individual_clone_preserves_genes_and_metadata(), test_named_params_match_gene_order(), test_operator_decode_restores_named_params() (+79 more)
 
-### Community 0 - "Genetic Algorithm Operators"
-Cohesion: 0.05
-Nodes (75): BoundsPolicy, ConfigurationWarning, Warning emitted for valid but likely unintended configuration., Any, Callback, Candidate, CrossoverOperator, Direction (+67 more)
+### Community 1 - "External State Candidate Candidates"
+Cohesion: 0.07
+Nodes (69): CMAESExternalStateMixin, Track externally supplied CMA-ES candidates without mutating covariance state., External-state integration API for CMAESOptimizer., Return CMA-ES external-state support flags., DifferentialEvolutionExternalStateMixin, Return top-k detached DE candidate snapshots., Initialize or track DE state from scored external candidates., Inject proposed or tracked candidates into the DE lifecycle. (+61 more)
 
-### Community 1 - "Differential Evolution jDE Adaptation"
-Cohesion: 0.05
-Nodes (67): AcceptanceDecision, JDEAdaptiveState, JDETrialParameters, Return committed per-slot values for Rust jDE proposal generation., Per-trial jDE parameters attached to one pending trial candidate., Return a JSON-safe checkpoint representation., Checkpointable jDE per-slot parameter state., Create initial per-slot state from constructor defaults. (+59 more)
+### Community 2 - "Stop Policy And The"
+Cohesion: 0.04
+Nodes (71): ScoreObservation, Direction, OptimizationTelemetry, PopulationSnapshot, UpdateResult, Any, Candidate, GeneSpace (+63 more)
 
-### Community 2 - "CMA-ES New"
+### Community 3 - "Gene Operator Return Crossover"
+Cohesion: 0.03
+Nodes (69): GeneSpace, GeneValue, GeneSpaceProfile, apply_bounds_policy(), custom_crossover_operator(), custom_mutation_operator(), custom_selection_operator(), _custom_signature_payload() (+61 more)
+
+### Community 4 - "Optimizer Candidate State Return"
+Cohesion: 0.07
+Nodes (76): CandidateOrigin, CandidateBatch, EvaluationContext, EvaluationStage, OptimizationTelemetry, Any, CandidateOrigin, Candidate (+68 more)
+
+### Community 5 - "Snapshot New Ask Tell"
 Cohesion: 0.06
 Nodes (61): Cell, CMAESEigenCacheSnapshot, CMAESStateSnapshotPayload, DMatrix, DVector, PyType, RefCell, Result (+53 more)
 
-### Community 3 - "Differential Evolution Checkpointing"
-Cohesion: 0.07
-Nodes (76): PathLike, load_checkpoint(), Load and validate a stable checkpoint JSON file., Any, CMAESOptimizer, DifferentialEvolutionOptimizer, EvaluationRecord, GeneSpace (+68 more)
-
-### Community 4 - "Differential Evolution Genetic Algorithm"
-Cohesion: 0.07
-Nodes (55): build_cmaes_config(), cmaes_reproducibility_status(), cmaes_runtime_hooks(), _CMAESOptimizerLike, CMA-ES optimizer configuration helpers., Build the canonical CMA-ES optimizer config., Return runtime hook signatures for a CMA-ES optimizer., Return reproducibility status and notes for a CMA-ES optimizer. (+47 more)
-
-### Community 5 - "Progress Base Stopping"
+### Community 6 - "Gene Crossover Jde Mutation"
 Cohesion: 0.06
-Nodes (41): Callback, GenerationInfo, Callback base types and generation metadata., Expose per-generation metadata to callbacks., Define lifecycle hooks for optimization runs., Receive run context before optimization starts., Run before one generation starts., Run after one generation completes. (+33 more)
+Nodes (78): PyModule, RecipeSlots, assert_valid_genes(), best_slot(), bounds(), build_trial_genes(), comparison_score(), de_best1bin_uses_best_as_base() (+70 more)
 
-### Community 6 - "Differential Evolution Budget Scheduler"
-Cohesion: 0.07
-Nodes (41): DeceptiveSphere, test_vnext_multifidelity_benchmark_smoke(), EvaluationStage, BudgetPolicy, Candidate, main(), Budget-aware Differential Evolution example., TwoStageSphere (+33 more)
+### Community 7 - "Run The Generation Optimization"
+Cohesion: 0.04
+Nodes (59): Any, GenerationHistory, Store ordered `GenerationRecord` records with export helpers., Return the best score value from each generation., Return the number of non-finite score values per generation., OptimizationBatchResult, OptimizationResult, Completed optimization result envelopes. (+51 more)
 
-### Community 7 - "CMA-ES Engine"
+### Community 8 - "Evaluate Pool Process Optimizer"
 Cohesion: 0.06
-Nodes (42): CMAESOptimizer, Return the current CMA generation., Return a stable read-only vNext state summary., Validate optimizer and gene-space compatibility., Run covariance matrix adaptation evolution strategy optimization.      Args:, test_cmaes_rosenbrock_smoke(), test_cmaes_config_signature_round_trips_through_json(), test_cmaes_initial_sigma_change_alters_hash() (+34 more)
+Nodes (42): BudgetScheduler, ProcessParallel, Python parallel evaluation helpers and pickle validation., Evaluate individuals in a thread pool., Evaluate a SolutionSet with a thread pool., Evaluate individuals in a spawn-based process pool., Shut down the persistent process pool., Evaluate a SolutionSet with a process pool. (+34 more)
 
-### Community 8 - "Telemetry Lifecycle Evaluation"
-Cohesion: 0.05
-Nodes (40): Any, Candidate, GeneSpace, SphereEvaluator, EvaluationRecord, Record one evaluator result returned to an ask/tell engine., OptimizationTelemetry, Aggregate vNext optimizer budget and trial accounting. (+32 more)
+### Community 9 - "CMA For Integer Generation"
+Cohesion: 0.06
+Nodes (49): CMAESAskTellMixin, Ask/tell lifecycle helpers for CMA-ES., Convert generation GenerationHistory entries into generation events., Run one CMA-ES optimization.          Args:             objective_fn: Callabl, _validate_integer_strategy_config(), CategoricalDistributionState, IntegerMarginDistribution, Mixed-variable CMA foundations for vNext. (+41 more)
 
-### Community 9 - "Differential Evolution Engine"
+### Community 10 - "Checkpoint Fixture Load Manifest"
 Cohesion: 0.08
-Nodes (31): BudgetScheduler, ProcessParallel, Evaluate individuals in a spawn-based process pool., Shut down the persistent process pool., _evaluate_one_candidate(), Resolve explicit or constructor shorthand budget settings., Reject incomplete or mismatched synchronous evaluator results., Run one synchronous policy-driven DE optimization. (+23 more)
+Nodes (72): load_checkpoint(), Load and validate a stable checkpoint JSON file., Any, CMAESOptimizer, DifferentialEvolutionOptimizer, EvaluationRecord, GeneticAlgorithmOptimizer, Path (+64 more)
 
-### Community 10 - "Lifecycle Event History Checkpointing"
+### Community 11 - "Return Tell Configuration Optimizer"
+Cohesion: 0.05
+Nodes (55): GeneticAlgorithmOptimizer, Return a stable read-only vNext state summary., Return the public optimizer configuration object., Return the canonical JSON-safe optimizer configuration signature., Return the stable hash for this optimizer configuration., Return public serializable GA constructor configuration., Run deterministic genetic algorithm optimization over a gene space.      Args:, GeneticAlgorithmCheckpointingMixin (+47 more)
+
+### Community 12 - "Generation Callback The Progress"
+Cohesion: 0.06
+Nodes (45): Callback, Callback, GenerationInfo, Callback base types and generation metadata., Expose per-generation metadata to callbacks., Define lifecycle hooks for optimization runs., Receive run context before optimization starts., Run before one generation starts. (+37 more)
+
+### Community 13 - "Stage Policy Next Budget"
+Cohesion: 0.06
+Nodes (42): DeceptiveSphere, test_vnext_multifidelity_benchmark_smoke(), EvaluationStage, BudgetPolicy, Candidate, main(), Budget-aware Differential Evolution example., TwoStageSphere (+34 more)
+
+### Community 14 - "Operator Signature And Generation"
+Cohesion: 0.11
+Nodes (46): BoundsPolicy, ConfigurationWarning, Warning emitted for valid but likely unintended configuration., CrossoverOperator, OptimizerConfig, Any, Callback, Candidate (+38 more)
+
+### Community 15 - "Archive Candidate Snapshot Direction"
 Cohesion: 0.07
-Nodes (37): EvaluationConfidence, EventRecord, Candidate, CandidateBatch, EvaluationRecord, EventHistory, OptimizationTelemetry, Any (+29 more)
+Nodes (40): DuplicatePolicy, CandidateSnapshot, Direction, EvaluationConfidence, WarmStartRecord, ArchiveEntry, ArchiveExport, ArchivePolicy (+32 more)
 
-### Community 11 - "Differential Evolution Plans"
+### Community 16 - "Contract Optimizer Rust Checkpoint"
 Cohesion: 0.06
 Nodes (52): Budget Termination Contract Implementation Plan, max_evaluations Budget Naming, Final run_stop Events, Cached Observations Budget Semantics, Objective Evaluation Semantics Implementation Plan, Objective Evaluation Semantics Contract, Operator Contract Implementation Plan, Typed GA Operator Contract (+44 more)
 
-### Community 12 - "Operators Contract Optimizers"
-Cohesion: 0.06
-Nodes (33): GeneKind, GeneSpace, GeneSpaceProfile, gene_space_domain(), gene_space_profile(), Return the flat GA profile implied by a gene space., Return the GA operator domain implied by a gene space., Raise when an operator is incompatible with a gene space. (+25 more)
+### Community 17 - "Run Evaluator Policy Evaluate"
+Cohesion: 0.09
+Nodes (39): DifferentialEvolutionOptimizer, Run Differential Evolution over a flat EvoCore GeneSpace., DifferentialEvolutionCheckpointingMixin, DifferentialEvolutionMultiRunMixin, GeneSpace, CachedCheapEvaluator, CachedFinalEvaluator, HalfPromotionEvaluator (+31 more)
 
-### Community 13 - "Differential Evolution Genetic Algorithm"
-Cohesion: 0.08
-Nodes (48): Branch Commit Pull Request Workflow, Domain-Oriented Package Architecture, EvoCore Project Shape, Verification Workflow, Release 0.10.0 Differential Evolution, Release 0.8.0 Lifecycle Contracts, Release 1.0.0, GA Parity Evidence (+40 more)
-
-### Community 14 - "Differential Evolution Lifecycle"
-Cohesion: 0.12
-Nodes (39): FitnessError, Raised when an objective function fails or returns an invalid type., Differential Evolution optimizer engine., Candidate, CandidateBatch, Direction, EvaluationContext, EvaluationRecord (+31 more)
-
-### Community 15 - "CMA-ES Generation Loop"
-Cohesion: 0.07
-Nodes (29): CMA-ES engine backed by Rust covariance state., Any, GenerationHistory, GenerationRecord, Run GenerationHistory data structures and reporting helpers., Capture per-generation statistics from an optimization engine., Export this generation summary as a JSON-safe dictionary., Store ordered `GenerationRecord` records with export helpers. (+21 more)
-
-### Community 16 - "CMA-ES Search Space"
-Cohesion: 0.06
-Nodes (31): test_operator_decode_restores_named_params(), OperatorCodec, Return the Rust-facing gene kind strings., Return the Rust-facing floating-point bounds., Return per-gene absolute mutation sigmas for Rust operators., Validate operators and translate values across the PyO3 boundary., GeneSpace, Return the number of genes in the space. (+23 more)
-
-### Community 17 - "Differential Evolution jDE Adaptation"
-Cohesion: 0.13
-Nodes (45): RecipeSlots, assert_valid_genes(), best_slot(), bounds(), build_trial_genes(), comparison_score(), de_best1bin_uses_best_as_base(), de_current_to_best_uses_target_as_base() (+37 more)
-
-### Community 18 - "Genetic Algorithm Engine"
-Cohesion: 0.08
-Nodes (41): GeneticAlgorithmOptimizer, Run deterministic genetic algorithm optimization over a gene space.      Args:, custom_selection_operator(), Wrap a custom selection implementation as a public selection operator., _ga_mixed_bool_space(), ModuleMinimizeSphereEvaluator, ModuleSphereEvaluator, Callbacks are supported on the _run_from_population path, not the vNext run() pa (+33 more)
-
-### Community 19 - "Genetic Algorithm Operators"
-Cohesion: 0.07
-Nodes (31): Solution, GeneValue, apply_bounds_policy(), CrossoverContext, custom_crossover_operator(), custom_mutation_operator(), _custom_signature_payload(), CustomCrossoverProtocol (+23 more)
-
-### Community 20 - "CMA-ES Engine"
+### Community 18 - "Candidates Candidate Select Selected"
 Cohesion: 0.10
-Nodes (27): CMAESAskTellMixin, Ask/tell lifecycle helpers for CMA-ES., Return the public optimizer configuration object., Return the canonical JSON-safe optimizer configuration signature., Return the stable hash for this optimizer configuration., Return public serializable CMA constructor configuration., Return deterministic reproducibility metadata for this engine., Convert generation GenerationHistory entries into generation events. (+19 more)
+Nodes (41): DuplicateSelectionPolicy, CandidateSnapshot, Direction, EvaluationConfidence, WarmStartRecord, Ask/tell lifecycle contracts shared by EvoCore optimizers., vNext candidate, evaluation, and telemetry primitives., Return a comparison score where larger is always better. (+33 more)
 
-### Community 21 - "Search Space Individual Accessible"
+### Community 19 - "External State Task CMA"
+Cohesion: 0.05
+Nodes (49): Cma, Archive, Checkpoint, Cma, DE Semantics, Dependency, Phase 1 DE External State API Implementation Plan, External State (+41 more)
+
+### Community 20 - "CMA Goals Checkpoint Candidate"
+Cohesion: 0.05
+Nodes (48): Ask/Tell, Budget, Checkpoint, Cma, Cma Es, Mkdocs, Candidate, Checkpoint (+40 more)
+
+### Community 21 - "Optimizer Ask Tell Release"
+Cohesion: 0.09
+Nodes (46): Branch Commit Pull Request Workflow, Domain-Oriented Package Architecture, EvoCore Project Shape, Verification Workflow, Release 0.10.0 Differential Evolution, Release 0.8.0 Lifecycle Contracts, Release 1.0.0, Differential Evolution optimizer implementation. (+38 more)
+
+### Community 22 - "Candidate For One Snapshot"
+Cohesion: 0.11
+Nodes (40): CacheLookup, Candidate, Direction, EvaluationConfidence, EvaluationRecord, GeneSpace, GeneValue, OptimizationTelemetry (+32 more)
+
+### Community 23 - "Solution Return The Set"
 Cohesion: 0.07
-Nodes (19): Any, Python-side solution and solution-set containers., Return per-value diversity as SolutionSet standard deviation., Convert the solution set into a pandas DataFrame., Represent a decoded optimization candidate and its metadata., Return named parameters attached to this solution, if available., Return a shallow clone of the solution state., Wrap a sequence of solutions with summary helpers. (+11 more)
+Nodes (22): Any, Python-side solution and solution-set containers., Return per-value diversity as SolutionSet standard deviation., Convert the solution set into a pandas DataFrame., Represent a decoded optimization candidate and its metadata., Return named parameters attached to this solution, if available., Return a shallow clone of the solution state., Wrap a sequence of solutions with summary helpers. (+14 more)
 
-### Community 22 - "CMA-ES Samples"
+### Community 24 - "Samples Cmaesstate Correct Dict"
 Cohesion: 0.09
 Nodes (11): PyCMAESState, make_state(), neg_sphere(), Smoke tests for PyCMAESState exposed via PyO3.  Focus:   - Correct shapes (la, TestAskDeterminism, TestAskShape, TestConvergence, TestIntegerGeneWorkflow (+3 more)
 
-### Community 23 - "Search Space Examples Bounds"
-Cohesion: 0.07
-Nodes (28): MixedEvaluator, OneMaxEvaluator, Gene, Return the ordered gene definitions., Describe one named optimization gene.      Args:         name: Unique gene na, Return whether this gene is a fixed numeric value., Create an unnamed float gene space with shared bounds.          Args:, test_bool_genes_are_not_fixed_in_this_iteration() (+20 more)
+### Community 25 - "CMA Budget Warm Candidate"
+Cohesion: 0.06
+Nodes (42): Cma Es, Warm Start, External State, Budget, Budget, Budget, Candidate Solution Boundary, Cma (+34 more)
 
-### Community 24 - "Differential Evolution Engine"
-Cohesion: 0.11
-Nodes (29): DifferentialEvolutionOptimizer, Return a stable read-only DE state summary., Validate optimizer and gene-space compatibility., Run Differential Evolution over a flat EvoCore GeneSpace., GeneSpace, MinimizeSphereEvaluator, MissingRecordEvaluator, _space() (+21 more)
+### Community 26 - "Task Checkpoint Archive Candidate"
+Cohesion: 0.05
+Nodes (41): Archive, Checkpoint, Archive, Candidate, Checkpoint, Dependency, Phase 2B Stop Policies Implementation Plan, File Structure (+33 more)
 
-### Community 25 - "Genetic Algorithm Hook"
+### Community 27 - "Parameter Projection Repair For"
+Cohesion: 0.15
+Nodes (31): Top-level evocore package exports., ConstraintViolation, GeneSpace, GeneValue, ParameterRepair, ParameterTransform, ParameterValidator, Protocol (+23 more)
+
+### Community 28 - "CMAES Run Return And"
 Cohesion: 0.08
-Nodes (34): Callback, MetricsLogger, Append per-generation metrics to a JSON Lines file., Callback, ReproducibilityStatus, callback_hook_signature(), Shared optimizer configuration export helpers., Return reproducibility status and notes derived from hook signatures. (+26 more)
+Nodes (25): CMAESOptimizer, Return the current CMA generation., Return a stable read-only vNext state summary., Run covariance matrix adaptation evolution strategy optimization.      Args:, CMAESCheckpointingMixin, test_cmaes_rosenbrock_smoke(), test_apply_bounds_and_round_for_int_genes(), test_cma_generation_loop_result_attaches_history_and_reproducibility() (+17 more)
 
-### Community 26 - "Lib Codec Crossover"
+### Community 29 - "Projection Hash Active Parameters"
 Cohesion: 0.10
-Nodes (33): PyModule, parse_gene_kind(), parse_gene_kinds(), repair_encoded_value(), repair_encoded_values(), GeneKind, PyResult, String (+25 more)
+Nodes (21): test_inactive_hash_invariance(), test_projection_round_trip_active_values(), ActiveGeneProjection, _hook_checkpointable(), _hook_signatures(), _json_mapping(), Encode a domain parameter mapping into optimizer-native coordinates., Decode optimizer-native coordinates into canonical domain parameters. (+13 more)
 
-### Community 27 - "Genetic Algorithm Ask Tell"
-Cohesion: 0.10
-Nodes (31): GeneSpace, DroppingEvaluator, _mixed_bool_space(), OneCachedThenFreshEvaluator, _space(), SphereEvaluator, test_ga_ask_assigns_stable_batch_id_per_batch(), test_ga_ask_populates_unique_candidate_hash_telemetry() (+23 more)
+### Community 30 - "CMA Checkpoint State External"
+Cohesion: 0.06
+Nodes (37): Checkpoint, Mixed-variable CMA foundations, Archive, Candidate, Checkpoint, CMA-ES Semantics, Cma Es, Dependency (+29 more)
 
-### Community 28 - "Operators Mutation Crossover"
+### Community 31 - "Mutation Crossover Int Uniform"
 Cohesion: 0.06
 Nodes (5): Smoke tests for the Rust operator functions exposed via PyO3. These tests verif, TestBinaryOperators, TestFloatOperators, TestIntegerOperators, TestOperatorDeterminism
 
-### Community 29 - "Lifecycle Conversion Score"
-Cohesion: 0.11
-Nodes (27): CandidateOrigin, Any, Candidate, Direction, GeneSpace, Solution, GeneSpace, candidate_to_solution() (+19 more)
-
-### Community 30 - "Reproduce Population Bounds"
+### Community 32 - "Reproduce Population Float Bounds"
 Cohesion: 0.15
 Nodes (34): apply_crossover(), apply_mutation(), clamp_and_round(), CrossoverType, float_bounds(), float_kinds(), init_population(), make_float_config() (+26 more)
 
-### Community 31 - "Genetic Algorithm Rng"
+### Community 33 - "Checkpoint From Deserialise Payload"
+Cohesion: 0.18
+Nodes (33): CheckpointError, Raised when a checkpoint file is missing, corrupt, or incompatible., Any, Candidate, CandidateBatch, EvaluationRecord, batch_from_checkpoint(), candidate_from_checkpoint() (+25 more)
+
+### Community 34 - "Optimizer The Config For"
+Cohesion: 0.11
+Nodes (27): package_version(), Return the installed EvoCore version or the local source fallback., build_de_config(), de_reproducibility_status(), de_runtime_hooks(), _DEOptimizerLike, Differential Evolution optimizer configuration helpers., Build the canonical Differential Evolution optimizer config. (+19 more)
+
+### Community 35 - "CMA Projection Task Penalty"
+Cohesion: 0.06
+Nodes (33): Cma, Cma, Projection, Cma, Penalty, Projection, Cma, Dependency (+25 more)
+
+### Community 36 - "Sphere Smoke Mixed Parallel"
 Cohesion: 0.09
 Nodes (13): test_evocore_ga_wall_time_smoke(), test_run_multiple_parallel_scaling_smoke(), test_binary_onemax_smoke(), test_mixed_bool_gene_space_runs_with_default_operators(), test_mixed_gene_space_keeps_ints_typed(), test_ga_rastrigin_smoke(), test_ga_sphere_converges_smoke(), IndividualEvaluator (+5 more)
 
-### Community 32 - "Differential Evolution Checkpointing"
-Cohesion: 0.11
-Nodes (26): Return a stable CMA-ES ask/tell runtime checkpoint snapshot., json_safe(), Return a JSON-safe representation with deterministic container ordering., Serialize known adaptive strategy state for checkpoints., strategy_state_to_checkpoint(), Return a stable DE ask/tell runtime checkpoint snapshot., batch_to_checkpoint(), candidate_to_checkpoint() (+18 more)
-
-### Community 33 - "Lifecycle Checkpointing Deserialise"
-Cohesion: 0.21
-Nodes (30): CheckpointError, Raised when a checkpoint file is missing, corrupt, or incompatible., Any, batch_from_checkpoint(), candidate_from_checkpoint(), _cost_mapping(), _counter_mapping(), evaluation_record_from_checkpoint() (+22 more)
-
-### Community 34 - "Genetic Algorithm Checkpointing"
+### Community 37 - "Checkpoint Envelope Return Stable"
 Cohesion: 0.12
-Nodes (19): Any, CheckpointSnapshot, OptimizationResult, PathLike, Solution, GeneticAlgorithmCheckpointingMixin, Load a stable checkpoint file., Save a stable checkpoint file. (+11 more)
+Nodes (26): json_safe(), Return a JSON-safe representation with deterministic container ordering., Any, Direction, Path, PathLike, _available_checkpoints(), CheckpointSnapshot (+18 more)
 
-### Community 35 - "Reproduce Testreproducepopulation Population"
+### Community 38 - "Run Optimizer Child Seed"
+Cohesion: 0.11
+Nodes (20): ensure_picklable(), Raise a configuration error if an object is not picklable., _ChildOptimizer, Run one child optimizer with a derived seed for process-pool execution., Run multiple deterministic child DE runs from derived seeds., run_child_optimizer(), DifferentialEvolutionOptimizer, Evaluator (+12 more)
+
+### Community 39 - "State Trial Pending Parameters"
+Cohesion: 0.10
+Nodes (22): _float_list(), initial_strategy_state(), JDEAdaptiveState, JDETrialParameters, Restore and validate jDE state from a checkpoint payload., Per-trial jDE parameters attached to one pending trial candidate., Create strategy state for adaptive DE strategies., Return a JSON-safe checkpoint representation. (+14 more)
+
+### Community 40 - "Checkpoint Stable From Resume"
+Cohesion: 0.13
+Nodes (18): Any, CheckpointSnapshot, OptimizationResult, PathLike, Solution, GeneticAlgorithmCheckpointingMixin, Load a stable checkpoint file., Save a stable checkpoint file. (+10 more)
+
+### Community 41 - "Value The Return Optimizer"
+Cohesion: 0.07
+Nodes (17): GeneValue, ExponentialIntegerTransform, OutputNameTransform, Portable parameter transforms for projection-aware workflows., Return the stable exponential-integer transform signature., Carry a stable output-name annotation while leaving values unchanged., Return the value unchanged while preserving output-name metadata., Encode the value using identity semantics. (+9 more)
+
+### Community 42 - "Population Reproduce Genes And"
 Cohesion: 0.11
 Nodes (5): make_float_pop(), Smoke tests for init_population and reproduce_population via PyO3. Focus: corre, run_reproduce(), TestInitPopulation, TestReproducePopulation
 
-### Community 36 - "Lifecycle Protocols Telemetry"
-Cohesion: 0.11
-Nodes (21): Candidate, EvaluationContext, EvaluationRecord, OptimizerStateSummary, UpdateResult, Optimizer, Structural protocols for EvoCore optimizer lifecycle APIs., Structural protocol implemented by ask/tell optimizers. (+13 more)
-
-### Community 37 - "Genetic Algorithm Run"
-Cohesion: 0.08
-Nodes (21): Any, OptimizationBatchResult, Return the top `n` runs sorted by best score., Return summary statistics across best score values., Export aggregate optimization results as a stable JSON-safe dictionary., Export aggregate optimization results as deterministic JSON., Return one pandas DataFrame row per child run., Export this optimization result as a stable JSON-safe dictionary. (+13 more)
-
-### Community 38 - "Differential Evolution Hash"
-Cohesion: 0.10
-Nodes (17): Differential Evolution optimizer implementation., Top-level evocore package exports., Any, config_hash(), ConfigurableComponent, OptimizerConfig, Protocol for custom algorithm components with stable config identity., Return a JSON-safe canonical component signature. (+9 more)
-
-### Community 39 - "Surrogate Inverse Distance"
+### Community 43 - "Surrogate Advisor Inverse Distance"
 Cohesion: 0.13
-Nodes (17): Candidate, EvaluationRecord, GeneSpace, GeneValue, Surrogate package exports., InverseDistanceAdvisor, Inverse-distance surrogate advisor., Pure-Python inverse-distance baseline surrogate advisor. (+9 more)
+Nodes (18): Candidate, EvaluationRecord, GeneSpace, GeneValue, Surrogate package exports., InverseDistanceAdvisor, Inverse-distance surrogate advisor., Pure-Python inverse-distance baseline surrogate advisor. (+10 more)
 
-### Community 40 - "Genetic Algorithm Ask Tell"
+### Community 44 - "Checkpoint Stable Ask Tell"
+Cohesion: 0.14
+Nodes (20): Serialize known adaptive strategy state for checkpoints., strategy_state_to_checkpoint(), DifferentialEvolutionCheckpointingMixin, Resume DE ask/tell runtime state from a stable checkpoint., Stable checkpoint helpers for DE ask/tell workflows., Load a stable checkpoint file., Write a stable checkpoint file., Return a stable DE ask/tell runtime checkpoint snapshot. (+12 more)
+
+### Community 45 - "Append Event One Only"
+Cohesion: 0.13
+Nodes (21): EvaluationConfidence, EventRecord, EventHistory, GeneSpace, StopReason, append_candidate_ask_events(), Append one ask event for each proposed candidate., append_run_stop_event() (+13 more)
+
+### Community 46 - "Gene Values Repair Encode"
 Cohesion: 0.15
-Nodes (27): EvaluationRecord, GeneticAlgorithmOptimizer, _ga(), _mixed_ga(), _record(), _records_for(), test_batch_checkpoint_rejects_record_for_candidate_outside_batch(), test_batch_checkpoint_round_trip_preserves_candidate_order_records_and_consumed() (+19 more)
+Nodes (22): GeneSpace, GeneValue, decode_gene_values(), encode_gene_values(), Operator encoding and validation helpers., Encode Python values into the float vector used by Rust., Encode a SolutionSet of solutions for Rust calls., Repair one decoded or encoded value according to a gene definition. (+14 more)
 
-### Community 41 - "Genetic Algorithm Generate"
-Cohesion: 0.20
-Nodes (26): _cmaes_after_ask_fixture(), _cmaes_after_consumed_batch_fixture(), _cmaes_optimizer(), _cmaes_space(), _entry(), _first_batch_payload(), _fixture_payload(), _ga_after_ask_fixture() (+18 more)
+### Community 47 - "Restart Decision Population With"
+Cohesion: 0.13
+Nodes (18): CMAESRestartDecision, create_cmaes_restart(), FixedCMAESRestartPolicy, IPOPCMAESRestartPolicy, Restart planning helpers for CMA-ES optimizers., Return a restart decision with IPOP population growth., Create a fresh CMA-ES optimizer from a restart decision., Describe one planned fresh CMA-ES restart. (+10 more)
 
-### Community 42 - "Properties Operators Contract"
+### Community 48 - "Tournament Fitness Rank Indices"
+Cohesion: 0.16
+Nodes (23): pick_weighted_index(), rank_selection(), roulette_selection(), StdRng, Vec, safe_fitness(), sample_fitnesses(), test_rank_all_indices_in_range() (+15 more)
+
+### Community 49 - "For Trial Evaluation Ask"
+Cohesion: 0.19
+Nodes (9): AcceptanceDecision, DifferentialEvolutionAskTellMixin, Return initialization or trial candidates for external evaluation., Apply evaluation records and return a DE update summary., Ask/tell lifecycle helpers for Differential Evolution., AcceptanceDecision, Candidate, CandidateBatch (+1 more)
+
+### Community 50 - "Candidate Seed Metadata Lineage"
+Cohesion: 0.16
+Nodes (23): Candidate, CandidateSnapshot, EvaluationConfidence, EvaluationRecord, GeneSpace, derive_child_seed(), inner_result_record(), _json_metadata() (+15 more)
+
+### Community 51 - "Hook Return For Runtime"
+Cohesion: 0.15
+Nodes (23): Callback, ReproducibilityStatus, ReproducibilityStatus, RuntimeHookSignature, ga_reproducibility_status(), ga_runtime_hooks(), _GAOptimizerLike, operator_runtime_hook_signatures() (+15 more)
+
+### Community 52 - "Checkpoint Ask Tell Resume"
+Cohesion: 0.17
+Nodes (25): EvaluationRecord, GeneticAlgorithmOptimizer, _ga(), _mixed_ga(), _record(), _records_for(), test_batch_checkpoint_rejects_record_for_candidate_outside_batch(), test_batch_checkpoint_round_trip_preserves_candidate_order_records_and_consumed() (+17 more)
+
+### Community 53 - "Fixture After Optimizer CMAES"
+Cohesion: 0.23
+Nodes (24): _cmaes_after_ask_fixture(), _cmaes_after_consumed_batch_fixture(), _cmaes_optimizer(), _entry(), _first_batch_payload(), _fixture_payload(), _ga_after_ask_fixture(), _ga_after_partial_tell_fixture() (+16 more)
+
+### Community 54 - "Gene Stable Space This"
 Cohesion: 0.10
-Nodes (17): Private helpers for stable public export payloads., Dump a JSON-safe payload with deterministic key ordering., stable_json_dumps(), test_gene_space_hash_is_stable_for_equivalent_flat_spaces(), test_gene_space_value_hash_is_stable_for_equivalent_values(), test_gene_space_value_signature_json_round_trips(), test_individual_clone_preserves_genes_and_metadata(), test_named_params_match_gene_order() (+9 more)
+Nodes (16): Private helpers for stable public export payloads., Dump a JSON-safe payload with deterministic key ordering., stable_json_dumps(), Any, test_gene_space_value_signature_json_round_trips(), test_bounds_policy_outputs_valid_decoded_values(), test_crossover_signature_is_json_safe(), test_mixed_default_operator_signatures_are_json_safe() (+8 more)
 
-### Community 43 - "Differential Evolution Strategy"
+### Community 55 - "Strategy Population Internal Return"
 Cohesion: 0.14
 Nodes (22): DEStrategySpec, Internal Differential Evolution strategy metadata., Return strategy names in a stable display order., Return the internal strategy spec or raise a user-facing config error., Validate population size against the selected strategy., strategy_spec_for(), supported_strategy_names(), validate_strategy_population_size() (+14 more)
 
-### Community 44 - "Individual Len New"
+### Community 56 - "Individual Len Float Binary"
 Cohesion: 0.13
 Nodes (7): BinaryIndividual, FloatIndividual, IntegerIndividual, Option, Self, String, Vec
 
-### Community 45 - "Selection Tournament Rank"
-Cohesion: 0.17
-Nodes (21): pick_weighted_index(), rank_selection(), roulette_selection(), StdRng, Vec, sample_fitnesses(), test_rank_all_indices_in_range(), test_rank_deterministic() (+13 more)
+### Community 57 - "Trial Tell And Target"
+Cohesion: 0.22
+Nodes (24): DifferentialEvolutionOptimizer, _mixed_space(), _records(), test_de_ask_rejects_non_positive_count(), test_de_cached_records_are_state_eligible_for_initialization_and_trial_replacement(), test_de_constraint_penalties_complete_batch_without_trusted_candidates(), test_de_initial_ask_returns_valid_decoded_candidates(), test_de_initial_tell_fills_target_population_and_best_candidate() (+16 more)
 
-### Community 46 - "Differential Evolution Ask Tell"
-Cohesion: 0.21
-Nodes (24): DifferentialEvolutionOptimizer, GeneSpace, _mixed_space(), _records(), test_de_ask_rejects_non_positive_count(), test_de_cached_records_are_state_eligible_for_initialization_and_trial_replacement(), test_de_initial_ask_returns_valid_decoded_candidates(), test_de_initial_tell_fills_target_population_and_best_candidate() (+16 more)
+### Community 58 - "Projected CMA Values Mean"
+Cohesion: 0.13
+Nodes (19): build_projected_cma_mean(), ProjectedWarmStartResult, Projected warm-start helpers for CMA-ES active subspaces., Summarize historical records projected into a CMA optimizer space., Build a CMA initial mean by projecting trusted historical records., _structural_mismatch(), Direction, WarmStartRecord (+11 more)
 
-### Community 47 - "CMA-ES Search Space"
-Cohesion: 0.15
-Nodes (19): decode_gene_values(), encode_gene_values(), Encode Python values into the float vector used by Rust., Encode a SolutionSet of solutions for Rust calls., Repair one decoded or encoded value according to a gene definition., Repair a full gene vector and validate it against the gene space., Encode validated Python gene values into Rust/operator floats., Decode and repair Rust/operator floats into Python gene values. (+11 more)
+### Community 59 - "Jde Pending Checkpoint Strategy"
+Cohesion: 0.22
+Nodes (22): DifferentialEvolutionOptimizer, _new_jde_optimizer(), _pending_jde_checkpoint_payload(), _records(), _space(), _state_tuple(), test_jde_acceptance_commits_trial_parameters(), test_jde_checkpoint_rejects_invalid_committed_strategy_parameters() (+14 more)
 
-### Community 48 - "Exceptions Subclasses Fitness"
+### Community 60 - "For Batch Tell Ask"
+Cohesion: 0.18
+Nodes (18): Candidate, Direction, EvaluationRecord, append_candidate_tell_event(), candidate_and_batch_for_record(), evaluation_context_for_candidates(), Shared ask/tell lifecycle helpers for optimizer implementations., Record telemetry for one evaluation record and return its count label. (+10 more)
+
+### Community 61 - "Checkpoint Stable Ask Tell"
+Cohesion: 0.18
+Nodes (11): CMAESCheckpointingMixin, Resume CMA-ES ask/tell runtime state from a stable checkpoint., Load a stable checkpoint file., Save a stable checkpoint file., Return a stable CMA-ES ask/tell runtime checkpoint snapshot., Any, Candidate, CandidateBatch (+3 more)
+
+### Community 62 - "Optimizer CMA Reproducibility Validate"
+Cohesion: 0.14
+Nodes (19): build_cmaes_config(), cmaes_reproducibility_status(), cmaes_runtime_hooks(), _CMAESOptimizerLike, CMA-ES optimizer configuration helpers., Build the canonical CMA-ES optimizer config., Validate CMA-ES optimizer and gene-space compatibility., validate_cmaes_compatibility() (+11 more)
+
+### Community 63 - "Warning When Error Raised"
 Cohesion: 0.12
 Nodes (13): ConvergenceError, EvocoreError, FitnessWarning, ParallelError, evocore exception and warning hierarchy., Raised when a numerical failure makes continuation impossible., Raised when a parallel worker pool fails unrecoverably., Warning emitted when NaN or Inf score values are encountered. (+5 more)
 
-### Community 49 - "Differential Evolution Run"
-Cohesion: 0.11
-Nodes (15): ensure_picklable(), Raise a configuration error if an object is not picklable., Evaluate a SolutionSet with a thread pool., Evaluate a SolutionSet with a process pool., _ChildOptimizer, Run one child optimizer with a derived seed for process-pool execution., Run multiple deterministic child DE runs from derived seeds., run_child_optimizer() (+7 more)
+### Community 64 - "Ask CMA Tell Resume"
+Cohesion: 0.19
+Nodes (22): CMAESOptimizer, EvaluationRecord, GeneSpace, _optimizer(), _partial_records(), _score(), _space(), test_cma_ask_tell_checkpoint_after_ask_contains_pending_batch_and_rust_state() (+14 more)
 
-### Community 50 - "Genetic Algorithm Ask Tell"
-Cohesion: 0.14
-Nodes (15): BudgetPolicy, Candidate, EvaluationContext, EvaluationRecord, Evaluator, OptimizationResult, UpdateResult, GeneticAlgorithmAskTellMixin (+7 more)
-
-### Community 51 - "Selection Correct All"
+### Community 65 - "Selection Correct Rust Returns"
 Cohesion: 0.09
 Nodes (5): Smoke tests for the Rust selection functions exposed via PyO3. Focus: correct r, TestRankSelection, TestRouletteSelection, TestSelectionDeterminismInvariant, TestTournamentSelection
 
-### Community 52 - "Differential Evolution Generate"
+### Community 66 - "Fixture After Trial Initial"
 Cohesion: 0.27
 Nodes (21): _after_initial_ask_fixture(), _after_initialized_population_fixture(), _after_mixed_trial_tell_fixture(), _after_partial_initial_tell_fixture(), _after_trial_ask_fixture(), _entry(), _fixture_payload(), _initialized_source() (+13 more)
 
-### Community 53 - "CMA-ES Checkpointing"
-Cohesion: 0.19
-Nodes (11): CMAESCheckpointingMixin, Resume CMA-ES ask/tell runtime state from a stable checkpoint., Stable checkpoint helpers for CMA-ES ask/tell workflows., Load a stable checkpoint file., Save a stable checkpoint file., Any, Candidate, CandidateBatch (+3 more)
+### Community 67 - "Context Custom Passed Operators"
+Cohesion: 0.13
+Nodes (9): Solution, CrossoverContext, MutationContext, OperatorContext, Base deterministic context passed to custom operators., Context passed to custom mutation operators., Context passed to custom crossover operators., Return selected parent indices. (+1 more)
 
-### Community 54 - "Binary Ops Operators"
+### Community 68 - "Crossover Point Binary Bit"
 Cohesion: 0.17
 Nodes (20): bit_flip_mutation(), one_point_crossover(), test_bit_flip_mutation_deterministic(), test_bit_flip_mutation_length_preserved(), test_bit_flip_mutation_only_binary_values(), test_bit_flip_mutation_prob_one_all_flipped(), test_bit_flip_mutation_prob_zero_unchanged(), test_one_point_crossover_children_partition_parents() (+12 more)
 
-### Community 55 - "Ops Operators Mutation"
+### Community 69 - "Mutation Crossover Gaussian Blend"
 Cohesion: 0.17
 Nodes (21): blend_crossover(), gaussian_mutation(), simulated_binary_crossover(), test_blend_crossover_alpha_zero_stays_within_parents(), test_blend_crossover_deterministic(), test_blend_crossover_different_generations_diverge(), test_blend_crossover_output_lengths(), test_gaussian_mutation_deterministic() (+13 more)
 
-### Community 56 - "CMA-ES Ask Tell"
-Cohesion: 0.19
-Nodes (21): CMAESOptimizer, EvaluationRecord, GeneSpace, _optimizer(), _partial_records(), _score(), _space(), test_cma_ask_tell_checkpoint_after_ask_contains_pending_batch_and_rust_state() (+13 more)
+### Community 70 - "Config Default Bool CMAES"
+Cohesion: 0.10
+Nodes (20): _bool_space(), _mixed_bool_space(), test_bool_only_default_ga_resolves_binary_operators(), test_cmaes_callback_hook_is_visible_in_reproducibility(), test_cmaes_config_signature_uses_nested_component_shape(), test_cmaes_default_and_explicit_default_configs_match(), test_cmaes_margin_strategy_changes_config_hash(), test_cmaes_strategy_parameter_change_alters_hash() (+12 more)
 
-### Community 57 - "2026 05 Contract"
+### Community 71 - "Archive Candidate 2026 Budget"
+Cohesion: 0.11
+Nodes (21): [1.0.0] - 2026-06-05, [1.1.0] - 2026-06-25, Added, Archive, Budget, Candidate, Cma, Compatibility (+13 more)
+
+### Community 72 - "Contract Design Gene Codec"
 Cohesion: 0.10
 Nodes (20): Encoded Repair Contract, src/gene_codec.rs, Rust Gene Codec Parity Implementation Plan, OperatorCodec compatibility facade, Search-Space Codec Contract Implementation Plan, Search-space codec helpers, Canonical GeneSpace signature, GeneSpace Contract Design (+12 more)
 
-### Community 58 - "Checkpointing Optimizer Envelope"
-Cohesion: 0.18
-Nodes (17): Any, Direction, Path, _available_checkpoints(), _created_by(), Stable optimizer checkpoint envelope helpers., Validate the shared checkpoint envelope and return it as a dict., Raise when checkpoint identity does not match the receiving optimizer. (+9 more)
+### Community 73 - "Candidate Solution Lifecycle Result"
+Cohesion: 0.19
+Nodes (17): Candidate, Direction, GeneSpace, Solution, candidate_to_solution(), _has_state_observation(), Conversions between lifecycle candidates and result solutions., Convert a lifecycle candidate into a population/result solution. (+9 more)
 
-### Community 59 - "Differential Evolution Checkpointing"
+### Community 74 - "Integer Constraint Projection Task"
+Cohesion: 0.11
+Nodes (19): Constraint, Dependency, EvoCore Phase 3A Projection Transforms Implementation Plan, File Structure, Integer, Public API, Task 1: Projection Tests, Task 2: Transform and Constraint Records (+11 more)
+
+### Community 75 - "CMA Tell Batch Ask"
+Cohesion: 0.20
+Nodes (18): GeneSpace, _space(), test_cma_ask_keeps_continuous_samples_separate_from_repaired_candidate_genes(), test_cma_ask_records_append_only_ask_events(), test_cma_ask_returns_candidate_batch(), test_cma_best_state_ignores_partial_scores(), test_cma_cached_records_are_eligible_for_best_state_and_batch_update(), test_cma_constraint_penalties_complete_batch_without_trusted_candidates() (+10 more)
+
+### Community 76 - "Checkpoint Trial Rejects Restores"
 Cohesion: 0.33
 Nodes (18): DifferentialEvolutionOptimizer, GeneSpace, _records(), _space(), _state_tuple(), _target_genes(), test_de_checkpoint_rejects_missing_required_payload_fields(), test_de_checkpoint_rejects_target_population_larger_than_config() (+10 more)
 
-### Community 60 - "Parallel Evaluation Sequential Correct"
+### Community 77 - "Evaluate Sequential Parallel For"
 Cohesion: 0.11
 Nodes (4): Smoke tests for evaluate_sequential and evaluate_parallel_rayon via PyO3., TestEvaluateParallelRayon, TestEvaluateSequential, TestEvaluationDeterminism
 
-### Community 61 - "CMA-ES Ask Tell"
-Cohesion: 0.16
-Nodes (11): Update CMA state from trusted evaluation records., Record ask events for proposed CMA candidates., Record a tell event after candidate state has been updated., Return a CMA candidate batch., Candidate, CandidateBatch, EvaluationRecord, UpdateResult (+3 more)
-
-### Community 62 - "Reproducibility Domain Imports"
-Cohesion: 0.14
-Nodes (12): canonical_json_hash(), Return a SHA-256 hash over canonical compact JSON., Any, gene_space_hash(), gene_space_signature(), Reproducibility metadata helpers., Export reproducibility metadata as JSON-safe stable fields., Return the canonical signature for a gene space. (+4 more)
-
-### Community 63 - "Differential Evolution Checkpointing"
-Cohesion: 0.22
-Nodes (12): DifferentialEvolutionCheckpointingMixin, Resume DE ask/tell runtime state from a stable checkpoint., Stable checkpoint helpers for DE ask/tell workflows., Load a stable checkpoint file., Write a stable checkpoint file., _required_int_payload(), _required_mapping_payload(), _required_payload_value() (+4 more)
-
-### Community 64 - "Genetic Algorithm Generation Loop"
-Cohesion: 0.20
-Nodes (7): GenerationHistory, GenerationInfo, OptimizationResult, Solution, SolutionSet, StopReason, GenerationRecord
-
-### Community 65 - "Ops Operators Mutation"
+### Community 78 - "Int Mutation Uniform Gaussian"
 Cohesion: 0.20
 Nodes (16): int_gaussian_mutation(), int_simulated_binary_crossover(), int_uniform_mutation(), test_int_gaussian_mutation_deterministic(), test_int_gaussian_mutation_length_preserved(), test_int_gaussian_mutation_outputs_are_integers(), test_int_gaussian_mutation_prob_zero_unchanged(), test_int_sbx_deterministic() (+8 more)
 
-### Community 66 - "Genetic Algorithm Run"
-Cohesion: 0.19
-Nodes (11): Evaluator, GeneticAlgorithmOptimizer, OptimizationBatchResult, OptimizationResult, Genetic algorithm optimizer., _ChildOptimizer, GeneticAlgorithmMultiRunMixin, Run one child optimizer with a derived seed for process-pool execution. (+3 more)
+### Community 79 - "Generation Config Hash Append"
+Cohesion: 0.15
+Nodes (13): config_hash(), Return a stable SHA-256 hash for a config signature., GenerationRecord, Capture per-generation statistics from an optimization engine., Append a generation record to the GenerationHistory., test_optimizer_config_to_dict_and_hash_are_deterministic(), test_log_entry_to_dict_is_json_safe_and_preserves_custom_metrics(), test_logbook_append_len_iter_getitem() (+5 more)
 
-### Community 67 - "CMA-ES Mixed"
-Cohesion: 0.17
-Nodes (9): CategoricalDistributionState, IntegerMarginDistribution, Mixed-variable CMA foundations for vNext., Convert continuous integer samples into margin-protected probabilities., Return normalized integer probabilities with a minimum margin., Maintain a categorical distribution for mixed-variable CMA., Move probability mass toward weighted observed categories., test_categorical_state_updates_toward_better_category() (+1 more)
+### Community 80 - "Ask Tell CMA Archive"
+Cohesion: 0.11
+Nodes (18): Ask/Tell, Ask/Tell, Ask/Tell, Cma Es, Ask/Tell, Cma Es, Dependency, Phase 2A Archive Selection Toolkit Implementation Plan (+10 more)
 
-### Community 68 - "Parallel Evaluation Evaluate Batch"
+### Community 81 - "Exports Public Accessible From"
+Cohesion: 0.12
+Nodes (4): CMAESRestartPolicy, Protocol for CMA-ES restart decision policies., test_phase3b_penalty_public_exports(), test_search_space_exports_accessible_from_top_level()
+
+### Community 82 - "Tell Next Evaluation Ask"
+Cohesion: 0.22
+Nodes (9): Candidate, EvaluationRecord, GeneticAlgorithmAskTellMixin, Update GA state from vNext evaluation records., Reject incomplete or mismatched synchronous evaluator results., Record a tell event after candidate state has been updated., Run vNext policy-driven GA optimization., Ask/tell lifecycle and policy-driven GA execution. (+1 more)
+
+### Community 83 - "Generation Result Solution Callbacks"
+Cohesion: 0.21
+Nodes (6): GenerationHistory, GenerationInfo, OptimizationResult, Solution, SolutionSet, GenerationRecord
+
+### Community 84 - "From Trial Kernel Generate"
+Cohesion: 0.24
+Nodes (14): _coerce_target_slot(), _genes_from_raw(), _metadata_from_raw(), Generate decoded DE trial proposals from the Rust encoded kernel., _require_mapping(), _validate_target_slot(), Strategy output before ask/tell wraps it as a Candidate., TrialProposal (+6 more)
+
+### Community 85 - "Evaluate Batch Parallel Sequential"
 Cohesion: 0.23
 Nodes (14): F, evaluate_batch_parallel(), evaluate_batch_sequential(), evaluate_parallel_rayon(), evaluate_sequential(), Py, PyAny, PyResult (+6 more)
 
-### Community 69 - "Differential Evolution Mixed"
+### Community 86 - "Mixed Space Gene Numeric"
 Cohesion: 0.23
 Nodes (12): _mixed_space(), MixedSwitchEvaluator, NumericSphereEvaluator, test_de_budgeted_run_supports_mixed_gene_space(), test_de_improves_numeric_sphere_smoke(), test_de_jde_mixed_space_run_uses_valid_gene_types(), test_de_jde_runs_mixed_bool_numeric_space_smoke(), test_de_non_default_strategy_runs_on_mixed_gene_space() (+4 more)
 
-### Community 70 - "Differential Evolution Engine"
+### Community 87 - "Constraint Projection Deterministic For"
+Cohesion: 0.20
+Nodes (13): Candidate, ConstraintViolation, EvaluationRecord, _template_projection(), test_template_outer_ga_inner_cma_projection_recipe_is_deterministic(), constraint_penalty_record(), Build a state-update penalty record for deterministic constraint failures., ConstraintViolation (+5 more)
+
+### Community 88 - "Config Signature JSON This"
 Cohesion: 0.13
-Nodes (11): BudgetPolicy, CachedCheapEvaluator, CachedFinalEvaluator, HalfPromotionEvaluator, test_de_policy_screened_out_trials_leave_targets_unchanged(), test_de_policy_screened_trials_respect_max_generations(), test_de_run_cached_final_records_update_state_without_spending_fresh_budget(), test_de_run_rejects_state_eligible_non_final_policy_records() (+3 more)
+Nodes (9): Any, ConfigurableComponent, Protocol for custom algorithm components with stable config identity., Return a JSON-safe canonical component signature., Raise ConfigurationError when incompatible with a gene space., Export this config as a deterministic JSON-safe signature., Export this config as deterministic JSON., Return the stable hash for this config signature. (+1 more)
 
-### Community 71 - "Search Space Signature This"
+### Community 89 - "Generation JSON Export Dictionaries"
 Cohesion: 0.14
-Nodes (8): Any, Return the stable canonical signature for this gene space., Export this gene space as its stable canonical signature., Return a stable SHA-256 hash for this gene-space signature., Return a stable schema-aware signature for decoded gene values., Return a stable SHA-256 hash for decoded values in this gene space., Export this gene space as deterministic JSON., Validate decoded Python gene values against this gene space.
+Nodes (8): Any, Export this generation summary as a JSON-safe dictionary., Convert log entries into JSON-serializable row dictionaries., Export stable generation-summary dictionaries., Export generation summaries as deterministic JSON., Print row dictionaries for quick inspection., Convert the GenerationHistory into a pandas DataFrame., Plot selected GenerationHistory metrics with matplotlib.
 
-### Community 72 - "Differential Evolution Run"
+### Community 90 - "State Warm Start External"
+Cohesion: 0.30
+Nodes (14): DifferentialEvolutionOptimizer, GeneSpace, WarmStartRecord, _optimizer(), _records(), _space(), test_de_external_state_checkpoint_round_trip(), test_de_implements_external_state_protocol() (+6 more)
+
+### Community 91 - "Candidate Batch CMA State"
+Cohesion: 0.23
+Nodes (7): Update CMA state from trusted evaluation records., Record a tell event after candidate state has been updated., Return a CMA candidate batch., Candidate, CandidateBatch, EvaluationRecord, Record ask events for proposed candidates.
+
+### Community 92 - "State Batch For Return"
+Cohesion: 0.19
+Nodes (9): EvaluationRecord, Private vNext batch ledger helpers., Validate and store one record for this batch., Return state-eligible records in ask order once the batch is complete., is_state_update_confidence(), is_trusted_confidence(), Return whether a confidence value is eligible for optimizer state updates., Return whether a confidence value is trusted evidence for archives and promotion (+1 more)
+
+### Community 93 - "CMA Checkpoint Contract Compatibility"
+Cohesion: 0.16
+Nodes (14): CMA-ES Ask/Tell Checkpoints, CMA-ES Checkpoint Payload, CMAESCheckpointingMixin, CMA-ES Determinism Contract, CMA-ES Restore Contract, continuous_samples_by_id, CMA-ES Rust State Snapshots, Lazy Eigen Cache (+6 more)
+
+### Community 94 - "CMAES State Start Warm"
+Cohesion: 0.34
+Nodes (13): CMAESOptimizer, GeneSpace, WarmStartRecord, _optimizer(), _records(), _space(), test_cmaes_external_state_checkpoint_round_trip(), test_cmaes_implements_external_state_protocol() (+5 more)
+
+### Community 95 - "Run Multiple Evaluator Optimizer"
 Cohesion: 0.29
 Nodes (11): DifferentialEvolutionOptimizer, MinimizeSphereEvaluator, _optimizer(), SphereEvaluator, test_de_run_multiple_minimize_uses_direction_aware_child_best_scores(), test_de_run_multiple_parallel_requires_picklable_evaluator(), test_de_run_multiple_rejects_invalid_arguments(), test_de_run_multiple_returns_sorted_batch_result() (+3 more)
 
-### Community 73 - "Differential Evolution Specs"
+### Community 96 - "Checkpoint Run Boundary Acceptance"
 Cohesion: 0.18
 Nodes (13): DE Acceptance Contract, DE Ask/Tell Checkpointing, DE Mixed Gene Support, DifferentialEvolutionOptimizer, DE Feature Parity Sprint, DE Policy-Driven Run, DE run_multiple, Final Stage Replacement Boundary (+5 more)
 
-### Community 74 - "Differential Evolution Specs"
+### Community 97 - "Strategy Contract Rust Proposal"
 Cohesion: 0.18
 Nodes (13): DE rand1bin Strategy, Built-In DE Strategies, DE Strategy Contract, jDE Adaptation, SHADE Deferred, _core.de_generate_trials, DE Rust Proposal Kernel, Python-Owned DE Lifecycle (+5 more)
 
-### Community 75 - "Differential Evolution Kernel"
+### Community 98 - "State Warm Start External"
+Cohesion: 0.32
+Nodes (12): GeneSpace, GeneticAlgorithmOptimizer, WarmStartRecord, _optimizer(), _records(), _space(), test_ga_external_state_checkpoint_round_trip(), test_ga_implements_external_state_protocol() (+4 more)
+
+### Community 99 - "Generate Trials Best Gene"
 Cohesion: 0.24
 Nodes (8): _assert_valid_gene_vector(), _generate(), test_de_generate_trials_best_strategy_reports_best_slot(), test_de_generate_trials_current_to_best_reports_target_base(), test_de_generate_trials_jde_returns_trial_parameters(), test_de_generate_trials_minimize_uses_lowest_score_as_best_slot(), test_de_generate_trials_rejects_unknown_strategy(), test_de_generate_trials_stateless_strategies_are_deterministic()
 
-### Community 76 - "Differential Evolution Adaptive"
-Cohesion: 0.29
-Nodes (9): _float_list(), Restore and validate jDE state from a checkpoint payload., Restore adaptive strategy state for a checkpointed optimizer., Load pending trial parameters from checkpoint payload data., strategy_state_from_checkpoint(), _validate_crossover_rate(), _validate_mutation_factor(), _validate_pending_trial_params() (+1 more)
-
-### Community 77 - "Design Specs 2026"
-Cohesion: 0.17
-Nodes (12): evocore v1 Design Spec, Two-layer Rust/Python architecture, evocore v2 Design Spec, GeneSpace, evocore v3 Design Spec, Hierarchical seed derivation, evocore v4 Design Spec, GenerationInfo (+4 more)
-
-### Community 78 - "Genetic Algorithm Engine"
-Cohesion: 0.26
-Nodes (10): BudgetPolicy, CallableEvaluator, full_policy(), test_ga_max_evaluations_stops_at_budget(), test_ga_max_evaluations_stops_exactly_at_partial_batch(), test_ga_run_accepts_uniform_crossover_for_mixed_numeric_space(), test_ga_run_preserves_fixed_numeric_genes_in_full_genome(), test_ga_run_reports_vnext_stop_diagnostics() (+2 more)
-
-### Community 79 - "Ask Tell Lifecycle Batch"
+### Community 100 - "Candidate Evaluation And Batch"
 Cohesion: 0.39
 Nodes (11): EvaluationRecord, GeneSpace, _candidate(), _record(), _space(), test_append_candidate_ask_events_matches_optimizer_event_shape(), test_append_candidate_tell_event_merges_extra_metadata(), test_candidate_and_batch_for_record_rejects_unknown_ids() (+3 more)
 
-### Community 80 - "Plans 2026 V5"
+### Community 101 - "Kernel Adapter And Rust"
+Cohesion: 0.47
+Nodes (10): DERustKernelAdapter, Convert Python DE state to and from the Rust proposal kernel., GeneSpace, _candidate(), _space(), test_adapter_passes_encoded_population_and_kernel_arguments(), test_adapter_rejects_kernel_target_slot_mismatch(), test_adapter_rejects_malformed_rust_payload() (+2 more)
+
+### Community 102 - "Telemetry Contract Gene Space"
+Cohesion: 0.22
+Nodes (11): Canonical GeneSpace signature and hash, GeneSpace contract, Event history contract, JSON-safe exports, Reproducibility metadata, Result history telemetry contract, Custom operators, Checkpoint telemetry continuity (+3 more)
+
+### Community 103 - "Warm Start Space External"
+Cohesion: 0.27
+Nodes (9): GeneSpace, WarmStartRecord, optimizer(), _space(), test_duplicate_warm_start_values_are_skipped_consistently(), test_tracked_warm_start_is_visible_as_scored_not_trusted(), test_user_metadata_cannot_override_internal_tracked_mode(), test_warm_start_top_candidates_preserve_metadata() (+1 more)
+
+### Community 104 - "Evaluation Context Evaluator Parallelism"
 Cohesion: 0.20
-Nodes (10): f64 boundary encoding, CMA-ES mirror folding, CMA-ES eigen cache, Hansen CMA-ES update, v5 Part 4 Rust CMA-ES engine, OperatorSet Rust boundary codec, Python API ergonomics, v5 Part 5 Python API foundation (+2 more)
+Nodes (10): CMA-ES two-array loop, v5 Part 7 CMAESEngine integration, Integration examples and benchmarks, EvaluationContext contract, Optimizer lifecycle protocols, CMAESOptimizer parallel limits, Evaluator-owned parallelism, Parallelism (+2 more)
 
-### Community 81 - "Parallelism Plans 2026"
+### Community 105 - "Codec Bool Operator CMA"
 Cohesion: 0.20
-Nodes (10): CMA-ES two-array loop, v5 Part 7 CMAESEngine integration, Integration examples and benchmarks, EvaluationContext contract, CMAESOptimizer parallel limits, Evaluator-owned parallelism, Parallelism, EvaluationContext stage (+2 more)
+Nodes (10): CMA-ES Bool Exclusion, GA Mixed Bool Support, OperatorCodec Bool Boundary, Typed GA Operator Defaults, Encoded Value Repair Semantics, Rust gene_codec Module, Rust Gene Codec Parity, CMA-ES Continuous Samples Boundary (+2 more)
 
-### Community 82 - "Telemetry Contract History"
-Cohesion: 0.24
-Nodes (10): Canonical GeneSpace signature and hash, Event history contract, JSON-safe exports, Reproducibility metadata, Result history telemetry contract, Custom operators, Checkpoint telemetry continuity, OptimizationTelemetry (+2 more)
-
-### Community 83 - "CMA-ES Specs"
-Cohesion: 0.24
-Nodes (10): CMA-ES Ask/Tell Checkpoints, CMA-ES Checkpoint Payload, CMAESCheckpointingMixin, CMA-ES Determinism Contract, CMA-ES Restore Contract, continuous_samples_by_id, CMA-ES Rust State Snapshots, Lazy Eigen Cache (+2 more)
-
-### Community 84 - "Specs 2026 06"
-Cohesion: 0.20
-Nodes (10): Optimizer Lifecycle Helper Consolidation, Optimizer-Specific Lifecycle Boundaries, Shared Ask/Tell Helpers, Encoded Value Repair Semantics, Rust gene_codec Module, Rust Gene Codec Parity, CMA-ES Continuous Samples Boundary, Neutral Codec Helpers (+2 more)
-
-### Community 85 - "Utils Derive Seed"
+### Community 106 - "Derive Seed Different Diverge"
 Cohesion: 0.38
 Nodes (9): derive_seed(), py_derive_seed(), test_derive_seed_avalanche_on_master(), test_derive_seed_deterministic(), test_derive_seed_different_generations_diverge(), test_derive_seed_different_indices_diverge(), test_derive_seed_different_masters_diverge(), test_derive_seed_different_ops_diverge() (+1 more)
 
-### Community 86 - "Selection Rank Top"
-Cohesion: 0.25
-Nodes (7): candidate_id(), rank_top_k(), String, Vec, test_rank_top_k_prefers_trusted(), safe_fitness(), test_safe_fitness_replaces_nan_with_neg_infinity()
+### Community 107 - "Parallel Boundary Part Rust"
+Cohesion: 0.22
+Nodes (9): f64 boundary encoding, v5 Part 2 Rust genetic operators, Stateless operator RNG, NaN-safe selection, Rayon parallel evaluation, v5 Part 3 selection reproduce parallel, OperatorSet Rust boundary codec, Decoded gene validation (+1 more)
 
-### Community 87 - "Genetic Algorithm Engine"
-Cohesion: 0.25
-Nodes (4): Return the public optimizer configuration object., Return the canonical JSON-safe optimizer configuration signature., Return the stable hash for this optimizer configuration., Return public serializable GA constructor configuration.
+### Community 108 - "Design Fixed Genes Two"
+Cohesion: 0.22
+Nodes (9): evocore v1 Design Spec, Two-layer Rust/Python architecture, GeneSpace, evocore v3 Design Spec, Hierarchical seed derivation, GenerationInfo, Process parallel teardown, Fixed numeric genes (+1 more)
 
-### Community 88 - "Genetic Algorithm Runtime"
+### Community 109 - "Event Export JSON Safe"
+Cohesion: 0.32
+Nodes (4): Any, Convert event rows into a pandas DataFrame., Export this event as one JSON-safe row., Export lifecycle events as JSON-safe row dictionaries.
+
+### Community 110 - "Optimizer Run Multiple Child"
+Cohesion: 0.25
+Nodes (8): run_multiple child seed derivation, v5 Part 6 GAEngine, GA generation loop contract, Ask/tell engines, Multi-fidelity scheduler, Surrogate advisor foundation, vNext expensive optimizer, Structural Optimizer protocol
+
+### Community 111 - "Evaluator Protocol Runtime Space"
+Cohesion: 0.36
+Nodes (5): GeneSpace, _space(), StructuralSphereEvaluator, test_ga_cma_and_de_satisfy_optimizer_protocol_at_runtime(), test_structural_evaluator_satisfies_evaluator_protocol_at_runtime()
+
+### Community 112 - "Non Finite Logs Generation"
 Cohesion: 0.25
 Nodes (3): test_cmaes_logs_generation_progress(), test_ga_logs_generation_progress(), test_ga_non_finite_fitness_raises_without_warning_log()
 
-### Community 89 - "Checkpointing Generation Loop Checkpointcallback"
+### Community 113 - "Generation The Persist Checkpoint"
 Cohesion: 0.48
 Nodes (3): Persist a checkpoint when the current generation matches the cadence., GenerationInfo, SolutionSet
 
-### Community 90 - "05 Production Hardening"
+### Community 114 - "Optimizer Return The Configuration"
+Cohesion: 0.29
+Nodes (3): Return the public optimizer configuration object., Return the canonical JSON-safe optimizer configuration signature., Return the stable hash for this optimizer configuration.
+
+### Community 115 - "Telemetry Checkpoint Optimization From"
+Cohesion: 0.33
+Nodes (7): OptimizationTelemetry, Serialise OptimizationTelemetry to a JSON-safe checkpoint dict., Deserialise OptimizationTelemetry from a checkpoint payload., telemetry_from_checkpoint(), telemetry_to_checkpoint(), test_telemetry_checkpoint_rejects_invalid_counter_as_checkpoint_error(), test_telemetry_checkpoint_round_trip_restores_unique_hash_set()
+
+### Community 116 - "Architecture Derive Seed Part"
+Cohesion: 0.33
+Nodes (7): derive_seed architecture, v5 Part 1 project scaffold, Two-layer PyO3 architecture, Deterministic reproducibility, evocore overview, Rust-native Python optimization, Quickstart
+
+### Community 117 - "Install Release And Local"
 Cohesion: 0.29
 Nodes (7): CI and local quality gates, PEP 561 PyO3 stubs, v0.6.0 production hardening, Install, maturin development install, Release Process, Release verification pipeline
 
-### Community 91 - "Genetic Algorithm Operators"
+### Community 118 - "Operator Fixed Genes Exact"
 Cohesion: 0.33
 Nodes (7): Exact max_evaluations enforcement, GA fixed genes and budget, Full-genome fixed numeric genes, BoundsPolicy.clamp, Operator compatibility matrix, Operator Contract, Typed operator specs
 
-### Community 92 - "CMA-ES Expensive"
-Cohesion: 0.33
-Nodes (7): Mixed-variable CMA foundations, Multi-fidelity scheduler, Surrogate advisor foundation, vNext expensive optimizer, CategoricalDistributionState, IntegerMarginDistribution, Mixed-Variable Search
-
-### Community 94 - "Design Specs 2026"
+### Community 120 - "Design Batch Optimizer Domain"
 Cohesion: 0.29
 Nodes (7): Batch ledger, Explicit Batch Tokens Design, EvaluationRecord, Optimizer Lifecycle Protocols Design, Optimizer protocol, Domain-oriented package architecture, Python Package Domain Restructure Design
 
-### Community 95 - "V5 Plans 2026"
-Cohesion: 0.40
-Nodes (6): derive_seed architecture, v5 Part 1 project scaffold, Two-layer PyO3 architecture, Deterministic reproducibility, evocore overview, Rust-native Python optimization
-
-### Community 96 - "V5 Plans 2026"
+### Community 121 - "Candidate Rank Top String"
 Cohesion: 0.33
-Nodes (6): v5 Part 2 Rust genetic operators, Stateless operator RNG, NaN-safe selection, Rayon parallel evaluation, v5 Part 3 selection reproduce parallel, ProcessParallel persistent pool
+Nodes (5): candidate_id(), rank_top_k(), String, Vec, test_rank_top_k_prefers_trusted()
 
-### Community 97 - "Plans 2026 Superpowers"
+### Community 122 - "Rust Proposal Committed Return"
 Cohesion: 0.33
-Nodes (6): run_multiple child seed derivation, v5 Part 6 GAEngine, GA generation loop contract, Ask/tell engines, Optimizer lifecycle protocols, Structural Optimizer protocol
+Nodes (3): Return committed per-slot values for Rust jDE proposal generation., TrialProposal, TrialProposal
 
-### Community 98 - "Search Space Codec Decode"
+### Community 123 - "Event History Checkpoint From"
+Cohesion: 0.33
+Nodes (6): EventHistory, event_history_from_checkpoint(), event_history_to_checkpoint(), Serialise an EventHistory to a list of JSON-safe checkpoint dicts., Deserialise an EventHistory from a checkpoint payload., test_event_history_checkpoint_rejects_missing_event_type()
+
+### Community 124 - "CMA Part Python Mirror"
+Cohesion: 0.33
+Nodes (6): CMA-ES mirror folding, CMA-ES eigen cache, Hansen CMA-ES update, v5 Part 4 Rust CMA-ES engine, Python API ergonomics, v5 Part 5 Python API foundation
+
+### Community 125 - "Decode Rust Into Solution"
 Cohesion: 0.33
 Nodes (3): Decode Rust float vectors back into Python gene values., Decode one Rust-side genome into a `Solution`., Decode a Rust-side SolutionSet into Python solutions.
 
-### Community 99 - "Expensive Optimizer Design"
+### Community 126 - "Expensive Black Box Optimization"
 Cohesion: 0.33
 Nodes (6): CatCMA and CatCMAwM, Expensive black-box optimization, Financial anti-overfit telemetry, Hyperband, Successive Halving, EvoCore vNext Expensive Optimizer Design
 
-### Community 100 - "Stabilization Objective Budget"
+### Community 127 - "Budget And Contract Stabilization"
 Cohesion: 0.60
 Nodes (5): Budget and termination contract, Design-first stabilization, Objective and evaluation semantics, Optimizer configuration contract, Objective Budget Config Stabilization Handoff
 
-### Community 102 - "Manifest V0 Checkpoints"
+### Community 128 - "Config CMAES Signature Round"
+Cohesion: 0.40
+Nodes (4): test_cmaes_config_signature_round_trips_through_json(), test_cmaes_initial_sigma_change_alters_hash(), test_ga_config_signature_round_trips_through_json(), test_ga_seed_change_alters_hash()
+
+### Community 130 - "Version Manifest JSON Checkpoint"
 Cohesion: 0.40
 Nodes (4): checkpoint_schema_version, fixture_format_version, fixtures, source_evocore_version
 
-### Community 103 - "Manifest V0 Checkpoints"
+### Community 131 - "Version Manifest JSON Checkpoint"
 Cohesion: 0.40
 Nodes (4): checkpoint_schema_version, fixture_format_version, fixtures, source_evocore_version
 
-### Community 104 - "Differential Evolution Adaptive"
-Cohesion: 0.50
-Nodes (3): initial_strategy_state(), Create strategy state for adaptive DE strategies., Reset state used by DE ask/tell and run APIs.
-
-### Community 106 - "Design Specs 2026"
+### Community 133 - "Evaluation Semantics And Design"
 Cohesion: 0.50
 Nodes (4): Evaluation confidence semantics, Objective And Evaluation Semantics Design, Budget And Termination Contract Design, Stop reason vocabulary
 
-### Community 107 - "Checkpointing Compatibility Golden"
+### Community 134 - "Optimizer Lifecycle Consolidation Specific"
 Cohesion: 0.50
-Nodes (4): Checkpoint Compatibility Baseline 0.8.0, CheckpointError Compatibility Contract, Golden Checkpoint Fixtures, Legacy Pickle Exclusion
-
-### Community 108 - "Genetic Algorithm Mixed"
-Cohesion: 0.50
-Nodes (4): CMA-ES Bool Exclusion, GA Mixed Bool Support, OperatorCodec Bool Boundary, Typed GA Operator Defaults
-
-### Community 113 - "Differential Evolution Protocols"
-Cohesion: 0.67
-Nodes (3): GeneSpace, _space(), test_ga_cma_and_de_satisfy_optimizer_protocol_at_runtime()
+Nodes (4): Optimizer Lifecycle Helper Consolidation, Optimizer-Specific Lifecycle Boundaries, Shared Ask/Tell Helpers, Search-Space Codec Contract
 
 ## Ambiguous Edges - Review These
 - `vNext Optimizer Model` → `Budget Policy Staged Evaluation`  [AMBIGUOUS]
   README.md · relation: conceptually_related_to
 
 ## Knowledge Gaps
-- **88 isolated node(s):** `OptimizationResult`, `ReproducibilityStatus`, `Any`, `String`, `Vec` (+83 more)
+- **210 isolated node(s):** `OptimizationResult`, `ReproducibilityStatus`, `Any`, `String`, `Vec` (+205 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **7 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **What is the exact relationship between `vNext Optimizer Model` and `Budget Policy Staged Evaluation`?**
   _Edge tagged AMBIGUOUS (relation: conceptually_related_to) - confidence is low._
-- **Why does `ConfigurationError` connect `CMA-ES Engine` to `Genetic Algorithm Operators`, `Differential Evolution jDE Adaptation`, `Differential Evolution Genetic Algorithm`, `Differential Evolution Budget Scheduler`, `CMA-ES Engine`, `Telemetry Lifecycle Evaluation`, `Differential Evolution Engine`, `Lifecycle Event History Checkpointing`, `Operators Contract Optimizers`, `Differential Evolution Lifecycle`, `CMA-ES Generation Loop`, `CMA-ES Search Space`, `Genetic Algorithm Engine`, `Genetic Algorithm Operators`, `Search Space Individual Accessible`, `Search Space Examples Bounds`, `Differential Evolution Engine`, `Genetic Algorithm Hook`, `Lifecycle Conversion Score`, `Lifecycle Checkpointing Deserialise`, `Differential Evolution Hash`, `Surrogate Inverse Distance`, `Properties Operators Contract`, `Differential Evolution Strategy`, `Differential Evolution Ask Tell`, `CMA-ES Search Space`, `Exceptions Subclasses Fitness`, `Differential Evolution Run`, `Genetic Algorithm Ask Tell`, `CMA-ES Ask Tell`, `Genetic Algorithm Run`, `CMA-ES Mixed`, `Differential Evolution Engine`, `Search Space Signature This`, `Differential Evolution Run`, `Differential Evolution Engine`?**
-  _High betweenness centrality (0.175) - this node is a cross-community bridge._
-- **Why does `GeneSpace` connect `CMA-ES Search Space` to `Genetic Algorithm Operators`, `Differential Evolution jDE Adaptation`, `Differential Evolution Checkpointing`, `Differential Evolution Genetic Algorithm`, `Progress Base Stopping`, `Differential Evolution Budget Scheduler`, `CMA-ES Engine`, `Telemetry Lifecycle Evaluation`, `Lifecycle Event History Checkpointing`, `Operators Contract Optimizers`, `Differential Evolution Lifecycle`, `CMA-ES Generation Loop`, `Genetic Algorithm Engine`, `Genetic Algorithm Operators`, `CMA-ES Engine`, `Search Space Individual Accessible`, `Search Space Examples Bounds`, `Differential Evolution Engine`, `Genetic Algorithm Hook`, `Genetic Algorithm Ask Tell`, `Lifecycle Conversion Score`, `Genetic Algorithm Rng`, `Lifecycle Protocols Telemetry`, `Differential Evolution Hash`, `Surrogate Inverse Distance`, `Genetic Algorithm Ask Tell`, `Genetic Algorithm Generate`, `Properties Operators Contract`, `Differential Evolution Ask Tell`, `CMA-ES Search Space`, `Differential Evolution Generate`, `CMA-ES Ask Tell`, `Differential Evolution Checkpointing`, `Reproducibility Domain Imports`, `Differential Evolution Mixed`, `Search Space Signature This`, `Differential Evolution Run`, `Genetic Algorithm Engine`, `Ask Tell Lifecycle Batch`, `Genetic Algorithm Runtime`, `Differential Evolution Protocols`?**
-  _High betweenness centrality (0.065) - this node is a cross-community bridge._
-- **Why does `GeneticAlgorithmOptimizer` connect `Genetic Algorithm Engine` to `Genetic Algorithm Operators`, `Differential Evolution Checkpointing`, `Differential Evolution Genetic Algorithm`, `Progress Base Stopping`, `Differential Evolution Budget Scheduler`, `CMA-ES Engine`, `Telemetry Lifecycle Evaluation`, `Operators Contract Optimizers`, `CMA-ES Engine`, `Search Space Individual Accessible`, `Search Space Examples Bounds`, `Genetic Algorithm Hook`, `Genetic Algorithm Ask Tell`, `Genetic Algorithm Rng`, `Genetic Algorithm Checkpointing`, `Lifecycle Protocols Telemetry`, `Differential Evolution Hash`, `Genetic Algorithm Ask Tell`, `Genetic Algorithm Generate`, `Genetic Algorithm Ask Tell`, `Reproducibility Domain Imports`, `Genetic Algorithm Run`, `Genetic Algorithm Engine`, `Genetic Algorithm Engine`, `Genetic Algorithm Runtime`, `Genetic Algorithm Engine`, `Differential Evolution Protocols`, `Genetic Algorithm Engine`?**
-  _High betweenness centrality (0.045) - this node is a cross-community bridge._
+- **Why does `ConfigurationError` connect `CMA For Integer Generation` to `Gene Space Return The`, `Generation End Counting Callback`, `Gene Operator Return Crossover`, `Optimizer Candidate State Return`, `Run The Generation Optimization`, `Evaluate Pool Process Optimizer`, `Return Tell Configuration Optimizer`, `Stage Policy Next Budget`, `Operator Signature And Generation`, `Validate Compatibility Optimizer Operator`, `Run Evaluator Policy Evaluate`, `Candidates Candidate Select Selected`, `Candidate For One Snapshot`, `Parameter Projection Repair For`, `CMAES Run Return And`, `Checkpoint From Deserialise Payload`, `Optimizer The Config For`, `Run Optimizer Child Seed`, `Surrogate Advisor Inverse Distance`, `Append Event One Only`, `Gene Values Repair Encode`, `For Trial Evaluation Ask`, `Hook Return For Runtime`, `Gene Stable Space This`, `Strategy Population Internal Return`, `Trial Tell And Target`, `For Batch Tell Ask`, `Optimizer CMA Reproducibility Validate`, `Warning When Error Raised`, `Context Custom Passed Operators`, `Config Default Bool CMAES`, `Generation Config Hash Append`, `Exports Public Accessible From`, `Tell Next Evaluation Ask`, `From Trial Kernel Generate`, `Candidate Batch CMA State`, `Run Multiple Evaluator Optimizer`, `Kernel Adapter And Rust`, `Event Export JSON Safe`, `Telemetry Checkpoint Optimization From`, `Rust Proposal Committed Return`, `Event History Checkpoint From`?**
+  _High betweenness centrality (0.132) - this node is a cross-community bridge._
+- **Why does `Differential Evolution optimizer implementation.` connect `Optimizer Ask Tell Release` to `External State Candidate Candidates`, `Optimizer The Config For`?**
+  _High betweenness centrality (0.107) - this node is a cross-community bridge._
+- **Why does `Cma Es` connect `CMA Budget Warm Candidate` to `Integer Constraint Projection Task`, `CMA Projection Task Penalty`, `Optimizer Ask Tell Release`, `CMA Checkpoint State External`?**
+  _High betweenness centrality (0.094) - this node is a cross-community bridge._
 - **Are the 183 inferred relationships involving `ConfigurationError` (e.g. with `AcceptanceDecision` and `BoundsPolicy`) actually correct?**
   _`ConfigurationError` has 183 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 61 inferred relationships involving `EvaluationRecord` (e.g. with `CacheLookup` and `EventRecord`) actually correct?**
+  _`EvaluationRecord` has 61 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 30 inferred relationships involving `GeneSpace` (e.g. with `CandidateOrigin` and `Any`) actually correct?**
   _`GeneSpace` has 30 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 9 inferred relationships involving `GeneticAlgorithmOptimizer` (e.g. with `ConfigurationError` and `ConfigurationWarning`) actually correct?**
-  _`GeneticAlgorithmOptimizer` has 9 INFERRED edges - model-reasoned connections that need verification._
