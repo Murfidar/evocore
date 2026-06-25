@@ -85,6 +85,8 @@ shape, without subclassing.
 
 ::: evocore.lifecycle.cached_records
 
+::: evocore.lifecycle.constraint_penalty_record
+
 ::: evocore.lifecycle.derive_child_seed
 
 ::: evocore.lifecycle.lineage_metadata
@@ -138,6 +140,18 @@ shape, without subclassing.
 ::: evocore.optimizers.cmaes.IntegerMarginDistribution
 
 ::: evocore.optimizers.cmaes.CategoricalDistributionState
+
+::: evocore.optimizers.cmaes.ProjectedWarmStartResult
+
+::: evocore.optimizers.cmaes.build_projected_cma_mean
+
+::: evocore.optimizers.cmaes.CMAESRestartDecision
+
+::: evocore.optimizers.cmaes.FixedCMAESRestartPolicy
+
+::: evocore.optimizers.cmaes.IPOPCMAESRestartPolicy
+
+::: evocore.optimizers.cmaes.create_cmaes_restart
 
 ::: evocore.optimizers.OptimizerConfig
 

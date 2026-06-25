@@ -6,6 +6,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-25
+
 ### Added
 
 - Added external-state integration APIs for GA, DE, and CMA-ES, including warm
@@ -31,6 +33,9 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 - Added Phase 3C CMA helpers for projected active-space warm starts, opt-in
   integer-margin sampling, exact ask/tell resume under margin sampling, and
   lifecycle-managed restart planning.
+- Added a Phase 3D expensive external optimization recipe that composes outer
+  GA templates, active projections, cached warm starts, constraint penalties,
+  trusted archive promotion, and projected inner CMA refinement.
 
 ### Fixed
 
@@ -41,6 +46,22 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   kept cumulative evaluation-limit counts monotonic across stale telemetry.
 - Protected canonical hybrid-composition lineage fields from caller metadata
   overrides.
+- Rejected active projection calls with structural bindings that conflict with
+  caller-provided parameters, preventing search-memory records from being hashed
+  or projected under the wrong template identity.
+- Re-encoded active projection optimizer values after deterministic repair hooks
+  change active parameters, keeping projected CMA warm-start means aligned with
+  repaired canonical parameters.
+
+### Compatibility
+
+- `CMAESOptimizer` keeps `integer_strategy="round"` as the default. Opting into
+  `integer_strategy="margin"` changes config hashes and checkpoint payloads for
+  that run.
+- `constraint_penalty` records are state-update eligible but excluded from
+  trusted snapshots, warm starts, top-k defaults, archive promotion, and
+  selection helpers.
+- Existing flat `GeneSpace` schema version 1 remains unchanged.
 
 ## [1.0.0] - 2026-06-05
 
