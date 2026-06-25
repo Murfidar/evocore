@@ -7,6 +7,7 @@ from evocore.search_space import (
     BinaryThresholdTransform,
     ExponentialIntegerTransform,
     IdentityTransform,
+    RepairRecord,
 )
 
 
@@ -99,6 +100,54 @@ def test_structural_changes_do_change_projected_hash() -> None:
     assert left.value_hash({"fast": 4.0, "slow": 40.0}) != right.value_hash(
         {"fast": 4.0, "slow": 40.0}
     )
+
+
+def test_project_rejects_structural_binding_mismatch() -> None:
+    projection = ActiveGeneProjection(
+        source_space=_space(),
+        active_names=["fast", "slow"],
+        structural_bindings={"family": 1},
+        identity_keys=("family",),
+        schema_id="template-a",
+        schema_version="1",
+    )
+
+    with pytest.raises(ConfigurationError, match="structural binding"):
+        projection.project({"family": 2, "fast": 4.0, "slow": 40.0})
+
+
+def test_project_reencodes_active_values_after_repair() -> None:
+    class ForceFastRepair:
+        checkpointable = True
+
+        def repair(self, parameters):
+            repaired = dict(parameters)
+            previous = repaired["fast"]
+            repaired["fast"] = 9.0
+            return repaired, [
+                RepairRecord(
+                    name="fast",
+                    previous=previous,
+                    repaired=9.0,
+                    reason="force test repair",
+                )
+            ]
+
+        def signature(self):
+            return {"type": "force_fast", "version": 1}
+
+    projection = ActiveGeneProjection(
+        source_space=_space(),
+        active_names=["fast", "slow"],
+        repairs=[ForceFastRepair()],
+        schema_id="template-a",
+        schema_version="1",
+    )
+
+    result = projection.project({"fast": 4.0, "slow": 40.0})
+
+    assert result.parameters["fast"] == 9.0
+    assert result.optimizer_values == (9.0, 40.0)
 
 
 def test_transform_versions_participate_in_snapshot_hash() -> None:

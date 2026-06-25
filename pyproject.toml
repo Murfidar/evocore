@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "evocore"
-version = "1.0.0"
+version = "1.1.0"
 requires-python = ">=3.11"
 description = "Rust-native Genetic Algorithms and CMA-ES for Python"
 readme = "README.md"

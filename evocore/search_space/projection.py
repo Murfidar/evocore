@@ -172,21 +172,28 @@ class ActiveGeneProjection:
     def project(self, parameters: Mapping[str, object]) -> ProjectionResult:
         """Encode a domain parameter mapping into optimizer-native coordinates."""
         params = dict(parameters)
-        values: list[GeneValue] = []
-        for name in self.active_names:
-            if name not in params:
-                raise ConfigurationError(f"ActiveGeneProjection missing parameter {name!r}.")
-            try:
-                values.append(self.transforms[name].encode(params[name]))
-            except Exception as exc:
-                if isinstance(exc, ConfigurationError):
-                    raise
-                raise ConfigurationError(
-                    f"ActiveGeneProjection could not encode parameter {name!r}: {exc}"
-                ) from exc
+        self._validate_structural_bindings(params)
+        values = self._encode_active_parameters(params)
 
         self.optimizer_space.validate_genes(values)
-        return self.reconstruct(values)
+        result = self.reconstruct(values)
+        repaired_values = self._encode_active_parameters(result.parameters)
+        self.optimizer_space.validate_genes(repaired_values)
+        if tuple(repaired_values) == result.optimizer_values:
+            return result
+        return ProjectionResult(
+            parameters=result.parameters,
+            optimizer_values=tuple(repaired_values),
+            active_names=result.active_names,
+            structural_bindings=result.structural_bindings,
+            repairs=result.repairs,
+            violations=result.violations,
+            projection_hash=result.projection_hash,
+            parameter_hash=result.parameter_hash,
+            metadata=result.metadata,
+            valid=result.valid,
+            checkpointable=result.checkpointable,
+        )
 
     def reconstruct(self, values: Sequence[GeneValue]) -> ProjectionResult:
         """Decode optimizer-native coordinates into canonical domain parameters."""
@@ -211,6 +218,7 @@ class ActiveGeneProjection:
 
         safe_parameters = _json_mapping(parameters, field_name="parameters")
         safe_parameters, repairs = self._apply_repairs(safe_parameters)
+        self._require_active_parameters(safe_parameters)
         violations = self._validate_parameters(safe_parameters)
         signature_hash = self._signature_hash(require_checkpointable=False)
         parameter_hash = canonical_json_hash(
@@ -283,6 +291,38 @@ class ActiveGeneProjection:
     def value_hash(self, parameters: Mapping[str, object]) -> str:
         """Return the canonical projected identity hash for domain parameters."""
         return self.project(parameters).projection_hash
+
+    def _validate_structural_bindings(self, parameters: Mapping[str, object]) -> None:
+        identity_key_set = set(self.identity_keys)
+        for name, expected in self.structural_bindings.items():
+            if name not in identity_key_set:
+                continue
+            if name in parameters and parameters[name] != expected:
+                raise ConfigurationError(
+                    "ActiveGeneProjection structural binding mismatch for "
+                    f"{name!r}: expected {expected!r}, got {parameters[name]!r}."
+                )
+
+    def _require_active_parameters(self, parameters: Mapping[str, object]) -> None:
+        missing = [name for name in self.active_names if name not in parameters]
+        if missing:
+            raise ConfigurationError(
+                f"ActiveGeneProjection missing active parameter(s): {missing!r}."
+            )
+
+    def _encode_active_parameters(self, parameters: Mapping[str, object]) -> list[GeneValue]:
+        values: list[GeneValue] = []
+        self._require_active_parameters(parameters)
+        for name in self.active_names:
+            try:
+                values.append(self.transforms[name].encode(parameters[name]))
+            except Exception as exc:
+                if isinstance(exc, ConfigurationError):
+                    raise
+                raise ConfigurationError(
+                    f"ActiveGeneProjection could not encode parameter {name!r}: {exc}"
+                ) from exc
+        return values
 
     def _structural_identity(self) -> dict[str, object]:
         return {

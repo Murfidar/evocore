@@ -6,6 +6,8 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-06-25
+
 ### Added
 
 - Added external-state integration APIs for GA, DE, and CMA-ES, including warm
@@ -44,6 +46,12 @@ This project follows semantic versioning after the v0.5.0 late-beta baseline.
   kept cumulative evaluation-limit counts monotonic across stale telemetry.
 - Protected canonical hybrid-composition lineage fields from caller metadata
   overrides.
+- Rejected active projection calls with structural bindings that conflict with
+  caller-provided parameters, preventing search-memory records from being hashed
+  or projected under the wrong template identity.
+- Re-encoded active projection optimizer values after deterministic repair hooks
+  change active parameters, keeping projected CMA warm-start means aligned with
+  repaired canonical parameters.
 
 ### Compatibility
 
